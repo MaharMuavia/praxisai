@@ -3,14 +3,12 @@
 import { praxisFetch, type components } from "@praxisai/api-client";
 import { type FormEvent, useState } from "react";
 import { MoneyAmount } from "./money-amount";
+import { apiBase } from "../lib/api";
 
 type ProjectWorkspace = components["schemas"]["ProjectWorkspaceView"];
 type Project = components["schemas"]["ProjectView"];
 type AgentRun = components["schemas"]["AgentRunView"];
 type QuoteResult = components["schemas"]["QuoteResult"];
-
-const apiBase =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 function StateLabel({ value }: { value: string }) {
   return <span className="status-badge">{value.replaceAll("_", " ")}</span>;

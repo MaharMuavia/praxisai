@@ -30,9 +30,7 @@ import {
 import { StudentCareerWorkspace } from "./student-career-workspace";
 import { WorkspaceOverview } from "./workspace-overview";
 import { demoWorkspaceSnapshot, withDemoFallback } from "../lib/demo-data";
-
-const apiBase =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+import { apiBase } from "../lib/api";
 
 type Session = components["schemas"]["SessionView"];
 type Project = components["schemas"]["ProjectView"];

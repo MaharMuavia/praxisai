@@ -18,9 +18,7 @@ import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import { demoWorkspaceSnapshot, withDemoFallback } from "../lib/demo-data";
 import { MoneyAmount } from "./money-amount";
-
-const apiBase =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+import { apiBase } from "../lib/api";
 
 type LearningPath = components["schemas"]["LearningPathView"];
 type Opportunity = components["schemas"]["OpportunityView"];

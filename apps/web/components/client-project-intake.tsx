@@ -7,9 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
-const apiBase =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+import { apiBase } from "../lib/api";
 const draftKey = "praxisai:client-project-intake:v1";
 
 const intakeSchema = z.object({

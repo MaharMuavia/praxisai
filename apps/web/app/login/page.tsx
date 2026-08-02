@@ -6,9 +6,7 @@ import { ArrowRight, Lock, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Brand } from "@/components/brand";
 import { getFirebaseAuth } from "@/lib/firebase";
-
-const apiBase =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+import { apiBase } from "@/lib/api";
 
 interface DemoUser {
   user_id: string;
