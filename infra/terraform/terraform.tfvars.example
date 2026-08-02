@@ -3,4 +3,15 @@ region      = "us-central1"
 environment = "staging"
 web_image   = "us-central1-docker.pkg.dev/PROJECT/praxisai/web:TAG"
 api_image   = "us-central1-docker.pkg.dev/PROJECT/praxisai/api:TAG"
+firebase_project_id = "replace-with-firebase-project-id"
+web_base_url = "https://replace-with-web-url"
+api_base_url = "https://replace-with-api-url/api/v1"
+cors_origins = ["https://replace-with-web-url"]
+email_from_address = "noreply@example.com"
+otel_exporter_otlp_endpoint = "https://replace-with-otlp-endpoint"
 
+# Supabase connection strings are provisioned into Secret Manager separately.
+# DATABASE_URL: transaction pooler, normally port 6543.
+# DATABASE_MIGRATION_URL: session/direct connection, normally port 5432.
+# database_url_secret_id = "praxisai-staging-database-url"
+# database_migration_url_secret_id = "praxisai-staging-database-migration-url"

@@ -37,9 +37,8 @@ export const apiBase = resolveApiBase(
   process.env.NODE_ENV,
 );
 
-export const demoFallbackEnabled =
-  allowsDemoFallback(
-    process.env.NODE_ENV,
-    process.env.NEXT_PUBLIC_APP_ENV,
-    process.env.NEXT_PUBLIC_DEMO_MODE === "true",
-  );
+export const demoFallbackEnabled = allowsDemoFallback(
+  process.env.NODE_ENV,
+  process.env.NEXT_PUBLIC_APP_ENV,
+  process.env.NEXT_PUBLIC_DEMO_MODE === "true",
+);
