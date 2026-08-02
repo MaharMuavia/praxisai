@@ -5,19 +5,59 @@ test("landing page communicates the supervised operating model", async ({
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /From learning to paid delivery/i }),
+    page.getByRole("heading", {
+      name: /Turn potential into paid professional experience/i,
+    }),
   ).toBeVisible();
   await expect(
     page.getByText(
       "Students build proof. Employers choose. Teams verify delivery.",
     ),
   ).toBeVisible();
-  await expect(page.getByText("Demo data").first()).toBeVisible();
+  await expect(page.getByText("Conceptual workflow").first()).toBeVisible();
+  await expect(page.getByText("126")).toHaveCount(0);
+});
+
+test("marketing navigation works at mobile width and does not overflow", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/");
+  const menuButton = page.getByRole("button", {
+    name: "Open navigation menu",
+  });
+  await menuButton.focus();
+  await menuButton.press("Enter");
+  await expect(
+    page.getByRole("navigation", { name: "Mobile navigation" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Apply as a student" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Open navigation menu" }),
+  ).toBeVisible();
 });
 
 for (const path of [
   "/how-it-works/clients",
   "/how-it-works/students",
+  "/how-it-works",
+  "/for-students",
+  "/for-companies",
+  "/for-expert-leads",
+  "/for-universities",
+  "/solutions",
+  "/solutions/ai-automation",
+  "/solutions/data-dashboards",
+  "/solutions/internal-tools",
+  "/solutions/customer-portals",
   "/project-types",
   "/pricing",
   "/trust",
@@ -26,6 +66,12 @@ for (const path of [
   "/terms",
   "/privacy",
   "/accessibility",
+  "/trust/ai-governance",
+  "/trust/student-protection",
+  "/trust/data-and-privacy",
+  "/impact",
+  "/about",
+  "/contact",
   "/login",
   "/signup",
   "/auth/callback",

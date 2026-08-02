@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
+
+const praxisSans = localFont({
+  src: "./fonts/noto-sans.ttf",
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: { default: "PraxisAI", template: "%s · PraxisAI" },
@@ -12,7 +18,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={praxisSans.variable}>{children}</body>
     </html>
   );
 }

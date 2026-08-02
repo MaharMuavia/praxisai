@@ -8,9 +8,9 @@ output "web_url" {
   value       = google_cloud_run_v2_service.web.uri
 }
 
-output "database_connection_name" {
-  description = "Cloud SQL instance connection name"
-  value       = google_sql_database_instance.postgres.connection_name
+output "database_provider" {
+  description = "Hosted database provider"
+  value       = "supabase-postgresql"
 }
 
 output "artifact_bucket" {
@@ -23,11 +23,6 @@ output "artifact_registry_repository" {
   value       = google_artifact_registry_repository.containers.id
 }
 
-output "vpc_network_name" {
-  description = "VPC network name"
-  value       = google_compute_network.vpc.name
-}
-
 output "cloud_tasks_queue" {
   description = "Cloud Tasks queue name"
   value       = google_cloud_tasks_queue.jobs.name
@@ -36,6 +31,21 @@ output "cloud_tasks_queue" {
 output "database_secret_id" {
   description = "Secret Manager secret ID for DATABASE_URL"
   value       = google_secret_manager_secret.database_url.secret_id
+}
+
+output "database_migration_secret_id" {
+  description = "Secret Manager secret ID for the Supabase migration URL"
+  value       = google_secret_manager_secret.database_migration_url.secret_id
+}
+
+output "api_service_account" {
+  description = "API Cloud Run service account"
+  value       = google_service_account.api.email
+}
+
+output "web_service_account" {
+  description = "Web Cloud Run service account"
+  value       = google_service_account.web.email
 }
 
 output "session_secret_id" {

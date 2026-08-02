@@ -134,6 +134,7 @@ async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
 
 
 @app.get("/health")
+@app.get("/api/v1/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
 

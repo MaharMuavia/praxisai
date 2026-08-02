@@ -1,4 +1,6 @@
-FROM ghcr.io/astral-sh/uv:0.11.28-python3.12-bookworm-slim AS runtime
+FROM python:3.12-slim-bookworm AS runtime
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /uvx /bin/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -14,4 +16,3 @@ COPY alembic.ini ./alembic.ini
 USER 65532:65532
 EXPOSE 8080
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers"]
-

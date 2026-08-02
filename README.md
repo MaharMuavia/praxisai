@@ -45,3 +45,5 @@ On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`. The Makefile mirrors t
 See `docs/demo-script.md` for the shortest walkthrough and `docs/security-and-privacy.md` for trust boundaries.
 The complete PostgreSQL table map is in `docs/database-schema.md`; required and optional credentials
 are separated in `docs/configuration-and-secrets.md`.
+Hosted deployment wiring and evidence requirements are documented in
+[`docs/hosted-deployment.md`](docs/hosted-deployment.md).
