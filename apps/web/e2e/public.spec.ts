@@ -69,7 +69,7 @@ test("workflow and product preview remain understandable without autoplay", asyn
   await page.getByRole("button", { name: "Next workflow stage" }).click();
   await expect(page.getByText("AI-assisted scope").last()).toBeVisible();
   await expect(
-    page.getByText(/Manual review mode|Sequencing paused/),
+    page.getByText(/Manual review mode|Auto sequence/),
   ).toBeVisible();
   await page.getByRole("tab", { name: "Readiness" }).click();
   await expect(
