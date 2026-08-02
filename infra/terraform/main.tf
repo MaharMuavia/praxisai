@@ -1,6 +1,6 @@
 locals {
-  prefix = "praxisai-${var.environment}"
-  database_url_secret_id = var.database_url_secret_id != "" ? var.database_url_secret_id : "${local.prefix}-database-url"
+  prefix                           = "praxisai-${var.environment}"
+  database_url_secret_id           = var.database_url_secret_id != "" ? var.database_url_secret_id : "${local.prefix}-database-url"
   database_migration_url_secret_id = var.database_migration_url_secret_id != "" ? var.database_migration_url_secret_id : "${local.prefix}-database-migration-url"
   required_services = [
     "run.googleapis.com",
@@ -177,29 +177,29 @@ resource "google_cloud_run_v2_service" "api" {
       ports { container_port = 8080 }
       dynamic "env" {
         for_each = {
-          APP_ENV                         = var.environment
-          DEMO_MODE                      = "false"
-          IDENTITY_PROVIDER              = "firebase"
-          FIREBASE_PROJECT_ID            = var.firebase_project_id
-          GEMINI_PROVIDER                = var.gemini_provider
-          GEMINI_MODEL                   = var.gemini_model
-          GOOGLE_CLOUD_PROJECT           = var.project_id
-          GOOGLE_CLOUD_LOCATION          = var.region
-          COOKIE_SECURE                  = "true"
-          CORS_ORIGINS                   = jsonencode(var.cors_origins)
-          API_BASE_URL                   = var.api_base_url
-          WEB_BASE_URL                   = var.web_base_url
-          DATABASE_POOL_MODE             = var.database_pool_mode
-          CREDENTIAL_SIGNING_PROVIDER    = "kms"
-          CREDENTIAL_KMS_KEY_NAME        = var.credential_kms_enabled ? google_kms_crypto_key.credentials[0].id : ""
-          CREDENTIAL_ISSUER              = var.credential_issuer
-          EMAIL_PROVIDER                 = var.email_provider
-          EMAIL_FROM_ADDRESS             = var.email_from_address
-          OTEL_EXPORTER_OTLP_ENDPOINT    = var.otel_exporter_otlp_endpoint
-          CLOUD_STORAGE_BUCKET           = google_storage_bucket.artifacts.name
-          CLOUD_TASKS_QUEUE              = google_cloud_tasks_queue.jobs.name
-          BIGQUERY_DATASET               = var.bigquery_enabled ? google_bigquery_dataset.analytics[0].dataset_id : ""
-          PAYMENT_PROVIDER               = "manual_external"
+          APP_ENV                     = var.environment
+          DEMO_MODE                   = "false"
+          IDENTITY_PROVIDER           = "firebase"
+          FIREBASE_PROJECT_ID         = var.firebase_project_id
+          GEMINI_PROVIDER             = var.gemini_provider
+          GEMINI_MODEL                = var.gemini_model
+          GOOGLE_CLOUD_PROJECT        = var.project_id
+          GOOGLE_CLOUD_LOCATION       = var.region
+          COOKIE_SECURE               = "true"
+          CORS_ORIGINS                = jsonencode(var.cors_origins)
+          API_BASE_URL                = var.api_base_url
+          WEB_BASE_URL                = var.web_base_url
+          DATABASE_POOL_MODE          = var.database_pool_mode
+          CREDENTIAL_SIGNING_PROVIDER = "kms"
+          CREDENTIAL_KMS_KEY_NAME     = var.credential_kms_enabled ? google_kms_crypto_key.credentials[0].id : ""
+          CREDENTIAL_ISSUER           = var.credential_issuer
+          EMAIL_PROVIDER              = var.email_provider
+          EMAIL_FROM_ADDRESS          = var.email_from_address
+          OTEL_EXPORTER_OTLP_ENDPOINT = var.otel_exporter_otlp_endpoint
+          CLOUD_STORAGE_BUCKET        = google_storage_bucket.artifacts.name
+          CLOUD_TASKS_QUEUE           = google_cloud_tasks_queue.jobs.name
+          BIGQUERY_DATASET            = var.bigquery_enabled ? google_bigquery_dataset.analytics[0].dataset_id : ""
+          PAYMENT_PROVIDER            = "manual_external"
         }
         content {
           name  = env.key
@@ -386,8 +386,8 @@ resource "google_monitoring_alert_policy" "api_latency" {
       comparison      = "COMPARISON_GT"
       threshold_value = 2000
       aggregations {
-        alignment_period    = "60s"
-        per_series_aligner  = "ALIGN_PERCENTILE_99"
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_PERCENTILE_99"
         cross_series_reducer = "REDUCE_MEAN"
       }
     }
