@@ -1,25 +1,9 @@
 "use client";
 
 import { praxisFetch, type components } from "@praxisai/api-client";
-import {
-  Bell,
-  BookOpen,
-  BriefcaseBusiness,
-  CircleHelp,
-  FileCheck2,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Search,
-  Send,
-  Settings,
-  Shield,
-  Users,
-  X,
-} from "lucide-react";
+import { Bell, LogOut, Menu, Search } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
-import { Brand } from "./brand";
 import { ClientProjectIntake } from "./client-project-intake";
 import { EmployerTalentWorkspace } from "./employer-talent-workspace";
 import { ProjectCommandCenter } from "./project-command-center";
@@ -29,6 +13,8 @@ import {
 } from "./role-workspace-records";
 import { StudentCareerWorkspace } from "./student-career-workspace";
 import { WorkspaceOverview } from "./workspace-overview";
+import { WorkspacePageHeader, WorkspaceSidebar } from "./workspace-layout";
+import { rootFor } from "./workspace-navigation";
 import { demoWorkspaceSnapshot, withDemoFallback } from "../lib/demo-data";
 import { apiBase } from "../lib/api";
 
@@ -50,62 +36,6 @@ type ApprovalQueueItem = components["schemas"]["ApprovalQueueItem"];
 type RiskQueueItem = components["schemas"]["RiskQueueItem"];
 type Offer = components["schemas"]["OfferView"];
 type ProjectWorkspace = components["schemas"]["ProjectWorkspaceView"];
-
-const navigation = {
-  client: [
-    ["Overview", "/client", LayoutDashboard],
-    ["Projects", "/client/projects", BriefcaseBusiness],
-    ["Student proposals", "/client/proposals", Users],
-    ["Publish opportunity", "/client/opportunities/new", Send],
-    ["Invoices", "/client/invoices", FileCheck2],
-    ["Organization", "/client/organization", Users],
-  ],
-  student: [
-    ["Overview", "/student", LayoutDashboard],
-    ["Learn", "/student/learn", BookOpen],
-    ["Paid projects", "/student/opportunities", Search],
-    ["My proposals", "/student/proposals", Send],
-    ["Offers", "/student/offers", FileCheck2],
-    ["Projects", "/student/projects", BriefcaseBusiness],
-    ["Earnings", "/student/earnings", FileCheck2],
-    ["Credentials", "/student/credentials", Shield],
-  ],
-  lead: [
-    ["Overview", "/lead", LayoutDashboard],
-    ["Offers", "/lead/offers", FileCheck2],
-    ["Reviews", "/lead", BriefcaseBusiness],
-    ["Earnings", "/lead/earnings", Shield],
-  ],
-  ops: [
-    ["Operations", "/ops", LayoutDashboard],
-    ["Approvals", "/ops/approvals", FileCheck2],
-    ["Risks", "/ops/risks", Shield],
-    ["Projects", "/ops/projects", BriefcaseBusiness],
-    ["People", "/ops/students", Users],
-    ["Agent runs", "/ops/agent-runs", Shield],
-  ],
-  admin: [
-    ["Platform health", "/admin", LayoutDashboard],
-    ["Access", "/admin/access", Users],
-    ["Integrations", "/admin/integrations", Settings],
-    ["Jobs", "/admin/jobs", BriefcaseBusiness],
-  ],
-  university: [
-    ["Outcomes", "/university", LayoutDashboard],
-    ["Students", "/university/students", Users],
-    ["Exports", "/university/exports", FileCheck2],
-    ["Settings", "/university/settings", Settings],
-  ],
-} as const;
-
-function rootFor(path: string) {
-  if (path.startsWith("/student")) return "student";
-  if (path.startsWith("/lead")) return "lead";
-  if (path.startsWith("/ops")) return "ops";
-  if (path.startsWith("/admin")) return "admin";
-  if (path.startsWith("/university")) return "university";
-  return "client";
-}
 
 export function AppShell({
   path,
@@ -543,51 +473,13 @@ export function AppShell({
 
   return (
     <div className="app-layout">
-      <aside className={`sidebar ${mobileNavOpen ? "open" : ""}`}>
-        <div className="sidebar-mobile-head">
-          <Brand />
-          <button
-            aria-label="Close navigation"
-            className="icon-button sidebar-close"
-            onClick={() => setMobileNavOpen(false)}
-            type="button"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <Brand />
-        <div className="environment">
-          <strong>{session?.environment_label ?? "Demo"} environment</strong>
-          <br />
-          {session?.active_membership.organization_name ?? "PraxisAI pilot"}
-        </div>
-        <div className="nav-group">Workspace</div>
-        <nav aria-label={`${root} workspace navigation`}>
-          {navigation[root].map(([label, href, Icon]) => (
-            <Link
-              key={href + label}
-              className={`nav-link ${path === href ? "active" : ""}`}
-              href={href}
-              onClick={() => setMobileNavOpen(false)}
-            >
-              <Icon size={17} /> {label}
-            </Link>
-          ))}
-        </nav>
-        <div className="sidebar-foot">
-          <Link className="nav-link" href="/trust">
-            <CircleHelp size={17} /> Help & escalation
-          </Link>
-        </div>
-      </aside>
-      {mobileNavOpen && (
-        <button
-          aria-label="Close navigation overlay"
-          className="sidebar-overlay"
-          onClick={() => setMobileNavOpen(false)}
-          type="button"
-        />
-      )}
+      <WorkspaceSidebar
+        root={root}
+        path={path}
+        session={session}
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+      />
       <main className="main">
         <header className="app-topbar">
           <div className="topbar-leading">
@@ -669,15 +561,11 @@ export function AppShell({
           </div>
         </header>
         <div className="app-content">
-          <div className="page-heading">
-            <div>
-              <h1>{title}</h1>
-              <p>{description}</p>
-            </div>
-            <span className="demo-badge">
-              {isDemoPreview ? "Demo preview" : "Demo data"}
-            </span>
-          </div>
+          <WorkspacePageHeader
+            title={title}
+            description={description}
+            isDemoPreview={isDemoPreview}
+          />
           {!hasCareerWorkspace && (
             <section className="metric-grid" aria-label="Workspace metrics">
               {metricItems.map(([label, value]) => (

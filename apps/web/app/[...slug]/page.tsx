@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { ContentPage } from "@/components/content-page";
+import type { Metadata } from "next";
 
 const publicPages: Record<
   string,
@@ -363,6 +364,22 @@ function titleFrom(path: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string[] }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const path = slug.join("/");
+  const page = publicPages[path];
+  return {
+    title: page?.title ?? titleFrom(path),
+    description:
+      page?.description ??
+      "PraxisAI keeps preparation, supervised delivery, and verified project evidence connected.",
+  };
+}
+
 export default async function CatchAllPage({
   params,
 }: {
@@ -371,7 +388,7 @@ export default async function CatchAllPage({
   const { slug } = await params;
   const path = slug.join("/");
   const publicPage = publicPages[path];
-  if (publicPage) return <ContentPage {...publicPage} />;
+  if (publicPage) return <ContentPage {...publicPage} path={path} />;
   const root = slug[0];
   if (
     ["client", "student", "lead", "ops", "admin", "university"].includes(root)
@@ -392,6 +409,7 @@ export default async function CatchAllPage({
   if (["signup", "auth", "invite", "onboarding", "portfolio"].includes(root)) {
     return (
       <ContentPage
+        path={path}
         title={titleFrom(path)}
         eyebrow="Account and access"
         description="This flow validates identity, consent, workspace membership, and the permissions required for the requested action."
@@ -406,6 +424,7 @@ export default async function CatchAllPage({
   }
   return (
     <ContentPage
+      path={path}
       title="Page unavailable"
       eyebrow="Not found"
       description="This route is not part of the active PraxisAI workspace."

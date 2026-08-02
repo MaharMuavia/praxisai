@@ -43,6 +43,55 @@ test("marketing navigation works at mobile width and does not overflow", async (
   await expect(
     page.getByRole("button", { name: "Open navigation menu" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Open navigation menu" }),
+  ).toBeFocused();
+});
+
+test("desktop dropdown navigation is keyboard accessible", async ({ page }) => {
+  await page.goto("/");
+  const product = page.getByRole("button", { name: "Product" });
+  await product.focus();
+  await product.press("Enter");
+  await expect(page.getByRole("menu")).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "How it works" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(product).toBeFocused();
+});
+
+test("workflow and product preview remain understandable without autoplay", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Next workflow stage" }).click();
+  await expect(page.getByText("AI-assisted scope").last()).toBeVisible();
+  await expect(
+    page.getByText(/Manual review mode|Sequencing paused/),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Readiness" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Student readiness evidence" }),
+  ).toBeVisible();
+});
+
+test("320px layout has no horizontal overflow and reduced motion is respected", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto("/");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  const motionState = await page
+    .locator(".marketing-hero-copy h1")
+    .evaluate((node) => getComputedStyle(node).animationDuration);
+  expect(parseFloat(motionState)).toBeLessThanOrEqual(0.001);
 });
 
 for (const path of [
