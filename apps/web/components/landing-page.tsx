@@ -1,15 +1,10 @@
-"use client";
-
 import {
   ArrowRight,
   BadgeCheck,
   BarChart3,
-  BookOpen,
   BriefcaseBusiness,
   Building2,
   Check,
-  ChevronRight,
-  CircleDollarSign,
   ClipboardCheck,
   Fingerprint,
   GitBranch,
@@ -18,43 +13,16 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { useState } from "react";
 import { MarketingFooter } from "./marketing-footer";
+import { MarketingGovernance } from "./marketing-governance";
 import { MarketingNav } from "./marketing-nav";
+import { MarketingWorkflow } from "./marketing-workflow";
+import {
+  MarketingPathways,
+  MarketingProductPreview,
+} from "./marketing-product-preview";
+import { Stagger } from "./motion";
 import { Button, Card, SectionHeader, StatusBadge } from "./ui";
-
-const workflow = [
-  {
-    label: "Company brief",
-    detail: "Outcome, constraints, and acceptance criteria",
-    icon: ClipboardCheck,
-  },
-  {
-    label: "AI-assisted scope",
-    detail: "Structured assumptions for human review",
-    icon: Sparkles,
-  },
-  {
-    label: "Student preparation",
-    detail: "Practice evidence and readiness signals",
-    icon: BookOpen,
-  },
-  {
-    label: "Supervised squad",
-    detail: "Qualified people with an expert lead",
-    icon: Users,
-  },
-  {
-    label: "Verified delivery",
-    detail: "QA, acceptance, and evidence trail",
-    icon: BadgeCheck,
-  },
-  {
-    label: "Paid experience",
-    detail: "Visible terms and approved compensation",
-    icon: CircleDollarSign,
-  },
-];
 
 const solutionSteps = [
   [
@@ -117,10 +85,6 @@ const categories = [
 ];
 
 export function LandingPage() {
-  const [activeWorkflow, setActiveWorkflow] = useState(2);
-  const active = workflow[activeWorkflow];
-  const ActiveIcon = active.icon;
-
   return (
     <main id="main-content" className="marketing-site">
       <MarketingNav />
@@ -151,52 +115,7 @@ export function LandingPage() {
               evidence
             </p>
           </div>
-          <div
-            className="workflow-visual"
-            aria-label="PraxisAI operating workflow"
-          >
-            <div className="workflow-visual-head">
-              <div>
-                <span className="workflow-kicker">Operating model</span>
-                <strong>From brief to proof</strong>
-              </div>
-              <StatusBadge tone="ai">Conceptual workflow</StatusBadge>
-            </div>
-            <div className="workflow-steps">
-              {workflow.map((step, index) => {
-                const Icon = step.icon;
-                return (
-                  <button
-                    className={`workflow-step ${activeWorkflow === index ? "is-active" : ""}`}
-                    key={step.label}
-                    type="button"
-                    aria-pressed={activeWorkflow === index}
-                    onClick={() => setActiveWorkflow(index)}
-                  >
-                    <span className="workflow-index">0{index + 1}</span>
-                    <span className="workflow-icon">
-                      <Icon size={17} aria-hidden="true" />
-                    </span>
-                    <span className="workflow-step-copy">
-                      <strong>{step.label}</strong>
-                      <small>{step.detail}</small>
-                    </span>
-                    <ChevronRight size={16} aria-hidden="true" />
-                  </button>
-                );
-              })}
-            </div>
-            <div className="workflow-detail">
-              <div className="workflow-detail-icon">
-                <ActiveIcon size={19} aria-hidden="true" />
-              </div>
-              <div>
-                <span>Selected stage</span>
-                <strong>{active.label}</strong>
-                <p>{active.detail}</p>
-              </div>
-            </div>
-          </div>
+          <MarketingWorkflow />
         </div>
       </section>
 
@@ -216,7 +135,7 @@ export function LandingPage() {
             title="Opportunity should not depend on already having opportunity."
             description="Students need real practice and evidence before companies can trust them with consequential work. Companies need a bounded delivery partner for digital work that does not justify a full internal team. PraxisAI connects those needs with clear human accountability."
           />
-          <div className="problem-grid">
+          <Stagger className="problem-grid">
             <Card>
               <span className="problem-number">01</span>
               <h3>
@@ -249,7 +168,7 @@ export function LandingPage() {
                 actually use.
               </p>
             </Card>
-          </div>
+          </Stagger>
         </div>
       </section>
 
@@ -260,7 +179,7 @@ export function LandingPage() {
             title="Prepare. Assess. Match. Deliver. Verify. Pay."
             description="Each stage has a different kind of evidence and a different authority boundary. That separation keeps the experience useful without pretending AI can replace accountable decisions."
           />
-          <div className="solution-grid">
+          <Stagger className="solution-grid">
             {solutionSteps.map(([number, title, detail]) => (
               <article className="solution-step" key={number}>
                 <span>{number}</span>
@@ -268,7 +187,7 @@ export function LandingPage() {
                 <p>{detail}</p>
               </article>
             ))}
-          </div>
+          </Stagger>
         </div>
       </section>
 
@@ -334,6 +253,9 @@ export function LandingPage() {
         </div>
       </section>
 
+      <MarketingProductPreview />
+      <MarketingPathways />
+
       <section className="marketing-section">
         <div className="marketing-container">
           <SectionHeader
@@ -383,6 +305,7 @@ export function LandingPage() {
               approvals.
             </span>
           </div>
+          <MarketingGovernance />
         </div>
       </section>
 
