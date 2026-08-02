@@ -2,9 +2,9 @@
 
 :root {
   --font-body:
-    Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    "Avenir Next", Avenir, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display:
-    "Arial Narrow", "Roboto Condensed", ui-sans-serif, system-ui, sans-serif;
+    "Avenir Next", Avenir, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --ink: #07141f;
   --ink-soft: #102635;
   --paper: #f5f2e9;
@@ -28,6 +28,8 @@ html {
 body {
   margin: 0;
   font-family: var(--font-body), sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.005em;
   background: var(--paper);
 }
 a {
@@ -2731,4 +2733,29 @@ select,
   .overview-activity-card {
     padding: 15px;
   }
+}
+
+/* Global typography alignment with the reference UI. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.hero h1,
+.section-title,
+.page-heading h1,
+.career-hero h2,
+.workspace-intro h2,
+.content-hero h1,
+.content-body h2,
+.overview-dashboard-header h2,
+.overview-card-heading h3 {
+  font-weight: 400;
+  letter-spacing: -0.025em;
 }

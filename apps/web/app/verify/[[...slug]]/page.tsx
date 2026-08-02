@@ -5,9 +5,7 @@ import { CheckCircle2, Search, ShieldAlert } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MarketingNav } from "@/components/marketing-nav";
-
-const apiBase =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+import { apiBase } from "@/lib/api";
 
 interface Verification {
   status: "VALID" | "REVOKED" | "NOT_FOUND";

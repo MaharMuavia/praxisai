@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from google.cloud import tasks_v2  # type: ignore[attr-defined]
+from google.cloud import tasks_v2
 from pydantic import BaseModel
 
 from app.config import Settings

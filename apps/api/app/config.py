@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_env: Literal["local", "test", "staging", "production"] = "local"
+    app_env: Literal["local", "test", "demo", "staging", "production"] = "local"
     demo_mode: bool = True
     api_base_url: str = "http://localhost:8000/api/v1"
     web_base_url: str = "http://localhost:3000"
@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     cloud_storage_bucket: str | None = None
 
     payment_provider: Literal["manual_external"] = "manual_external"
+    email_provider: Literal["disabled", "smtp", "sendgrid"] = "disabled"
+    email_from_address: str | None = None
+    otel_exporter_otlp_endpoint: str | None = None
 
     credential_signing_provider: Literal["demo", "kms"] = "demo"
     credential_kms_key_name: str | None = None
@@ -66,9 +69,13 @@ class Settings(BaseSettings):
     def is_local_or_test(self) -> bool:
         return self.app_env in {"local", "test"}
 
+    @property
+    def is_demo_environment(self) -> bool:
+        return self.app_env == "demo"
+
     @model_validator(mode="after")
     def reject_insecure_production(self) -> "Settings":
-        if self.app_env != "production":
+        if self.app_env not in {"staging", "production"}:
             if self.gemini_provider == "fixture" and not (self.demo_mode or self.app_env == "test"):
                 raise ValueError("Fixture AI requires DEMO_MODE=true or APP_ENV=test")
             return self
@@ -77,8 +84,8 @@ class Settings(BaseSettings):
             violations.append("DEMO_MODE")
         if self.identity_provider == "local":
             violations.append("local identity")
-        if self.gemini_provider == "fixture":
-            violations.append("fixture AI")
+        if self.gemini_provider != "gemini":
+            violations.append("GEMINI_PROVIDER=gemini")
         if self.credential_signing_provider == "demo":
             violations.append("demo credential signing")
         if not self.cookie_secure:
@@ -89,7 +96,7 @@ class Settings(BaseSettings):
             violations.append("wildcard CORS")
         if self.identity_provider == "firebase" and not self.firebase_project_id:
             violations.append("missing Firebase project")
-        if self.gemini_provider == "gemini" and not self.google_cloud_project:
+        if not self.google_cloud_project:
             violations.append("missing Vertex AI project")
         if self.credential_signing_provider == "kms" and not self.credential_kms_key_name:
             violations.append("missing KMS signing key")
@@ -99,6 +106,18 @@ class Settings(BaseSettings):
             violations.append("local production database")
         if self.database_pool_mode == "transaction" and not self.database_migration_url:
             violations.append("missing migration database URL for transaction pooling")
+        if self.email_provider == "disabled" or not self.email_from_address:
+            violations.append("missing transactional email configuration")
+        if not self.otel_exporter_otlp_endpoint:
+            violations.append("missing OpenTelemetry exporter")
+        if not self.cloud_storage_bucket:
+            violations.append("missing private artifact storage bucket")
+        if any("localhost" in value or "127.0.0.1" in value for value in self.cors_origins):
+            violations.append("local CORS origin")
+        if "localhost" in self.api_base_url or "127.0.0.1" in self.api_base_url:
+            violations.append("local API base URL")
+        if "localhost" in self.web_base_url or "127.0.0.1" in self.web_base_url:
+            violations.append("local web base URL")
         if violations:
             raise ValueError("Unsafe production configuration: " + ", ".join(violations))
         return self
