@@ -1,0 +1,1 @@
+"""Payment and ledger domain."""

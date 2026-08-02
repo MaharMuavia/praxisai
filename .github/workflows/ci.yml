@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.4-alpine
+        env:
+          POSTGRES_DB: praxisai
+          POSTGRES_USER: praxisai
+          POSTGRES_PASSWORD: praxisai_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U praxisai -d praxisai"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      APP_ENV: test
+      DEMO_MODE: "true"
+      DATABASE_URL: postgresql+asyncpg://praxisai:praxisai_test@localhost:5432/praxisai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: 0.11.28
+          enable-cache: true
+      - run: npm ci
+      - run: uv sync --project apps/api --frozen
+      - run: uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head
+      - run: npm run openapi
+      - run: git diff --exit-code -- openapi.json packages/api-client/src/schema.ts
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

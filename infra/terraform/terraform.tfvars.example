@@ -1,0 +1,6 @@
+project_id  = "replace-with-google-cloud-project"
+region      = "us-central1"
+environment = "staging"
+web_image   = "us-central1-docker.pkg.dev/PROJECT/praxisai/web:TAG"
+api_image   = "us-central1-docker.pkg.dev/PROJECT/praxisai/api:TAG"
+
