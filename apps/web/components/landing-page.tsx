@@ -2,251 +2,492 @@
 
 import {
   ArrowRight,
+  BadgeCheck,
+  BarChart3,
   BookOpen,
   BriefcaseBusiness,
   Building2,
-  CheckCircle2,
+  Check,
+  ChevronRight,
+  CircleDollarSign,
+  ClipboardCheck,
   Fingerprint,
-  Scale,
-  Send,
+  GitBranch,
+  Layers3,
   ShieldCheck,
   Sparkles,
+  Users,
 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
+import { MarketingFooter } from "./marketing-footer";
 import { MarketingNav } from "./marketing-nav";
+import { Button, Card, SectionHeader, StatusBadge } from "./ui";
 
-const steps = [
+const workflow = [
+  {
+    label: "Company brief",
+    detail: "Outcome, constraints, and acceptance criteria",
+    icon: ClipboardCheck,
+  },
+  {
+    label: "AI-assisted scope",
+    detail: "Structured assumptions for human review",
+    icon: Sparkles,
+  },
+  {
+    label: "Student preparation",
+    detail: "Practice evidence and readiness signals",
+    icon: BookOpen,
+  },
+  {
+    label: "Supervised squad",
+    detail: "Qualified people with an expert lead",
+    icon: Users,
+  },
+  {
+    label: "Verified delivery",
+    detail: "QA, acceptance, and evidence trail",
+    icon: BadgeCheck,
+  },
+  {
+    label: "Paid experience",
+    detail: "Visible terms and approved compensation",
+    icon: CircleDollarSign,
+  },
+];
+
+const solutionSteps = [
   [
-    "Learn",
-    "Practice briefs and evidence",
-    "Ready",
-    "Build the proof employers can actually evaluate.",
+    "01",
+    "Prepare",
+    "Practice briefs, feedback, and evidence build the foundation before a student sees paid work.",
   ],
   [
-    "Propose",
-    "Approach, plan, price, proof",
-    "Submitted",
-    "Turn practice evidence into a clear, bounded proposal.",
+    "02",
+    "Assess",
+    "Readiness is grounded in work evidence and human review, not a popularity score.",
   ],
   [
-    "Select",
-    "Employer decision and reason",
-    "Chosen",
-    "Compare people on evidence, not a vague profile or guess.",
+    "03",
+    "Match",
+    "Complete briefs and transparent terms help qualified students decide whether work fits.",
   ],
   [
+    "04",
     "Deliver",
-    "Supervision, QA, pay, credential",
-    "Verified",
-    "Carry the work through human review and verifiable release evidence.",
+    "Project squads work inside an agreed scope with technical supervision and milestone review.",
+  ],
+  [
+    "05",
+    "Verify",
+    "QA findings, acceptance, consent, and payment records form a durable project record.",
+  ],
+  [
+    "06",
+    "Pay",
+    "Compensation is visible before acceptance and released through accountable operational controls.",
+  ],
+];
+
+const categories = [
+  [
+    "AI workflow automation",
+    "Reduce repetitive internal work with bounded, reviewable automations.",
+    "Process map · integration plan · tested handoff",
+    GitBranch,
+  ],
+  [
+    "Data dashboards & reporting",
+    "Turn recurring operational questions into clear, maintainable views.",
+    "Data contract · dashboard · interpretation guide",
+    BarChart3,
+  ],
+  [
+    "Internal business tools",
+    "Give teams a focused interface for a real workflow, record, or decision.",
+    "Responsive UI · role boundaries · release evidence",
+    Layers3,
+  ],
+  [
+    "Customer & operations portals",
+    "Make a narrow customer or service journey easier to complete and support.",
+    "Journey map · accessible surface · acceptance checklist",
+    Building2,
   ],
 ];
 
 export function LandingPage() {
-  const [activeStep, setActiveStep] = useState(0);
-  const activeJourney = steps[activeStep];
+  const [activeWorkflow, setActiveWorkflow] = useState(2);
+  const active = workflow[activeWorkflow];
+  const ActiveIcon = active.icon;
 
   return (
-    <main className="marketing-shell">
+    <main id="main-content" className="marketing-site">
       <MarketingNav />
-      <section className="hero">
-        <div className="hero-grid">
-          <div>
-            <div className="eyebrow">
-              Learn real skills. Win paid projects. Build verified experience.
-            </div>
-            <h1>
-              From learning
-              <br />
-              <span>to paid delivery.</span>
-            </h1>
-            <p className="hero-copy">
-              PraxisAI is a career and talent platform where students practice
-              employer-relevant skills, prove their ability, submit professional
-              proposals, and deliver supervised paid projects for real
-              organizations.
+      <section className="marketing-hero">
+        <div className="marketing-container marketing-hero-grid">
+          <div className="marketing-hero-copy">
+            <p className="marketing-eyebrow">
+              The AI-operated apprenticeship studio
             </p>
-            <div className="hero-actions">
-              <Link className="button button-accent" href="/login">
-                Enter student workspace <ArrowRight size={17} />
-              </Link>
-              <Link
-                className="button button-ghost"
-                href="/how-it-works/clients"
-              >
-                Hire emerging talent
-              </Link>
+            <h1>Turn potential into paid professional experience.</h1>
+            <p className="marketing-lead">
+              PraxisAI prepares emerging technical talent through practical
+              learning and deploys supervised teams to deliver real projects for
+              companies.
+            </p>
+            <div className="marketing-actions">
+              <Button href="/contact" variant="primary">
+                Submit a company project{" "}
+                <ArrowRight size={17} aria-hidden="true" />
+              </Button>
+              <Button href="/for-students" variant="secondary">
+                Apply for the apprenticeship
+              </Button>
             </div>
+            <p className="marketing-trust-note">
+              <ShieldCheck size={17} aria-hidden="true" /> Transparent pay{" "}
+              <span>·</span> Human supervision <span>·</span> Verified project
+              evidence
+            </p>
           </div>
-          <aside className="operations-card" aria-label="PraxisAI career loop">
-            <div className="card-head">
+          <div
+            className="workflow-visual"
+            aria-label="PraxisAI operating workflow"
+          >
+            <div className="workflow-visual-head">
               <div>
-                <div className="eyebrow" style={{ color: "#61717c" }}>
-                  Career-to-project journey
-                </div>
-                <strong>Accessible community platform</strong>
+                <span className="workflow-kicker">Operating model</span>
+                <strong>From brief to proof</strong>
               </div>
-              <span className="demo-badge">Demo data</span>
+              <StatusBadge tone="ai">Conceptual workflow</StatusBadge>
             </div>
-            {steps.map(([name, detail, status], index) => (
-              <button
-                className={`loop-step ${activeStep === index ? "active" : ""}`}
-                key={name}
-                onClick={() => setActiveStep(index)}
-                type="button"
-              >
-                <span className="step-number">0{index + 1}</span>
-                <span>
-                  <strong>{name}</strong>
-                  <small>{detail}</small>
-                </span>
-                <span className="status-badge">{status}</span>
-              </button>
-            ))}
-            <div className="journey-detail">
-              <span className="eyebrow" style={{ color: "#26715d" }}>
-                Selected stage · {activeJourney[0]}
-              </span>
-              <p>{activeJourney[3]}</p>
+            <div className="workflow-steps">
+              {workflow.map((step, index) => {
+                const Icon = step.icon;
+                return (
+                  <button
+                    className={`workflow-step ${activeWorkflow === index ? "is-active" : ""}`}
+                    key={step.label}
+                    type="button"
+                    aria-pressed={activeWorkflow === index}
+                    onClick={() => setActiveWorkflow(index)}
+                  >
+                    <span className="workflow-index">0{index + 1}</span>
+                    <span className="workflow-icon">
+                      <Icon size={17} aria-hidden="true" />
+                    </span>
+                    <span className="workflow-step-copy">
+                      <strong>{step.label}</strong>
+                      <small>{step.detail}</small>
+                    </span>
+                    <ChevronRight size={16} aria-hidden="true" />
+                  </button>
+                );
+              })}
             </div>
-          </aside>
+            <div className="workflow-detail">
+              <div className="workflow-detail-icon">
+                <ActiveIcon size={19} aria-hidden="true" />
+              </div>
+              <div>
+                <span>Selected stage</span>
+                <strong>{active.label}</strong>
+                <p>{active.detail}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
-      <div className="band">
-        <span>
-          Students build proof. Employers choose. Teams verify delivery.
-        </span>
-        <Fingerprint />
+
+      <div className="marketing-ribbon">
+        <div className="marketing-container">
+          <span>
+            Students build proof. Employers choose. Teams verify delivery.
+          </span>
+          <Fingerprint size={24} aria-hidden="true" />
+        </div>
       </div>
-      <section className="section marketplace-section">
-        <div className="marketplace-heading">
+
+      <section className="marketing-section marketing-section-muted">
+        <div className="marketing-container">
+          <SectionHeader
+            eyebrow="Why this model exists"
+            title="Opportunity should not depend on already having opportunity."
+            description="Students need real practice and evidence before companies can trust them with consequential work. Companies need a bounded delivery partner for digital work that does not justify a full internal team. PraxisAI connects those needs with clear human accountability."
+          />
+          <div className="problem-grid">
+            <Card>
+              <span className="problem-number">01</span>
+              <h3>
+                Students are asked to prove experience before they can get it.
+              </h3>
+              <p>
+                Practice work becomes more valuable when it teaches the same
+                scoping, communication, testing, and handoff habits that real
+                projects require.
+              </p>
+            </Card>
+            <Card>
+              <span className="problem-number">02</span>
+              <h3>
+                Companies have useful work that falls between a task and a full
+                hire.
+              </h3>
+              <p>
+                Small automation, data, and internal-tool projects still need a
+                clear brief, reliable execution, and someone accountable for
+                review.
+              </p>
+            </Card>
+            <Card>
+              <span className="problem-number">03</span>
+              <h3>Traditional pathways leave the proof scattered.</h3>
+              <p>
+                Learning records, supervisor feedback, project acceptance, and
+                compensation evidence should connect into a record a person can
+                actually use.
+              </p>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-section">
+        <div className="marketing-container">
+          <SectionHeader
+            eyebrow="One connected system"
+            title="Prepare. Assess. Match. Deliver. Verify. Pay."
+            description="Each stage has a different kind of evidence and a different authority boundary. That separation keeps the experience useful without pretending AI can replace accountable decisions."
+          />
+          <div className="solution-grid">
+            {solutionSteps.map(([number, title, detail]) => (
+              <article className="solution-step" key={number}>
+                <span>{number}</span>
+                <h3>{title}</h3>
+                <p>{detail}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-section marketing-section-dark">
+        <div className="marketing-container audience-grid">
           <div>
-            <div className="eyebrow" style={{ color: "#26715d" }}>
-              One connected career system
+            <p className="marketing-eyebrow">For people building a career</p>
+            <h2>Professional growth with visible terms.</h2>
+            <p>
+              Students can learn through practical assignments, understand what
+              readiness means, review complete paid offers, and build a
+              consent-based portfolio of work.
+            </p>
+            <ul className="check-list">
+              <li>
+                <Check size={17} aria-hidden="true" /> No payment to access
+                assignments.
+              </li>
+              <li>
+                <Check size={17} aria-hidden="true" /> No reputation penalty for
+                declining an offer.
+              </li>
+              <li>
+                <Check size={17} aria-hidden="true" /> Human supervision and
+                appeal routes.
+              </li>
+              <li>
+                <Check size={17} aria-hidden="true" /> Verifiable credentials
+                when evidence supports them.
+              </li>
+            </ul>
+            <Button href="/for-students" variant="light">
+              Explore the student journey{" "}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Button>
+          </div>
+          <div className="audience-panel">
+            <p className="marketing-eyebrow">For companies</p>
+            <h2>One accountable path from brief to release.</h2>
+            <p>
+              Bring a bounded digital project. PraxisAI helps structure the
+              scope, match qualified contributors, coordinate supervision, and
+              keep milestone evidence visible.
+            </p>
+            <div className="audience-panel-meta">
+              <span>
+                <BriefcaseBusiness size={17} aria-hidden="true" /> Managed
+                delivery
+              </span>
+              <span>
+                <ClipboardCheck size={17} aria-hidden="true" /> Reviewable
+                evidence
+              </span>
+              <span>
+                <Users size={17} aria-hidden="true" /> Supervised teams
+              </span>
             </div>
-            <h2 className="section-title">
-              Training is useful when it leads to trusted work.
-            </h2>
+            <Button href="/for-companies" variant="outline-light">
+              See the company experience{" "}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Button>
           </div>
+        </div>
+      </section>
+
+      <section className="marketing-section">
+        <div className="marketing-container">
+          <SectionHeader
+            eyebrow="AI with boundaries"
+            title="AI can accelerate the operation without owning the outcome."
+            description="PraxisAI uses Gemini agents to assist with structured, low-risk work. Deterministic services control money, permissions, and project state. Humans approve consequential decisions."
+          />
+          <div className="authority-grid">
+            <Card>
+              <StatusBadge tone="ai">AI may propose</StatusBadge>
+              <h3>Scope, plans, matches, summaries, and QA findings</h3>
+              <p>
+                Agents return structured proposals with evidence references and
+                confidence signals for review.
+              </p>
+            </Card>
+            <Card>
+              <StatusBadge tone="success">Low-risk automation</StatusBadge>
+              <h3>Approved operational tasks</h3>
+              <p>
+                Only explicitly permitted, reversible actions can run
+                automatically inside the configured policy boundary.
+              </p>
+            </Card>
+            <Card>
+              <StatusBadge tone="warning">Human approval</StatusBadge>
+              <h3>Money, access, release, disputes, and credentials</h3>
+              <p>
+                People retain authority over decisions that affect rights,
+                payment, reputation, or public claims.
+              </p>
+            </Card>
+            <Card>
+              <StatusBadge>Deterministic system</StatusBadge>
+              <h3>State, permissions, and append-only records</h3>
+              <p>
+                Business rules and audit records do not depend on a model
+                deciding what happened.
+              </p>
+            </Card>
+          </div>
+          <div className="authority-note">
+            <Sparkles size={18} aria-hidden="true" />
+            <span>
+              No private model reasoning is exposed. The product shows
+              structured rationale, evidence, policy decisions, and human
+              approvals.
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-section marketing-section-muted">
+        <div className="marketing-container">
+          <SectionHeader
+            eyebrow="Project boundaries"
+            title="Useful work, scoped for supervision."
+            description="The initial studio focuses on projects that can be explained clearly, delivered in a bounded timeframe, and reviewed by a qualified human."
+          />
+          <div className="category-grid">
+            {categories.map(([title, detail, deliverables, Icon]) => {
+              const CategoryIcon = Icon;
+              return (
+                <Card key={title as string}>
+                  <CategoryIcon size={22} aria-hidden="true" />
+                  <h3>{title as string}</h3>
+                  <p>{detail as string}</p>
+                  <span className="category-deliverables">
+                    {deliverables as string}
+                  </span>
+                  <Button href="/solutions" variant="link">
+                    Explore the fit <ArrowRight size={15} aria-hidden="true" />
+                  </Button>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-section">
+        <div className="marketing-container evidence-grid">
+          <div>
+            <SectionHeader
+              eyebrow="Trust and evidence"
+              title="The record matters as much as the result."
+              description="PraxisAI is designed so participants and clients can understand how a decision was made, what was reviewed, and what remains unverified."
+            />
+            <Button href="/trust" variant="secondary">
+              Read the trust model <ArrowRight size={16} aria-hidden="true" />
+            </Button>
+          </div>
+          <div className="evidence-list">
+            <div>
+              <ShieldCheck size={20} aria-hidden="true" />
+              <span>
+                <strong>Visible compensation</strong>
+                <small>
+                  Pay, hours, scope, and revisions are part of the offer.
+                </small>
+              </span>
+            </div>
+            <div>
+              <ClipboardCheck size={20} aria-hidden="true" />
+              <span>
+                <strong>Acceptance evidence</strong>
+                <small>
+                  QA findings and client decisions remain distinct records.
+                </small>
+              </span>
+            </div>
+            <div>
+              <Fingerprint size={20} aria-hidden="true" />
+              <span>
+                <strong>Consent-based proof</strong>
+                <small>
+                  Portfolio sharing and credentials respect participant control.
+                </small>
+              </span>
+            </div>
+            <div>
+              <BadgeCheck size={20} aria-hidden="true" />
+              <span>
+                <strong>Appeals and review</strong>
+                <small>
+                  Consequential decisions have a human route for
+                  reconsideration.
+                </small>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-section marketing-final-cta">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">Start with the right next step</p>
+          <h2>Build the proof that makes opportunity possible.</h2>
           <p>
-            Curriculum, work evidence, employer briefs, student proposals,
-            supervised delivery, payment records, and credentials stay connected
-            instead of living in separate tools.
+            Whether you have a project to scope or are ready to prepare for one,
+            PraxisAI keeps the next action clear.
           </p>
-        </div>
-        <div className="marketplace-flow">
-          <article>
-            <span>01</span>
-            <BookOpen />
-            <h3>Learn through practice</h3>
-            <p>
-              Structured paths teach requirements, implementation, testing, and
-              professional delivery through exercises that produce reviewable
-              evidence.
-            </p>
-          </article>
-          <article>
-            <span>02</span>
-            <Send />
-            <h3>Propose professionally</h3>
-            <p>
-              Students respond to complete employer briefs with an approach,
-              milestone plan, relevant samples, availability, timing, and a
-              fixed amount.
-            </p>
-          </article>
-          <article>
-            <span>03</span>
-            <Building2 />
-            <h3>Choose with evidence</h3>
-            <p>
-              Employers compare fit and proof, then record an accept or reject
-              reason. Selection never authorizes unpaid or unfunded work.
-            </p>
-          </article>
-          <article>
-            <span>04</span>
-            <BriefcaseBusiness />
-            <h3>Deliver with support</h3>
-            <p>
-              Approved teams work against immutable scope with lead review, QA,
-              client acceptance, pay protection, and verifiable contribution
-              records.
-            </p>
-          </article>
-        </div>
-        <div className="landing-metrics" aria-label="PraxisAI sample metrics">
-          <div>
-            <span>126</span>
-            <small>fictional participants</small>
-          </div>
-          <div>
-            <span>84</span>
-            <small>verified project completions</small>
-          </div>
-          <div>
-            <span>91%</span>
-            <small>sample release confidence</small>
-          </div>
-          <div>
-            <span>0</span>
-            <small>unpaid trial tasks</small>
+          <div className="marketing-actions">
+            <Button href="/contact" variant="primary">
+              Start with a project brief{" "}
+              <ArrowRight size={17} aria-hidden="true" />
+            </Button>
+            <Button href="/for-students" variant="secondary">
+              Start your application
+            </Button>
           </div>
         </div>
       </section>
-      <section className="section">
-        <div className="eyebrow" style={{ color: "#26715d" }}>
-          Built for accountable delivery
-        </div>
-        <h2 className="section-title">
-          Professional experience needs more than a task and a badge.
-        </h2>
-        <div className="trust-grid">
-          <article className="trust-card">
-            <ShieldCheck className="icon" />
-            <h3>No hidden work</h3>
-            <p>
-              Students see scope, budget, expected hours, deadline, supervision,
-              proposal requirements, and portfolio terms before making a
-              commitment.
-            </p>
-          </article>
-          <article className="trust-card">
-            <Scale className="icon" />
-            <h3>Human authority</h3>
-            <p>
-              Employers, coordinators, and technical leads approve selection,
-              scope, staffing, releases, appeals, payouts, and credential
-              evidence.
-            </p>
-          </article>
-          <article className="trust-card">
-            <CheckCircle2 className="icon" />
-            <h3>Verifiable outcomes</h3>
-            <p>
-              Client acceptance, structured QA evidence, payment records, and
-              consented contributions support a signed credential.
-            </p>
-          </article>
-        </div>
-        <div className="landing-callout">
-          <div className="landing-callout-icon">
-            <Sparkles size={20} />
-          </div>
-          <div>
-            <strong>Designed for the moment after “looks promising.”</strong>
-            <p>
-              PraxisAI keeps scope, decision reasons, supervision, QA, funding,
-              and credential evidence connected so progress is visible before
-              anyone calls work complete.
-            </p>
-          </div>
-          <Link className="button button-primary" href="/trust">
-            Explore the trust model <ArrowRight size={16} />
-          </Link>
-        </div>
-      </section>
+      <MarketingFooter />
     </main>
   );
 }

@@ -3,6 +3,14 @@ import { NextRequest } from "next/server";
 
 import { GET } from "../app/api/v1/[...path]/route";
 
+vi.mock("google-auth-library", () => ({
+  GoogleAuth: class {
+    async getIdTokenClient() {
+      throw new Error("service authentication unavailable in unit tests");
+    }
+  },
+}));
+
 describe("same-origin API route", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
