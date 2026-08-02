@@ -1,9 +1,9 @@
 "use client";
 
 import { praxisFetch, type components } from "@praxisai/api-client";
-import { Bell, LogOut, Menu, Search } from "lucide-react";
 import Link from "next/link";
-import { type FormEvent, useEffect, useState } from "react";
+import { signOut } from "firebase/auth";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { ClientProjectIntake } from "./client-project-intake";
 import { EmployerTalentWorkspace } from "./employer-talent-workspace";
 import { ProjectCommandCenter } from "./project-command-center";
@@ -13,10 +13,17 @@ import {
 } from "./role-workspace-records";
 import { StudentCareerWorkspace } from "./student-career-workspace";
 import { WorkspaceOverview } from "./workspace-overview";
-import { WorkspacePageHeader, WorkspaceSidebar } from "./workspace-layout";
-import { rootFor } from "./workspace-navigation";
+import {
+  WorkspaceHeader,
+  WorkspacePageHeader,
+  WorkspaceSidebar,
+} from "./workspace-layout";
+import { navigation, rootFor } from "./workspace-navigation";
 import { demoWorkspaceSnapshot, withDemoFallback } from "../lib/demo-data";
 import { apiBase } from "../lib/api";
+import { demoEnvironment } from "../lib/demo-environment";
+import type { WorkspaceSearchItem } from "./workspace-command-menu";
+import { getFirebaseAuth } from "../lib/firebase";
 
 type Session = components["schemas"]["SessionView"];
 type Project = components["schemas"]["ProjectView"];
@@ -88,6 +95,9 @@ export function AppShell({
   const [isDemoPreview, setIsDemoPreview] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const root = rootFor(path);
   const projectDetailMatch = path.match(
     /^\/(?:client|student|lead|ops)\/projects\/([0-9a-f-]{36})$/i,
@@ -432,6 +442,29 @@ export function AppShell({
     }
   }
 
+  async function handleLogout() {
+    if (logoutBusy) return;
+    const correlationId = crypto.randomUUID();
+    setLogoutBusy(true);
+    setLogoutError(null);
+    try {
+      await praxisFetch<void>(apiBase, "/auth/logout", {
+        method: "POST",
+        headers: { "X-Correlation-Id": correlationId },
+      });
+      if (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+        await signOut(getFirebaseAuth());
+      }
+      setGlobalSearch("");
+      window.location.assign("/login");
+    } catch (reason: unknown) {
+      setLogoutError(
+        `${reason instanceof Error ? reason.message : "Unable to sign out"}. Support correlation ID: ${correlationId}`,
+      );
+      setLogoutBusy(false);
+    }
+  }
+
   const metricItems: [string, string | number | null | undefined][] =
     root === "university"
       ? [
@@ -471,6 +504,21 @@ export function AppShell({
             ["Environment", session?.environment_label],
           ];
 
+  const searchItems: WorkspaceSearchItem[] = [
+    ...navigation[root].map(([label, href]) => ({
+      label,
+      href,
+      detail: "Workspace navigation",
+      kind: "navigation" as const,
+    })),
+    ...(projects ?? []).map((project) => ({
+      label: project.title,
+      href: `/${root === "ops" ? "ops" : root}/projects/${project.id}`,
+      detail: `${project.category.replaceAll("_", " ")} · loaded project record`,
+      kind: "record" as const,
+    })),
+  ];
+
   return (
     <div className="app-layout">
       <WorkspaceSidebar
@@ -479,92 +527,40 @@ export function AppShell({
         session={session}
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
+        mobileTriggerRef={mobileTriggerRef}
       />
       <main className="main">
-        <header className="app-topbar">
-          <div className="topbar-leading">
-            <button
-              aria-label="Open navigation"
-              className="icon-button mobile-menu-button"
-              onClick={() => setMobileNavOpen(true)}
-              type="button"
-            >
-              <Menu size={19} />
-            </button>
-            <div className="breadcrumbs">
-              PraxisAI <span>/</span> {root} <span>/</span> {title}
-            </div>
+        <WorkspaceHeader
+          root={root}
+          title={title}
+          session={session}
+          notifications={notifications}
+          notificationOpen={notificationOpen}
+          globalSearch={globalSearch}
+          onSearchChange={setGlobalSearch}
+          onToggleNotifications={() => setNotificationOpen((open) => !open)}
+          onMarkRead={(notificationId) =>
+            void markNotificationRead(notificationId)
+          }
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+          mobileTriggerRef={mobileTriggerRef}
+          searchItems={searchItems}
+          onLogout={() => void handleLogout()}
+          logoutBusy={logoutBusy}
+          logoutError={logoutError}
+        />
+        {logoutError ? (
+          <div className="error action-message" role="alert">
+            {logoutError}
           </div>
-          <div className="topbar-actions">
-            <label className="topbar-search">
-              <Search size={15} aria-hidden="true" />
-              <span className="sr-only">Search workspace</span>
-              <input
-                aria-label="Search workspace"
-                onChange={(event) => setGlobalSearch(event.target.value)}
-                placeholder="Search"
-                value={globalSearch}
-              />
-            </label>
-            <div className="notification-control">
-              <button
-                aria-expanded={notificationOpen}
-                aria-label={`${notifications?.filter((item) => !item.read_at).length ?? 0} unread notifications`}
-                className="icon-button"
-                onClick={() => setNotificationOpen((open) => !open)}
-                type="button"
-              >
-                <Bell size={19} />
-                {(notifications?.filter((item) => !item.read_at).length ?? 0) >
-                  0 && (
-                  <span className="notification-count">
-                    {notifications?.filter((item) => !item.read_at).length}
-                  </span>
-                )}
-              </button>
-              {notificationOpen && (
-                <div
-                  className="notification-menu"
-                  role="region"
-                  aria-label="Notifications"
-                >
-                  <strong>Notifications</strong>
-                  {notifications === null ? (
-                    <div className="notification-item">Loading…</div>
-                  ) : notifications.length === 0 ? (
-                    <div className="notification-item">No notifications.</div>
-                  ) : (
-                    notifications.slice(0, 8).map((item) => (
-                      <Link
-                        className={`notification-item ${item.read_at ? "" : "unread"}`}
-                        href={item.resource_path ?? "#"}
-                        key={item.id}
-                        onClick={() => void markNotificationRead(item.id)}
-                      >
-                        <strong>{item.title}</strong>
-                        <span>{item.body}</span>
-                      </Link>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-            <span className="profile-chip">
-              <span className="profile-avatar">
-                {(session?.display_name ?? "S").slice(0, 1)}
-              </span>
-              <span className="profile-name">
-                {session?.display_name ?? "Signed-in user"}
-              </span>
-            </span>
-            <LogOut className="logout-icon" size={18} />
-          </div>
-        </header>
+        ) : null}
         <div className="app-content">
           <WorkspacePageHeader
             title={title}
             description={description}
-            isDemoPreview={isDemoPreview}
+            isDemoPreview={
+              isDemoPreview || demoEnvironment.showEnvironmentBanner
+            }
           />
           {!hasCareerWorkspace && (
             <section className="metric-grid" aria-label="Workspace metrics">

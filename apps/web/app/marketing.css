@@ -925,6 +925,172 @@
   }
 }
 
+.route-experience {
+  background: #f5f2e9;
+  border-top: 1px solid var(--line);
+}
+
+.route-experience h2 {
+  font-size: clamp(28px, 4vw, 52px);
+  max-width: 760px;
+}
+
+.route-experience-grid,
+.route-boundary-grid,
+.trust-authority-grid,
+.impact-measurement-grid,
+.solution-boundary-grid,
+.contact-path-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 30px;
+}
+
+.route-step-card,
+.route-boundary-grid > div,
+.trust-authority-grid > div,
+.impact-measurement-grid > article,
+.solution-boundary-grid > div {
+  background: var(--paper-bright);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.route-step-card span {
+  color: #247b70;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.route-step-card h3,
+.route-boundary-grid strong,
+.trust-authority-grid strong,
+.impact-measurement-grid strong,
+.solution-boundary-grid strong {
+  display: block;
+  font-size: 17px;
+  margin: 18px 0 7px;
+}
+
+.route-step-card p,
+.route-boundary-grid p,
+.trust-authority-grid p,
+.impact-measurement-grid p,
+.solution-boundary-grid p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.route-faq {
+  border-top: 1px solid var(--line);
+  margin-top: 28px;
+  padding-top: 20px;
+}
+
+.route-faq h3 {
+  font-size: 20px;
+}
+
+.route-faq details {
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+}
+
+.route-faq summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.route-faq details p {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 10px 0 0;
+}
+
+.route-boundary-grid,
+.trust-authority-grid,
+.impact-measurement-grid,
+.solution-boundary-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.pricing-ledger {
+  border-top: 1px solid var(--line);
+  margin-top: 30px;
+}
+
+.pricing-ledger > div {
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(180px, 0.5fr) 1fr;
+  padding: 18px 0;
+}
+
+.pricing-ledger span,
+.route-disclaimer {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.route-disclaimer {
+  margin: 22px 0 0;
+  max-width: 720px;
+}
+
+.about-principles {
+  display: grid;
+  gap: 12px;
+  margin-top: 30px;
+  max-width: 760px;
+}
+
+.about-principles p {
+  align-items: flex-start;
+  background: var(--paper-bright);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: flex;
+  gap: 11px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 16px;
+}
+
+.about-principles svg {
+  color: #247b70;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.contact-path-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 720px;
+}
+
+@media (max-width: 760px) {
+  .route-experience-grid,
+  .route-boundary-grid,
+  .trust-authority-grid,
+  .impact-measurement-grid,
+  .solution-boundary-grid,
+  .contact-path-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-ledger > div {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+}
+
 /* Premium experience layer */
 .marketing-header {
   transition:

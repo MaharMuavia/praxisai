@@ -23,6 +23,8 @@ export function resolveApiBase(
   return configuredApiBase || "/api/v1";
 }
 
+// Kept as a compatibility helper for callers that still pass build-time values.
+// Runtime demo rendering uses the single contract in demo-environment.ts.
 export function allowsDemoFallback(
   nodeEnvironment: string,
   appEnvironment: string | undefined,
@@ -35,10 +37,4 @@ export const apiBase = resolveApiBase(
   process.env.NEXT_PUBLIC_API_URL,
   process.env.NEXT_PUBLIC_APP_ENV,
   process.env.NODE_ENV,
-);
-
-export const demoFallbackEnabled = allowsDemoFallback(
-  process.env.NODE_ENV,
-  process.env.NEXT_PUBLIC_APP_ENV,
-  process.env.NEXT_PUBLIC_DEMO_MODE === "true",
 );

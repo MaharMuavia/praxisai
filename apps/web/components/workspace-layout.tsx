@@ -2,9 +2,18 @@
 
 import { Bell, CircleHelp, LogOut, Menu, Search, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Brand } from "./brand";
-import { navigation, type WorkspaceRoot } from "./workspace-navigation";
+import {
+  WorkspaceCommandMenu,
+  type WorkspaceSearchItem,
+} from "./workspace-command-menu";
+import {
+  isNavigationItemActive,
+  navigation,
+  type WorkspaceRoot,
+} from "./workspace-navigation";
+import { demoEnvironment } from "../lib/demo-environment";
 
 type SessionSummary = {
   display_name?: string | null;
@@ -26,48 +35,112 @@ export function WorkspaceSidebar({
   session,
   open,
   onClose,
+  mobileTriggerRef,
 }: {
   root: WorkspaceRoot;
   path: string;
   session: SessionSummary | null;
   open: boolean;
   onClose: () => void;
+  mobileTriggerRef: RefObject<HTMLButtonElement | null>;
 }) {
+  const drawerRef = useRef<HTMLElement>(null);
+  const environmentLabel =
+    session?.environment_label?.toLowerCase() === "demo" &&
+    !demoEnvironment.showEnvironmentBanner
+      ? null
+      : session?.environment_label;
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusable = drawerRef.current?.querySelector<HTMLElement>(
+      "button, a, input, select, textarea, [tabindex]:not([tabindex='-1'])",
+    );
+    focusable?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        requestAnimationFrame(() => mobileTriggerRef.current?.focus());
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const elements = Array.from(
+        drawerRef.current?.querySelectorAll<HTMLElement>(
+          "button, a, input, select, textarea, [tabindex]:not([tabindex='-1'])",
+        ) ?? [],
+      ).filter((element) => !element.hasAttribute("disabled"));
+      if (elements.length === 0) return;
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileTriggerRef, onClose, open]);
+
+  const closeAndRestore = () => {
+    onClose();
+    requestAnimationFrame(() => mobileTriggerRef.current?.focus());
+  };
+
   return (
     <>
-      <aside className={`sidebar ${open ? "open" : ""}`}>
+      <aside
+        ref={drawerRef}
+        className={`sidebar ${open ? "open" : ""}`}
+        aria-label={`${root} workspace navigation`}
+      >
         <div className="sidebar-mobile-head">
           <Brand />
           <button
             aria-label="Close navigation"
             className="icon-button sidebar-close"
-            onClick={onClose}
+            onClick={closeAndRestore}
             type="button"
           >
             <X size={18} />
           </button>
         </div>
         <Brand />
-        <div className="environment">
-          <strong>{session?.environment_label ?? "Demo"} environment</strong>
-          <br />
-          {session?.active_membership?.organization_name ?? "PraxisAI pilot"}
-        </div>
+        {session?.active_membership?.organization_name || environmentLabel ? (
+          <div className="environment">
+            {environmentLabel ? (
+              <strong>{environmentLabel} environment</strong>
+            ) : null}
+            {environmentLabel &&
+            session?.active_membership?.organization_name ? (
+              <br />
+            ) : null}
+            {session?.active_membership?.organization_name}
+          </div>
+        ) : null}
         <div className="nav-group">Workspace</div>
         <nav aria-label={`${root} workspace navigation`}>
           {navigation[root].map(([label, href, Icon]) => (
             <Link
               key={href + label}
-              className={`nav-link ${path === href ? "active" : ""}`}
+              className={`nav-link ${isNavigationItemActive(path, href, label) ? "active" : ""}`}
               href={href}
-              onClick={onClose}
+              onClick={closeAndRestore}
             >
               <Icon size={17} /> {label}
             </Link>
           ))}
         </nav>
         <div className="sidebar-foot">
-          <Link className="nav-link" href="/trust">
+          <Link className="nav-link" href="/trust" onClick={closeAndRestore}>
             <CircleHelp size={17} /> Help & escalation
           </Link>
         </div>
@@ -75,8 +148,9 @@ export function WorkspaceSidebar({
       {open ? (
         <button
           aria-label="Close navigation overlay"
+          tabIndex={-1}
           className="sidebar-overlay"
-          onClick={onClose}
+          onClick={closeAndRestore}
           type="button"
         />
       ) : null}
@@ -95,6 +169,11 @@ export function WorkspaceHeader({
   onToggleNotifications,
   onMarkRead,
   onOpenMobileNav,
+  mobileTriggerRef,
+  searchItems,
+  onLogout,
+  logoutBusy,
+  logoutError,
 }: {
   root: WorkspaceRoot;
   title: string;
@@ -106,8 +185,14 @@ export function WorkspaceHeader({
   onToggleNotifications: () => void;
   onMarkRead: (id: string) => void;
   onOpenMobileNav: () => void;
+  mobileTriggerRef: RefObject<HTMLButtonElement | null>;
+  searchItems: WorkspaceSearchItem[];
+  onLogout: () => void;
+  logoutBusy: boolean;
+  logoutError: string | null;
 }) {
   const notificationButton = useRef<HTMLButtonElement>(null);
+  const [searchOpen, setSearchOpen] = useState(Boolean(globalSearch));
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape" && notificationOpen) {
@@ -124,6 +209,7 @@ export function WorkspaceHeader({
       <div className="topbar-leading">
         <button
           aria-label="Open navigation"
+          ref={mobileTriggerRef}
           className="icon-button mobile-menu-button"
           onClick={onOpenMobileNav}
           type="button"
@@ -135,16 +221,29 @@ export function WorkspaceHeader({
         </div>
       </div>
       <div className="topbar-actions">
-        <label className="topbar-search">
-          <Search size={15} aria-hidden="true" />
-          <span className="sr-only">Search workspace</span>
-          <input
-            aria-label="Search workspace"
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search workspace"
-            value={globalSearch}
-          />
-        </label>
+        <div className="workspace-search-control">
+          <label className="topbar-search">
+            <Search size={15} aria-hidden="true" />
+            <span className="sr-only">Search loaded workspace records</span>
+            <input
+              aria-label="Search loaded workspace records"
+              onChange={(event) => {
+                onSearchChange(event.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              placeholder="Search loaded records"
+              value={globalSearch}
+            />
+          </label>
+          {searchOpen ? (
+            <WorkspaceCommandMenu
+              query={globalSearch}
+              items={searchItems}
+              onClose={() => setSearchOpen(false)}
+            />
+          ) : null}
+        </div>
         <div className="notification-control">
           <button
             ref={notificationButton}
@@ -194,7 +293,21 @@ export function WorkspaceHeader({
             {session?.display_name ?? "Signed-in user"}
           </span>
         </span>
-        <LogOut className="logout-icon" size={18} aria-hidden="true" />
+        <button
+          className="logout-button"
+          disabled={logoutBusy}
+          onClick={onLogout}
+          type="button"
+          title={logoutBusy ? "Signing out" : "Sign out"}
+        >
+          <LogOut size={18} aria-hidden="true" />
+          <span>{logoutBusy ? "Signing out…" : "Sign out"}</span>
+        </button>
+        {logoutError ? (
+          <span className="sr-only" role="alert">
+            {logoutError}
+          </span>
+        ) : null}
       </div>
     </header>
   );
@@ -215,9 +328,7 @@ export function WorkspacePageHeader({
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
-      <span className="demo-badge">
-        {isDemoPreview ? "Demo preview" : "Demo data"}
-      </span>
+      {isDemoPreview ? <span className="demo-badge">Demo preview</span> : null}
     </div>
   );
 }

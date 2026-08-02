@@ -65,6 +65,8 @@ export function MarketingWorkflow() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [documentVisible, setDocumentVisible] = useState(true);
+  const [inView, setInView] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
   const active = workflow[activeIndex];
   const ActiveIcon = active.icon;
@@ -82,9 +84,12 @@ export function MarketingWorkflow() {
 
   useEffect(() => {
     const node = rootRef.current;
-    if (!node || reducedMotion) return;
+    if (!node || reducedMotion || typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
     const observer = new IntersectionObserver(
-      ([entry]) => setAutoPlay(entry.isIntersecting),
+      ([entry]) => setInView(entry.isIntersecting),
       { threshold: 0.2 },
     );
     observer.observe(node);
@@ -92,13 +97,21 @@ export function MarketingWorkflow() {
   }, [reducedMotion]);
 
   useEffect(() => {
-    if (!autoPlay || reducedMotion) return;
+    const update = () =>
+      setDocumentVisible(document.visibilityState === "visible");
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+
+  useEffect(() => {
+    if (!autoPlay || reducedMotion || !documentVisible || !inView) return;
     const timer = window.setInterval(
       () => setActiveIndex((current) => (current + 1) % workflow.length),
       4200,
     );
     return () => window.clearInterval(timer);
-  }, [autoPlay, reducedMotion]);
+  }, [autoPlay, documentVisible, inView, reducedMotion]);
 
   const choose = (index: number) => {
     setActiveIndex(index);
@@ -169,8 +182,8 @@ export function MarketingWorkflow() {
         </AnimatedPresencePanel>
         <div className="workflow-controls">
           <span>
-            {autoPlay && !reducedMotion
-              ? "Auto sequence · pauses when offscreen"
+            {autoPlay && !reducedMotion && documentVisible && inView
+              ? "Auto sequence · pauses when hidden or offscreen"
               : "Manual review mode"}
           </span>
           <div>

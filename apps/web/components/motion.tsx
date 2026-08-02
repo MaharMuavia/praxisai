@@ -114,7 +114,11 @@ export function AnimatedPresencePanel({
   panelKey,
 }: MotionProps & { panelKey: string }) {
   return (
-    <div className={`animated-panel ${className}`} data-panel-key={panelKey}>
+    <div
+      key={panelKey}
+      className={`animated-panel ${className}`}
+      data-panel-key={panelKey}
+    >
       {children}
     </div>
   );
@@ -150,20 +154,95 @@ export function WorkflowMotion({
   );
 }
 
-export function AnimatedNumber({ value }: { value: string | number }) {
-  return <span className="animated-number">{value}</span>;
+export function AnimatedNumber({
+  value,
+  format = "number",
+  currency = "USD",
+}: {
+  value: number;
+  format?: "number" | "currency" | "percent";
+  currency?: string;
+}) {
+  const [displayValue, setDisplayValue] = useState(value);
+  const previousValue = useRef(value);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion || previousValue.current === value) {
+      previousValue.current = value;
+      setDisplayValue(value);
+      return;
+    }
+    const start = previousValue.current;
+    const delta = value - start;
+    const startedAt = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min((now - startedAt) / 420, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setDisplayValue(start + delta * eased);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+      else previousValue.current = value;
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [reducedMotion, value]);
+
+  const formatter = new Intl.NumberFormat(undefined, {
+    style: format === "currency" ? "currency" : "decimal",
+    currency: format === "currency" ? currency : undefined,
+    maximumFractionDigits: format === "percent" ? 1 : 0,
+  });
+  const formatted =
+    format === "percent"
+      ? `${formatter.format(displayValue)}%`
+      : formatter.format(displayValue);
+  return (
+    <span className="animated-number" aria-label={formatted}>
+      {formatted}
+    </span>
+  );
 }
 
 export function ScrollProgress() {
   const [progress, setProgress] = useState(0);
   useEffect(() => {
+    let frame = 0;
+    let lastProgress = -1;
     const update = () => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(max > 0 ? Math.min(window.scrollY / max, 1) : 0);
+      const next = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
+      if (Math.abs(next - lastProgress) > 0.002) {
+        lastProgress = next;
+        setProgress(next);
+      }
+      frame = 0;
+    };
+    const schedule = () => {
+      if (frame === 0) frame = requestAnimationFrame(update);
     };
     update();
-    window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule, { passive: true });
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(schedule);
+    observer?.observe(document.documentElement);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      observer?.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
   return (
     <span

@@ -170,6 +170,6 @@ for (const path of [
   }) => {
     await page.goto(path);
     await expect(page.locator("h1")).toBeVisible();
-    await expect(page.getByText("Demo data").first()).toBeVisible();
+    await expect(page.getByText("Demo data")).toHaveCount(0);
   });
 }

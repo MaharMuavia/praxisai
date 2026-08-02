@@ -1,5 +1,5 @@
 import type { components } from "@praxisai/api-client";
-import { demoFallbackEnabled } from "./api";
+import { demoEnvironment } from "./demo-environment";
 
 type Session = components["schemas"]["SessionView"];
 type Project = components["schemas"]["ProjectView"];
@@ -445,7 +445,8 @@ export async function withDemoFallback<T>(
   try {
     return { data: await request, isDemo: false };
   } catch (reason: unknown) {
-    if (!demoFallbackEnabled || !isRecoverableDemoError(reason)) throw reason;
+    if (!demoEnvironment.allowDemoFallback || !isRecoverableDemoError(reason))
+      throw reason;
     return { data: fallback, isDemo: true };
   }
 }

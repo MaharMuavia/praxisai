@@ -94,6 +94,7 @@ export function ContentPage({
           </div>
         </div>
       </section>
+      <RouteExperience path={path} />
       <section className="marketing-section content-page-cta">
         <div className="marketing-container">
           <h2>Choose a path into the studio.</h2>
@@ -114,6 +115,346 @@ export function ContentPage({
       <MarketingFooter />
     </main>
   );
+}
+
+function RouteExperience({ path }: { path: string }) {
+  if (path === "for-students") {
+    return (
+      <section className="marketing-section route-experience route-experience-student">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">The student pathway</p>
+          <h2>Practice → evidence → an offer you can understand.</h2>
+          <div className="route-experience-grid">
+            {[
+              [
+                "01",
+                "Build evidence",
+                "Complete practical briefs with feedback, tests, and handoff notes.",
+              ],
+              [
+                "02",
+                "Review readiness",
+                "See the evidence a reviewer can use; there is no hidden frontend score.",
+              ],
+              [
+                "03",
+                "Choose transparently",
+                "Compare scope, hours, pay, supervision, revisions, and portfolio terms.",
+              ],
+              [
+                "04",
+                "Appeal when needed",
+                "Human support remains available for QA, payment, credential, and reputation decisions.",
+              ],
+            ].map(([number, title, detail]) => (
+              <article className="route-step-card" key={number}>
+                <span>{number}</span>
+                <h3>{title}</h3>
+                <p>{detail}</p>
+              </article>
+            ))}
+          </div>
+          <div className="route-faq">
+            <h3>Student questions</h3>
+            <details>
+              <summary>Do I pay to access work or credentials?</summary>
+              <p>
+                No. Access to opportunities and the base earned credential is
+                not sold to students.
+              </p>
+            </details>
+            <details>
+              <summary>What if I decline an offer?</summary>
+              <p>
+                Declining or allowing an offer to expire does not create a
+                reputation penalty.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (path === "for-companies") {
+    return (
+      <section className="marketing-section route-experience route-experience-company">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">The managed-delivery path</p>
+          <h2>A bounded project with a visible owner at every handoff.</h2>
+          <div className="route-experience-grid">
+            {[
+              [
+                "Brief",
+                "You bring the business problem, users, constraints, data sensitivity, and acceptance owner.",
+              ],
+              [
+                "Scope",
+                "PraxisAI turns context into reviewable deliverables, assumptions, and a quote.",
+              ],
+              [
+                "Supervise",
+                "An expert lead and coordinator keep decisions, risks, and QA findings visible.",
+              ],
+              [
+                "Release",
+                "You accept the agreed deliverable; new work uses a priced change order.",
+              ],
+            ].map(([title, detail]) => (
+              <article className="route-step-card" key={title}>
+                <h3>{title}</h3>
+                <p>{detail}</p>
+              </article>
+            ))}
+          </div>
+          <div className="route-boundary-grid">
+            <div>
+              <strong>Suitable</strong>
+              <p>
+                Bounded websites, internal tools, dashboards, QA, data work, and
+                workflow automation.
+              </p>
+            </div>
+            <div>
+              <strong>Not suitable</strong>
+              <p>
+                Safety-critical, surveillance, deceptive, illegal,
+                academic-cheating, or unbounded builds.
+              </p>
+            </div>
+          </div>
+          <div className="marketing-actions">
+            <Button href="/login" variant="primary">
+              Start with an authenticated project brief{" "}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (path === "pricing") {
+    return (
+      <section className="marketing-section route-experience route-experience-pricing">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">Commercial model</p>
+          <h2>Terms are itemized before anyone accepts the work.</h2>
+          <div className="pricing-ledger">
+            {[
+              [
+                "Student compensation",
+                "Shown as gross pay and expected hours in the offer.",
+              ],
+              [
+                "Technical-lead compensation",
+                "Shown separately for qualified supervision and review.",
+              ],
+              [
+                "Platform service fee",
+                "Shown as its own line rather than hidden in contributor pay.",
+              ],
+              [
+                "Taxes and provider fees",
+                "Included only when configured and disclosed for the project.",
+              ],
+              [
+                "Revisions and change orders",
+                "The base allowance is stated; materially new work is priced before release.",
+              ],
+            ].map(([title, detail]) => (
+              <div key={title}>
+                <strong>{title}</strong>
+                <span>{detail}</span>
+              </div>
+            ))}
+          </div>
+          <p className="route-disclaimer">
+            Illustrative examples on this site are nonbinding demo examples.
+            PraxisAI does not publish a universal rate card until one is
+            approved and configured.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  if (path === "trust") {
+    return (
+      <section className="marketing-section route-experience route-experience-trust">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">Authority map</p>
+          <h2>AI can propose. People and deterministic services decide.</h2>
+          <div className="trust-authority-grid">
+            <div>
+              <strong>AI may assist</strong>
+              <p>
+                Draft scope, summarize records, suggest matches, and surface QA
+                findings with sources.
+              </p>
+            </div>
+            <div>
+              <strong>Humans approve</strong>
+              <p>
+                Scope, staffing, releases, disputes, payouts, credentials, and
+                other consequential transitions.
+              </p>
+            </div>
+            <div>
+              <strong>Evidence stays distinct</strong>
+              <p>
+                Payment evidence is not client acceptance; a model proposal is
+                not workflow authority.
+              </p>
+            </div>
+            <div>
+              <strong>Protection remains explicit</strong>
+              <p>
+                Consent, privacy boundaries, appeals, and credential
+                verification are part of the product contract.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (path === "impact") {
+    return (
+      <section className="marketing-section route-experience route-experience-impact">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">
+            Measurement without invented outcomes
+          </p>
+          <h2>When impact is reported, the evidence will be inspectable.</h2>
+          <div className="impact-measurement-grid">
+            {[
+              [
+                "Definition",
+                "What the metric means and which records qualify.",
+              ],
+              [
+                "Source",
+                "Which approved operational or consented evidence produced it.",
+              ],
+              [
+                "Exclusions",
+                "Demo records, suppressed cohorts, and unconsented evidence stay out.",
+              ],
+              [
+                "Safeguards",
+                "Privacy thresholds, time windows, and approval state accompany the result.",
+              ],
+            ].map(([title, detail]) => (
+              <article key={title}>
+                <strong>{title}</strong>
+                <p>{detail}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (path === "about") {
+    return (
+      <section className="marketing-section route-experience route-experience-about">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">Why PraxisAI exists</p>
+          <h2>
+            Connect preparation to real work without hiding the boundaries.
+          </h2>
+          <div className="about-principles">
+            {[
+              "Practice is useful when it produces evidence, not just completion marks.",
+              "Companies deserve a managed delivery model with accountable review.",
+              "AI should make work more legible without becoming the authority.",
+              "Responsible growth means pilots, governance, and evidence before scale claims.",
+            ].map((principle) => (
+              <p key={principle}>
+                <CheckCircle2 size={18} aria-hidden="true" />
+                {principle}
+              </p>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (path === "contact") {
+    return (
+      <section className="marketing-section route-experience route-experience-contact">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">Choose a supported path</p>
+          <h2>
+            No dead-end contact form. Start where the current product can help.
+          </h2>
+          <div className="contact-path-grid">
+            <Button href="/login" variant="primary">
+              Company project brief <ArrowRight size={16} aria-hidden="true" />
+            </Button>
+            <Button href="/for-students" variant="secondary">
+              Student pathway <ArrowRight size={16} aria-hidden="true" />
+            </Button>
+            <Button href="/for-expert-leads" variant="secondary">
+              Expert lead pathway <ArrowRight size={16} aria-hidden="true" />
+            </Button>
+            <Button href="/for-universities" variant="secondary">
+              University pathway <ArrowRight size={16} aria-hidden="true" />
+            </Button>
+          </div>
+          <p className="route-disclaimer">
+            A public intake endpoint and student application endpoint are not
+            enabled in the inspected API, so this page does not simulate
+            submission or display unavailable email addresses.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  if (path.startsWith("solutions/")) {
+    const solution = path.slice("solutions/".length).replaceAll("-", " ");
+    return (
+      <section className="marketing-section route-experience route-experience-solution">
+        <div className="marketing-container">
+          <p className="marketing-eyebrow">Solution boundary</p>
+          <h2>
+            {solution.replace(/\b\w/g, (letter) => letter.toUpperCase())} is
+            scoped around a decision, not a vague build.
+          </h2>
+          <div className="solution-boundary-grid">
+            <div>
+              <strong>Typical deliverables</strong>
+              <p>
+                Brief, route or workflow map, implemented surface, tests, review
+                notes, and handoff evidence.
+              </p>
+            </div>
+            <div>
+              <strong>Client responsibilities</strong>
+              <p>
+                Provide access, source context, decision-makers, timely
+                feedback, and acceptance criteria.
+              </p>
+            </div>
+            <div>
+              <strong>Unsupported use</strong>
+              <p>
+                Unbounded product builds, consequential automation without human
+                approval, and work outside pilot boundaries.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return null;
 }
 
 function VisualFrame({ children }: { children: React.ReactNode }) {

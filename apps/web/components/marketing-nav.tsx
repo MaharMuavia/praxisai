@@ -2,7 +2,12 @@
 
 import { ArrowRight, ChevronDown, Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { Brand } from "./brand";
 import { ScrollProgress } from "./motion";
 import { Button } from "./ui";
@@ -70,6 +75,7 @@ export function MarketingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const dropdownRefs = useRef<Record<string, HTMLAnchorElement[]>>({});
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileRef = useRef<HTMLElement>(null);
 
@@ -89,6 +95,24 @@ export function MarketingNav() {
           const trigger = triggerRefs.current[openMenu];
           setOpenMenu(null);
           requestAnimationFrame(() => trigger?.focus());
+        }
+      }
+      if (mobileOpen && event.key === "Tab") {
+        const focusable = Array.from(
+          mobileRef.current?.querySelectorAll<HTMLElement>(
+            "a, button, input, select, textarea, [tabindex]:not([tabindex='-1'])",
+          ) ?? [],
+        );
+        if (focusable.length > 0) {
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
         }
       }
     };
@@ -124,6 +148,41 @@ export function MarketingNav() {
     requestAnimationFrame(() => triggerRefs.current[label]?.focus());
   };
 
+  const openDisclosure = (label: string) => {
+    setOpenMenu(label);
+    requestAnimationFrame(() => dropdownRefs.current[label]?.[0]?.focus());
+  };
+
+  const moveWithinMenu = (
+    event: ReactKeyboardEvent<HTMLAnchorElement>,
+    label: string,
+    index: number,
+  ) => {
+    const links = dropdownRefs.current[label] ?? [];
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMenu(label);
+      return;
+    }
+    if (event.key === "Tab") {
+      setOpenMenu(null);
+      return;
+    }
+    const nextIndex =
+      event.key === "ArrowDown"
+        ? (index + 1) % links.length
+        : event.key === "ArrowUp"
+          ? (index - 1 + links.length) % links.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? links.length - 1
+              : null;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    links[nextIndex]?.focus();
+  };
+
   return (
     <header className={`marketing-header ${scrolled ? "is-scrolled" : ""}`}>
       <ScrollProgress />
@@ -139,13 +198,16 @@ export function MarketingNav() {
               <div className="marketing-nav-menu" key={menu.label}>
                 <button
                   aria-expanded={isOpen}
-                  aria-haspopup="true"
+                  aria-haspopup="menu"
                   className="marketing-nav-trigger"
                   ref={(node) => {
                     triggerRefs.current[menu.label] = node;
                   }}
                   type="button"
-                  onClick={() => setOpenMenu(isOpen ? null : menu.label)}
+                  aria-controls={`marketing-menu-${menu.label.toLowerCase()}`}
+                  onClick={() =>
+                    isOpen ? setOpenMenu(null) : openDisclosure(menu.label)
+                  }
                   onKeyDown={(event) => {
                     if (
                       event.key === "ArrowDown" ||
@@ -153,19 +215,36 @@ export function MarketingNav() {
                       event.key === " "
                     ) {
                       event.preventDefault();
-                      setOpenMenu(menu.label);
+                      openDisclosure(menu.label);
                     }
                   }}
                 >
                   {menu.label} <ChevronDown size={14} aria-hidden="true" />
                 </button>
                 {isOpen ? (
-                  <div className="marketing-dropdown" role="menu">
-                    {menu.items.map((item) => (
+                  <div
+                    className="marketing-dropdown"
+                    id={`marketing-menu-${menu.label.toLowerCase()}`}
+                    role="menu"
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget)) {
+                        setOpenMenu(null);
+                      }
+                    }}
+                  >
+                    {menu.items.map((item, index) => (
                       <Link
                         href={item.href}
                         key={item.href}
                         role="menuitem"
+                        ref={(node) => {
+                          const links = dropdownRefs.current[menu.label] ?? [];
+                          if (node) links[index] = node;
+                          dropdownRefs.current[menu.label] = links;
+                        }}
+                        onKeyDown={(event) =>
+                          moveWithinMenu(event, menu.label, index)
+                        }
                         onClick={() => closeMenu(menu.label)}
                       >
                         <span>{item.label}</span>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { AppProviders } from "./providers";
 import "./globals.css";
 
 const praxisSans = localFont({
@@ -18,7 +19,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={praxisSans.variable}>{children}</body>
+      <body className={praxisSans.variable}>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

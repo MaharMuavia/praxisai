@@ -24,6 +24,24 @@ export type NavigationItem = readonly [
   icon: LucideIcon,
 ];
 
+export function isNavigationItemActive(
+  path: string,
+  href: string,
+  label?: string,
+): boolean {
+  if (label === "Reviews" && href === "/lead") {
+    return (
+      path.startsWith("/lead") &&
+      path !== "/lead/offers" &&
+      path !== "/lead/earnings"
+    );
+  }
+  const isRootRoute = href.split("/").filter(Boolean).length === 1;
+  return isRootRoute
+    ? path === href
+    : path === href || path.startsWith(`${href}/`);
+}
+
 export const navigation: Record<WorkspaceRoot, readonly NavigationItem[]> = {
   client: [
     ["Overview", "/client", LayoutDashboard],

@@ -2706,9 +2706,16 @@ select,
     padding: 24px 16px;
   }
 
-  .profile-name,
-  .logout-icon {
+  .profile-name {
     display: none;
+  }
+
+  .logout-button span {
+    display: none;
+  }
+
+  .logout-button {
+    padding: 8px;
   }
 }
 
@@ -2889,6 +2896,88 @@ h6 {
 }
 .notification-item:hover {
   background: rgba(78, 230, 212, 0.08);
+}
+
+.workspace-search-control {
+  position: relative;
+}
+
+.workspace-command-menu {
+  background: var(--workspace-surface, #fffdf8);
+  border: 1px solid var(--workspace-border, rgba(7, 20, 31, 0.12));
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(7, 20, 31, 0.16);
+  min-width: min(360px, 80vw);
+  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 60;
+}
+
+.workspace-command-scope,
+.workspace-command-empty {
+  color: var(--muted);
+  font-size: 11px;
+  padding: 8px 10px;
+}
+
+.workspace-command-scope {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workspace-command-item {
+  border-radius: 9px;
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  text-decoration: none;
+}
+
+.workspace-command-item:hover,
+.workspace-command-item:focus-visible {
+  background: rgba(78, 230, 212, 0.1);
+}
+
+.workspace-command-item span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.workspace-command-item small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.logout-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: rgba(78, 230, 212, 0.1);
+  border-color: rgba(38, 113, 93, 0.18);
+  color: var(--ink);
+}
+
+.logout-button:disabled {
+  cursor: progress;
+  opacity: 0.65;
 }
 @keyframes workspace-panel-in {
   from {
