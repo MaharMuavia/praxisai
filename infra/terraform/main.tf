@@ -208,19 +208,39 @@ resource "google_cloud_run_v2_service" "api" {
       }
       env {
         name = "DATABASE_URL"
-        value_source { secret_key_ref { secret = google_secret_manager_secret.database_url.secret_id, version = "latest" } }
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_url.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         name = "SESSION_SECRET"
-        value_source { secret_key_ref { secret = google_secret_manager_secret.session_secret.secret_id, version = "latest" } }
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.session_secret.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         name = "CSRF_SECRET"
-        value_source { secret_key_ref { secret = google_secret_manager_secret.csrf_secret.secret_id, version = "latest" } }
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.csrf_secret.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         name = "DATABASE_MIGRATION_URL"
-        value_source { secret_key_ref { secret = google_secret_manager_secret.database_migration_url.secret_id, version = "latest" } }
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_migration_url.secret_id
+            version = "latest"
+          }
+        }
       }
     }
   }
@@ -241,11 +261,26 @@ resource "google_cloud_run_v2_service" "web" {
     containers {
       image = var.web_image
       ports { container_port = 3000 }
-      env { name = "API_BASE_URL" value = google_cloud_run_v2_service.api.uri }
-      env { name = "APP_ENV" value = var.environment }
-      env { name = "GOOGLE_CLOUD_PROJECT" value = var.project_id }
-      env { name = "NEXT_PUBLIC_APP_ENV" value = var.environment }
-      env { name = "NEXT_PUBLIC_DEMO_MODE" value = "false" }
+      env {
+        name  = "API_BASE_URL"
+        value = google_cloud_run_v2_service.api.uri
+      }
+      env {
+        name  = "APP_ENV"
+        value = var.environment
+      }
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+      env {
+        name  = "NEXT_PUBLIC_APP_ENV"
+        value = var.environment
+      }
+      env {
+        name  = "NEXT_PUBLIC_DEMO_MODE"
+        value = "false"
+      }
     }
   }
 }
