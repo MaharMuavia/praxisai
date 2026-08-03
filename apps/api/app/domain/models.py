@@ -895,6 +895,13 @@ class PublicIntakeSubmission(EntityMixin, Base):
     qualification_notes: Mapped[str | None] = mapped_column(Text)
     rejection_reason: Mapped[str | None] = mapped_column(Text)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    payload_hash: Mapped[str] = mapped_column(String(64), default="", index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    conversion_evidence: Mapped[str | None] = mapped_column(Text)
+    retention_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    withdrawal_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class RateLimitBucket(EntityMixin, Base):

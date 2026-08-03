@@ -506,7 +506,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Intake Detail */
+        get: operations["intake_detail_api_v1_ops_intake__submission_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1515,6 +1516,51 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** CompanyIntentCreate */
+        CompanyIntentCreate: {
+            /** Business Problem */
+            business_problem: string;
+            /** Campaign */
+            campaign?: string | null;
+            /** Company Name */
+            company_name: string;
+            /** Company Website */
+            company_website?: string | null;
+            /** Consent */
+            consent: boolean;
+            /** Country */
+            country: string;
+            /**
+             * Data Sensitivity
+             * @enum {string}
+             */
+            data_sensitivity: "public" | "internal" | "confidential" | "restricted";
+            /** Desired Result */
+            desired_result: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Honeypot
+             * @default
+             */
+            honeypot: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "company";
+            /** Project Category */
+            project_category: string;
+            /** Source */
+            source?: string | null;
+            /** Target Timeline */
+            target_timeline: string;
+        };
         /** CompensationShare */
         CompensationShare: {
             /** Amount Minor */
@@ -1718,6 +1764,47 @@ export interface components {
             status: string;
             /** Supervision Level */
             supervision_level: string;
+        };
+        /** ExpertLeadInquiryCreate */
+        ExpertLeadInquiryCreate: {
+            /** Campaign */
+            campaign?: string | null;
+            /** Consent */
+            consent: boolean;
+            /** Country */
+            country: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Honeypot
+             * @default
+             */
+            honeypot: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "expert_lead";
+            /**
+             * Profile Url
+             * Format: uri
+             */
+            profile_url: string;
+            /** Rate Expectations */
+            rate_expectations?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Technical Specializations */
+            technical_specializations: string;
+            /** Weekly Availability */
+            weekly_availability: number;
+            /** Years Experience */
+            years_experience: number;
         };
         /** ExternalFundingRequest */
         ExternalFundingRequest: {
@@ -2580,111 +2667,39 @@ export interface components {
              * Format: date-time
              */
             received_at: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "NEW" | "IN_REVIEW" | "QUALIFIED" | "REJECTED" | "CONVERTED";
+            status: components["schemas"]["PublicIntakeStatus"];
         };
-        /** PublicIntakeSubmissionCreate */
-        PublicIntakeSubmissionCreate: {
-            /** Accessibility Needs */
-            accessibility_needs?: string | null;
-            /** Budget Range */
-            budget_range?: string | null;
-            /** Business Problem */
-            business_problem?: string | null;
-            /** Campaign */
-            campaign?: string | null;
-            /** Cohort Size */
-            cohort_size?: number | null;
-            /** Company Name */
-            company_name?: string | null;
-            /** Company Website */
-            company_website?: string | null;
-            /** Consent */
-            consent: boolean;
-            /** Country */
-            country: string;
-            /** Current Process */
-            current_process?: string | null;
-            /** Data Sensitivity */
-            data_sensitivity?: ("public" | "internal" | "confidential" | "restricted") | null;
-            /** Desired Result */
-            desired_result?: string | null;
-            /** Education Status */
-            education_status?: string | null;
-            /** Email */
-            email: string;
-            /** Experience Summary */
-            experience_summary?: string | null;
-            /** Full Name */
-            full_name: string;
-            /** Github Url */
-            github_url?: string | null;
-            /**
-             * Honeypot
-             * @default
-             */
-            honeypot: string;
-            /** Institution */
-            institution?: string | null;
-            /** Integrations */
-            integrations?: string | null;
-            /** Intended Purpose */
-            intended_purpose?: string | null;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "company" | "student" | "expert_lead" | "university";
-            /** Linkedin Url */
-            linkedin_url?: string | null;
-            /** Portfolio Url */
-            portfolio_url?: string | null;
-            /** Privacy Requirements */
-            privacy_requirements?: string | null;
-            /** Project Category */
-            project_category?: string | null;
-            /** Rate Expectations */
-            rate_expectations?: string | null;
-            /** Role */
-            role?: string | null;
-            /** Source */
-            source?: string | null;
-            /** Target Timeline */
-            target_timeline?: string | null;
-            /** Technical Specializations */
-            technical_specializations?: string | null;
-            /** Technical Track */
-            technical_track?: string | null;
-            /** Timezone */
-            timezone?: string | null;
-            /** Weekly Availability */
-            weekly_availability?: number | null;
-            /** Years Experience */
-            years_experience?: number | null;
-        };
+        /**
+         * PublicIntakeStatus
+         * @enum {string}
+         */
+        PublicIntakeStatus: "NEW" | "IN_REVIEW" | "QUALIFIED" | "REJECTED" | "CONVERTED";
         /** PublicIntakeSubmissionUpdate */
         PublicIntakeSubmissionUpdate: {
+            /** Conversion Evidence */
+            conversion_evidence?: string | null;
+            /** Expected Version */
+            expected_version: number;
             /** Owner Id */
             owner_id?: string | null;
             /** Qualification Notes */
             qualification_notes?: string | null;
             /** Rejection Reason */
             rejection_reason?: string | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "NEW" | "IN_REVIEW" | "QUALIFIED" | "REJECTED" | "CONVERTED";
+            /** Reopen Reason */
+            reopen_reason?: string | null;
+            status: components["schemas"]["PublicIntakeStatus"];
         };
         /** PublicIntakeSubmissionView */
         PublicIntakeSubmissionView: {
+            /** Anonymized At */
+            anonymized_at: string | null;
             /** Campaign */
             campaign: string | null;
             /** Contact Email */
             contact_email: string;
+            /** Conversion Evidence */
+            conversion_evidence: string | null;
             /**
              * Correlation Id
              * Format: uuid
@@ -2715,15 +2730,15 @@ export interface components {
             qualification_notes: string | null;
             /** Rejection Reason */
             rejection_reason: string | null;
+            /** Retention Expires At */
+            retention_expires_at: string | null;
             /** Reviewed At */
             reviewed_at: string | null;
             /** Source */
             source: string | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "NEW" | "IN_REVIEW" | "QUALIFIED" | "REJECTED" | "CONVERTED";
+            status: components["schemas"]["PublicIntakeStatus"];
+            /** Version */
+            version: number;
         };
         /** QAReviewView */
         QAReviewView: {
@@ -3069,6 +3084,50 @@ export interface components {
             /** Weights Version */
             weights_version: string;
         };
+        /** StudentApplicationCreate */
+        StudentApplicationCreate: {
+            /** Accessibility Needs */
+            accessibility_needs?: string | null;
+            /** Campaign */
+            campaign?: string | null;
+            /** Consent */
+            consent: boolean;
+            /** Country */
+            country: string;
+            /** Education Status */
+            education_status: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Experience Summary */
+            experience_summary: string;
+            /** Full Name */
+            full_name: string;
+            /** Github Url */
+            github_url?: string | null;
+            /**
+             * Honeypot
+             * @default
+             */
+            honeypot: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "student";
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Technical Track */
+            technical_track: string;
+            /** Weekly Availability */
+            weekly_availability: number;
+        };
         /** StudentCredentialView */
         StudentCredentialView: {
             /**
@@ -3245,6 +3304,44 @@ export interface components {
             status: string;
             /** Storage Key */
             storage_key: string | null;
+        };
+        /** UniversityInquiryCreate */
+        UniversityInquiryCreate: {
+            /** Campaign */
+            campaign?: string | null;
+            /** Cohort Context */
+            cohort_context: string;
+            /** Consent */
+            consent: boolean;
+            /** Country */
+            country: string;
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Honeypot
+             * @default
+             */
+            honeypot: string;
+            /** Institution */
+            institution: string;
+            /** Intended Purpose */
+            intended_purpose: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "university";
+            /** Privacy Requirements */
+            privacy_requirements: string;
+            /** Role */
+            role: string;
+            /** Source */
+            source?: string | null;
         };
         /** UniversityMetrics */
         UniversityMetrics: {
@@ -4272,6 +4369,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicIntakeSubmissionView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intake_detail_api_v1_ops_intake__submission_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIntakeSubmissionView"];
                 };
             };
             /** @description Validation Error */
@@ -5644,7 +5774,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PublicIntakeSubmissionCreate"];
+                "application/json": components["schemas"]["CompanyIntentCreate"] | components["schemas"]["StudentApplicationCreate"] | components["schemas"]["ExpertLeadInquiryCreate"] | components["schemas"]["UniversityInquiryCreate"];
             };
         };
         responses: {

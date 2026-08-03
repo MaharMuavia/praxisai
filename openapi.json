@@ -462,6 +462,136 @@
         "title": "ClientInvoiceView",
         "type": "object"
       },
+      "CompanyIntentCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "business_problem": {
+            "maxLength": 4000,
+            "minLength": 20,
+            "title": "Business Problem",
+            "type": "string"
+          },
+          "campaign": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign"
+          },
+          "company_name": {
+            "maxLength": 200,
+            "minLength": 2,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "company_website": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Website"
+          },
+          "consent": {
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "country": {
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Country",
+            "type": "string"
+          },
+          "data_sensitivity": {
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "restricted"
+            ],
+            "title": "Data Sensitivity",
+            "type": "string"
+          },
+          "desired_result": {
+            "maxLength": 4000,
+            "minLength": 10,
+            "title": "Desired Result",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "honeypot": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Honeypot",
+            "type": "string"
+          },
+          "kind": {
+            "const": "company",
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_category": {
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Project Category",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "target_timeline": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Target Timeline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "full_name",
+          "email",
+          "country",
+          "consent",
+          "kind",
+          "company_name",
+          "business_problem",
+          "desired_result",
+          "project_category",
+          "target_timeline",
+          "data_sensitivity"
+        ],
+        "title": "CompanyIntentCreate",
+        "type": "object"
+      },
       "CompensationShare": {
         "properties": {
           "amount_minor": {
@@ -1009,6 +1139,117 @@
           "proposals"
         ],
         "title": "EmployerOpportunityView",
+        "type": "object"
+      },
+      "ExpertLeadInquiryCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign"
+          },
+          "consent": {
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "country": {
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Country",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "honeypot": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Honeypot",
+            "type": "string"
+          },
+          "kind": {
+            "const": "expert_lead",
+            "title": "Kind",
+            "type": "string"
+          },
+          "profile_url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Profile Url",
+            "type": "string"
+          },
+          "rate_expectations": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Expectations"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "technical_specializations": {
+            "maxLength": 2000,
+            "minLength": 2,
+            "title": "Technical Specializations",
+            "type": "string"
+          },
+          "weekly_availability": {
+            "maximum": 80.0,
+            "minimum": 1.0,
+            "title": "Weekly Availability",
+            "type": "integer"
+          },
+          "years_experience": {
+            "maximum": 70.0,
+            "minimum": 1.0,
+            "title": "Years Experience",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "full_name",
+          "email",
+          "country",
+          "consent",
+          "kind",
+          "technical_specializations",
+          "years_experience",
+          "weekly_availability",
+          "profile_url"
+        ],
+        "title": "ExpertLeadInquiryCreate",
         "type": "object"
       },
       "ExternalFundingRequest": {
@@ -3100,15 +3341,7 @@
             "type": "string"
           },
           "status": {
-            "enum": [
-              "NEW",
-              "IN_REVIEW",
-              "QUALIFIED",
-              "REJECTED",
-              "CONVERTED"
-            ],
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/PublicIntakeStatus"
           }
         },
         "required": [
@@ -3121,426 +3354,37 @@
         "title": "PublicIntakeReceipt",
         "type": "object"
       },
-      "PublicIntakeSubmissionCreate": {
-        "properties": {
-          "accessibility_needs": {
-            "anyOf": [
-              {
-                "maxLength": 2000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Accessibility Needs"
-          },
-          "budget_range": {
-            "anyOf": [
-              {
-                "maxLength": 80,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Budget Range"
-          },
-          "business_problem": {
-            "anyOf": [
-              {
-                "maxLength": 4000,
-                "minLength": 20,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Business Problem"
-          },
-          "campaign": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Campaign"
-          },
-          "cohort_size": {
-            "anyOf": [
-              {
-                "maximum": 10000000.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cohort Size"
-          },
-          "company_name": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Company Name"
-          },
-          "company_website": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Company Website"
-          },
-          "consent": {
-            "title": "Consent",
-            "type": "boolean"
-          },
-          "country": {
-            "maxLength": 80,
-            "minLength": 2,
-            "title": "Country",
-            "type": "string"
-          },
-          "current_process": {
-            "anyOf": [
-              {
-                "maxLength": 4000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current Process"
-          },
-          "data_sensitivity": {
-            "anyOf": [
-              {
-                "enum": [
-                  "public",
-                  "internal",
-                  "confidential",
-                  "restricted"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Sensitivity"
-          },
-          "desired_result": {
-            "anyOf": [
-              {
-                "maxLength": 4000,
-                "minLength": 10,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Desired Result"
-          },
-          "education_status": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Education Status"
-          },
-          "email": {
-            "maxLength": 320,
-            "minLength": 5,
-            "title": "Email",
-            "type": "string"
-          },
-          "experience_summary": {
-            "anyOf": [
-              {
-                "maxLength": 4000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Experience Summary"
-          },
-          "full_name": {
-            "maxLength": 160,
-            "minLength": 2,
-            "title": "Full Name",
-            "type": "string"
-          },
-          "github_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Github Url"
-          },
-          "honeypot": {
-            "default": "",
-            "maxLength": 200,
-            "title": "Honeypot",
-            "type": "string"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "integrations": {
-            "anyOf": [
-              {
-                "maxLength": 2000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Integrations"
-          },
-          "intended_purpose": {
-            "anyOf": [
-              {
-                "maxLength": 4000,
-                "minLength": 20,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Intended Purpose"
-          },
-          "kind": {
-            "enum": [
-              "company",
-              "student",
-              "expert_lead",
-              "university"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
-          "linkedin_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Linkedin Url"
-          },
-          "portfolio_url": {
-            "anyOf": [
-              {
-                "format": "uri",
-                "maxLength": 2083,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Portfolio Url"
-          },
-          "privacy_requirements": {
-            "anyOf": [
-              {
-                "maxLength": 4000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Privacy Requirements"
-          },
-          "project_category": {
-            "anyOf": [
-              {
-                "maxLength": 80,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Project Category"
-          },
-          "rate_expectations": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rate Expectations"
-          },
-          "role": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Role"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "target_timeline": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Target Timeline"
-          },
-          "technical_specializations": {
-            "anyOf": [
-              {
-                "maxLength": 2000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Technical Specializations"
-          },
-          "technical_track": {
-            "anyOf": [
-              {
-                "maxLength": 120,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Technical Track"
-          },
-          "timezone": {
-            "anyOf": [
-              {
-                "maxLength": 80,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timezone"
-          },
-          "weekly_availability": {
-            "anyOf": [
-              {
-                "maximum": 80.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Weekly Availability"
-          },
-          "years_experience": {
-            "anyOf": [
-              {
-                "maximum": 70.0,
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Years Experience"
-          }
-        },
-        "required": [
-          "kind",
-          "full_name",
-          "email",
-          "country",
-          "consent"
+      "PublicIntakeStatus": {
+        "enum": [
+          "NEW",
+          "IN_REVIEW",
+          "QUALIFIED",
+          "REJECTED",
+          "CONVERTED"
         ],
-        "title": "PublicIntakeSubmissionCreate",
-        "type": "object"
+        "title": "PublicIntakeStatus",
+        "type": "string"
       },
       "PublicIntakeSubmissionUpdate": {
+        "additionalProperties": false,
         "properties": {
+          "conversion_evidence": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversion Evidence"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
           "owner_id": {
             "anyOf": [
               {
@@ -3577,26 +3421,43 @@
             ],
             "title": "Rejection Reason"
           },
-          "status": {
-            "enum": [
-              "NEW",
-              "IN_REVIEW",
-              "QUALIFIED",
-              "REJECTED",
-              "CONVERTED"
+          "reopen_reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Status",
-            "type": "string"
+            "title": "Reopen Reason"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicIntakeStatus"
           }
         },
         "required": [
-          "status"
+          "status",
+          "expected_version"
         ],
         "title": "PublicIntakeSubmissionUpdate",
         "type": "object"
       },
       "PublicIntakeSubmissionView": {
         "properties": {
+          "anonymized_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymized At"
+          },
           "campaign": {
             "anyOf": [
               {
@@ -3611,6 +3472,17 @@
           "contact_email": {
             "title": "Contact Email",
             "type": "string"
+          },
+          "conversion_evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversion Evidence"
           },
           "correlation_id": {
             "format": "uuid",
@@ -3676,6 +3548,18 @@
             ],
             "title": "Rejection Reason"
           },
+          "retention_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Expires At"
+          },
           "reviewed_at": {
             "anyOf": [
               {
@@ -3700,15 +3584,11 @@
             "title": "Source"
           },
           "status": {
-            "enum": [
-              "NEW",
-              "IN_REVIEW",
-              "QUALIFIED",
-              "REJECTED",
-              "CONVERTED"
-            ],
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/PublicIntakeStatus"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
@@ -3724,7 +3604,11 @@
           "rejection_reason",
           "reviewed_at",
           "created_at",
-          "correlation_id"
+          "correlation_id",
+          "version",
+          "conversion_evidence",
+          "retention_expires_at",
+          "anonymized_at"
         ],
         "title": "PublicIntakeSubmissionView",
         "type": "object"
@@ -4443,6 +4327,158 @@
         "title": "StaffingRunView",
         "type": "object"
       },
+      "StudentApplicationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "accessibility_needs": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessibility Needs"
+          },
+          "campaign": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign"
+          },
+          "consent": {
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "country": {
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Country",
+            "type": "string"
+          },
+          "education_status": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Education Status",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "experience_summary": {
+            "maxLength": 4000,
+            "minLength": 20,
+            "title": "Experience Summary",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "github_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Url"
+          },
+          "honeypot": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Honeypot",
+            "type": "string"
+          },
+          "kind": {
+            "const": "student",
+            "title": "Kind",
+            "type": "string"
+          },
+          "linkedin_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin Url"
+          },
+          "portfolio_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Url"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "technical_track": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Technical Track",
+            "type": "string"
+          },
+          "weekly_availability": {
+            "maximum": 80.0,
+            "minimum": 1.0,
+            "title": "Weekly Availability",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "full_name",
+          "email",
+          "country",
+          "consent",
+          "kind",
+          "education_status",
+          "technical_track",
+          "weekly_availability",
+          "experience_summary"
+        ],
+        "title": "StudentApplicationCreate",
+        "type": "object"
+      },
       "StudentCredentialView": {
         "properties": {
           "id": {
@@ -4906,6 +4942,111 @@
           "created_at"
         ],
         "title": "UniversityExportView",
+        "type": "object"
+      },
+      "UniversityInquiryCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign"
+          },
+          "cohort_context": {
+            "maxLength": 2000,
+            "minLength": 2,
+            "title": "Cohort Context",
+            "type": "string"
+          },
+          "consent": {
+            "title": "Consent",
+            "type": "boolean"
+          },
+          "country": {
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Country",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "honeypot": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Honeypot",
+            "type": "string"
+          },
+          "institution": {
+            "maxLength": 200,
+            "minLength": 2,
+            "title": "Institution",
+            "type": "string"
+          },
+          "intended_purpose": {
+            "maxLength": 4000,
+            "minLength": 20,
+            "title": "Intended Purpose",
+            "type": "string"
+          },
+          "kind": {
+            "const": "university",
+            "title": "Kind",
+            "type": "string"
+          },
+          "privacy_requirements": {
+            "maxLength": 4000,
+            "minLength": 20,
+            "title": "Privacy Requirements",
+            "type": "string"
+          },
+          "role": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "required": [
+          "full_name",
+          "email",
+          "country",
+          "consent",
+          "kind",
+          "institution",
+          "role",
+          "intended_purpose",
+          "cohort_context",
+          "privacy_requirements"
+        ],
+        "title": "UniversityInquiryCreate",
         "type": "object"
       },
       "UniversityMetrics": {
@@ -6782,6 +6923,63 @@
       }
     },
     "/api/v1/ops/intake/{submission_id}": {
+      "get": {
+        "operationId": "intake_detail_api_v1_ops_intake__submission_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIntakeSubmissionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Intake Detail",
+        "tags": [
+          "public intake"
+        ]
+      },
       "patch": {
         "operationId": "review_intake_api_v1_ops_intake__submission_id__patch",
         "parameters": [
@@ -9373,7 +9571,30 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PublicIntakeSubmissionCreate"
+                "discriminator": {
+                  "mapping": {
+                    "company": "#/components/schemas/CompanyIntentCreate",
+                    "expert_lead": "#/components/schemas/ExpertLeadInquiryCreate",
+                    "student": "#/components/schemas/StudentApplicationCreate",
+                    "university": "#/components/schemas/UniversityInquiryCreate"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CompanyIntentCreate"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StudentApplicationCreate"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExpertLeadInquiryCreate"
+                  },
+                  {
+                    "$ref": "#/components/schemas/UniversityInquiryCreate"
+                  }
+                ],
+                "title": "Body"
               }
             }
           },

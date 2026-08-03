@@ -62,3 +62,11 @@ class EnvironmentLabel(StrEnum):
 class CredentialStatus(StrEnum):
     VALID = "VALID"
     REVOKED = "REVOKED"
+
+
+class PublicIntakeStatus(StrEnum):
+    NEW = "NEW"
+    IN_REVIEW = "IN_REVIEW"
+    QUALIFIED = "QUALIFIED"
+    REJECTED = "REJECTED"
+    CONVERTED = "CONVERTED"
