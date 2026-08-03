@@ -1040,6 +1040,78 @@
   line-height: 1.6;
 }
 
+.public-intake-card {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid var(--line-strong);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--surface) 92%, var(--accent) 8%);
+}
+
+.public-intake-heading {
+  max-width: 44rem;
+}
+.public-intake-heading h2 {
+  margin: 0.35rem 0 0.75rem;
+}
+.public-intake-heading p {
+  color: var(--muted);
+}
+.public-intake-form {
+  display: grid;
+  gap: 1rem;
+}
+.public-intake-form label {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--ink);
+  font-weight: 650;
+}
+.public-intake-form input,
+.public-intake-form select,
+.public-intake-form textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.65rem;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.75rem 0.85rem;
+  font: inherit;
+}
+.public-intake-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.public-intake-consent {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  font-weight: 500 !important;
+}
+.public-intake-consent input {
+  width: 1rem;
+  margin-top: 0.2rem;
+}
+.public-intake-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.public-intake-card .field-error {
+  color: #b42318;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 700px) {
+  .public-intake-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .route-disclaimer {
   margin: 22px 0 0;
   max-width: 720px;

@@ -18,11 +18,30 @@ export type WorkspaceRoot =
   | "ops"
   | "admin"
   | "university";
-export type NavigationItem = readonly [
+export type WorkspaceNavigationItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  requiredCapabilities?: string[];
+  match: (pathname: string) => boolean;
+};
+
+type SessionNavigationContext = {
+  capabilities?: string[] | null;
+};
+
+const item = (
   label: string,
   href: string,
   icon: LucideIcon,
-];
+  requiredCapabilities?: string[],
+): WorkspaceNavigationItem => ({
+  label,
+  href,
+  icon,
+  requiredCapabilities,
+  match: (pathname) => isNavigationItemActive(pathname, href, label),
+});
 
 export function isNavigationItemActive(
   path: string,
@@ -42,52 +61,83 @@ export function isNavigationItemActive(
     : path === href || path.startsWith(`${href}/`);
 }
 
-export const navigation: Record<WorkspaceRoot, readonly NavigationItem[]> = {
+export const navigation: Record<
+  WorkspaceRoot,
+  readonly WorkspaceNavigationItem[]
+> = {
   client: [
-    ["Overview", "/client", LayoutDashboard],
-    ["Projects", "/client/projects", BriefcaseBusiness],
-    ["Student proposals", "/client/proposals", Users],
-    ["Publish opportunity", "/client/opportunities/new", Send],
-    ["Invoices", "/client/invoices", FileCheck2],
-    ["Organization", "/client/organization", Users],
+    item("Overview", "/client", LayoutDashboard, ["projects:view"]),
+    item("Projects", "/client/projects", BriefcaseBusiness, ["projects:view"]),
+    item("Student proposals", "/client/proposals", Users, ["proposals:decide"]),
+    item("Publish opportunity", "/client/opportunities/new", Send, [
+      "opportunities:publish",
+    ]),
+    item("Invoices", "/client/invoices", FileCheck2, ["payments:view"]),
+    item("Organization", "/client/organization", Users, ["members:manage"]),
   ],
   student: [
-    ["Overview", "/student", LayoutDashboard],
-    ["Learn", "/student/learn", BookOpen],
-    ["Paid projects", "/student/opportunities", Search],
-    ["My proposals", "/student/proposals", Send],
-    ["Offers", "/student/offers", FileCheck2],
-    ["Projects", "/student/projects", BriefcaseBusiness],
-    ["Earnings", "/student/earnings", FileCheck2],
-    ["Credentials", "/student/credentials", Shield],
+    item("Overview", "/student", LayoutDashboard),
+    item("Learn", "/student/learn", BookOpen, ["learning:participate"]),
+    item("Paid projects", "/student/opportunities", Search, [
+      "opportunities:view",
+    ]),
+    item("My proposals", "/student/proposals", Send, ["proposals:create"]),
+    item("Offers", "/student/offers", FileCheck2, ["offers:decide"]),
+    item("Projects", "/student/projects", BriefcaseBusiness, ["work:submit"]),
+    item("Earnings", "/student/earnings", FileCheck2),
+    item("Credentials", "/student/credentials", Shield, ["credentials:view"]),
   ],
   lead: [
-    ["Overview", "/lead", LayoutDashboard],
-    ["Offers", "/lead/offers", FileCheck2],
-    ["Reviews", "/lead", BriefcaseBusiness],
-    ["Earnings", "/lead/earnings", Shield],
+    item("Overview", "/lead", LayoutDashboard),
+    item("Offers", "/lead/offers", FileCheck2, ["offers:decide"]),
+    item("Reviews", "/lead", BriefcaseBusiness, ["plans:review"]),
+    item("Earnings", "/lead/earnings", Shield),
   ],
   ops: [
-    ["Operations", "/ops", LayoutDashboard],
-    ["Approvals", "/ops/approvals", FileCheck2],
-    ["Risks", "/ops/risks", Shield],
-    ["Projects", "/ops/projects", BriefcaseBusiness],
-    ["People", "/ops/students", Users],
-    ["Agent runs", "/ops/agent-runs", Shield],
+    item("Operations", "/ops", LayoutDashboard, ["projects:operate"]),
+    item("Approvals", "/ops/approvals", FileCheck2, ["approvals:decide"]),
+    item("Risks", "/ops/risks", Shield, ["projects:operate"]),
+    item("Projects", "/ops/projects", BriefcaseBusiness, ["projects:operate"]),
+    item("People", "/ops/students", Users, ["projects:operate"]),
+    item("Agent runs", "/ops/agent-runs", Shield, ["projects:operate"]),
+    item("Intake", "/ops/intake", Users, ["projects:operate"]),
   ],
   admin: [
-    ["Platform health", "/admin", LayoutDashboard],
-    ["Access", "/admin/access", Users],
-    ["Integrations", "/admin/integrations", Settings],
-    ["Jobs", "/admin/jobs", BriefcaseBusiness],
+    item("Platform health", "/admin", LayoutDashboard, ["platform:configure"]),
+    item("Access", "/admin/access", Users, ["access:manage"]),
+    item("Integrations", "/admin/integrations", Settings, [
+      "platform:configure",
+    ]),
+    item("Jobs", "/admin/jobs", BriefcaseBusiness, ["jobs:retry"]),
   ],
   university: [
-    ["Outcomes", "/university", LayoutDashboard],
-    ["Students", "/university/students", Users],
-    ["Exports", "/university/exports", FileCheck2],
-    ["Settings", "/university/settings", Settings],
+    item("Outcomes", "/university", LayoutDashboard, [
+      "university:aggregate:view",
+    ]),
+    item("Students", "/university/students", Users, [
+      "university:consented:view",
+    ]),
+    item("Exports", "/university/exports", FileCheck2, [
+      "university:consented:view",
+    ]),
+    item("Settings", "/university/settings", Settings, [
+      "university:aggregate:view",
+    ]),
   ],
 };
+
+export function visibleNavigation(
+  root: WorkspaceRoot,
+  session: SessionNavigationContext | null,
+) {
+  if (session === null) return navigation[root];
+  const capabilities = new Set(session?.capabilities ?? []);
+  return navigation[root].filter((entry) =>
+    (entry.requiredCapabilities ?? []).every((capability) =>
+      capabilities.has(capability),
+    ),
+  );
+}
 
 export function rootFor(path: string): WorkspaceRoot {
   if (path.startsWith("/student")) return "student";

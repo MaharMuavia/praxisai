@@ -6,7 +6,8 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
+    gracefulShutdown: { signal: "SIGINT", timeout: 5000 },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

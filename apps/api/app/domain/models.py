@@ -880,6 +880,23 @@ class ProviderSynchronization(EntityMixin, Base):
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class PublicIntakeSubmission(EntityMixin, Base):
+    __tablename__ = "public_intake_submissions"
+    kind: Mapped[str] = mapped_column(String(32), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="NEW", index=True)
+    contact_email: Mapped[str] = mapped_column(String(320), index=True)
+    source: Mapped[str | None] = mapped_column(String(120))
+    campaign: Mapped[str | None] = mapped_column(String(120))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    consent_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), index=True)
+    qualification_notes: Mapped[str | None] = mapped_column(Text)
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class RateLimitBucket(EntityMixin, Base):
     __tablename__ = "rate_limit_buckets"
     bucket_key: Mapped[str] = mapped_column(String(128), unique=True)

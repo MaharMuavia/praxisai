@@ -8,17 +8,14 @@ import {
   WorkspaceCommandMenu,
   type WorkspaceSearchItem,
 } from "./workspace-command-menu";
-import {
-  isNavigationItemActive,
-  navigation,
-  type WorkspaceRoot,
-} from "./workspace-navigation";
+import { visibleNavigation, type WorkspaceRoot } from "./workspace-navigation";
 import { demoEnvironment } from "../lib/demo-environment";
 
 type SessionSummary = {
   display_name?: string | null;
   environment_label?: string | null;
   active_membership?: { organization_name?: string | null } | null;
+  capabilities?: string[] | null;
 };
 
 type WorkspaceNotification = {
@@ -128,16 +125,18 @@ export function WorkspaceSidebar({
         ) : null}
         <div className="nav-group">Workspace</div>
         <nav aria-label={`${root} workspace navigation`}>
-          {navigation[root].map(([label, href, Icon]) => (
-            <Link
-              key={href + label}
-              className={`nav-link ${isNavigationItemActive(path, href, label) ? "active" : ""}`}
-              href={href}
-              onClick={closeAndRestore}
-            >
-              <Icon size={17} /> {label}
-            </Link>
-          ))}
+          {visibleNavigation(root, session).map(
+            ({ label, href, icon: Icon, match }) => (
+              <Link
+                key={href + label}
+                className={`nav-link ${match(path) ? "active" : ""}`}
+                href={href}
+                onClick={closeAndRestore}
+              >
+                <Icon size={17} /> {label}
+              </Link>
+            ),
+          )}
         </nav>
         <div className="sidebar-foot">
           <Link className="nav-link" href="/trust" onClick={closeAndRestore}>

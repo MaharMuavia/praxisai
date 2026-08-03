@@ -1,6 +1,7 @@
 "use client";
 
 import { praxisFetch, type components } from "@praxisai/api-client";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { type FormEvent, useRef, useState } from "react";
@@ -18,12 +19,13 @@ import {
   WorkspacePageHeader,
   WorkspaceSidebar,
 } from "./workspace-layout";
-import { navigation, rootFor } from "./workspace-navigation";
+import { rootFor, visibleNavigation } from "./workspace-navigation";
 import { apiBase } from "../lib/api";
 import { demoEnvironment } from "../lib/demo-environment";
 import type { WorkspaceSearchItem } from "./workspace-command-menu";
 import { getFirebaseAuth } from "../lib/firebase";
 import { useWorkspaceData } from "./workspace/use-workspace-data";
+import { resolveWorkspacePrimaryAction } from "../lib/workspace-actions";
 
 type OperationsJob = components["schemas"]["OperationsJobView"];
 type UniversityExport = components["schemas"]["UniversityExportView"];
@@ -53,6 +55,7 @@ export function AppShell({
   const [globalSearch, setGlobalSearch] = useState("");
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const root = rootFor(path);
   const projectDetailMatch = path.match(
@@ -278,7 +281,12 @@ export function AppShell({
       if (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
         await signOut(getFirebaseAuth());
       }
+      await queryClient.cancelQueries();
+      queryClient.clear();
       setGlobalSearch("");
+      setNotificationOpen(false);
+      setMobileNavOpen(false);
+      window.history.replaceState(null, "", "/login");
       window.location.assign("/login");
     } catch (reason: unknown) {
       setLogoutError(
@@ -328,7 +336,7 @@ export function AppShell({
           ];
 
   const searchItems: WorkspaceSearchItem[] = [
-    ...navigation[root].map(([label, href]) => ({
+    ...visibleNavigation(root, session).map(({ label, href }) => ({
       label,
       href,
       detail: "Workspace navigation",
@@ -341,6 +349,12 @@ export function AppShell({
       kind: "record" as const,
     })),
   ];
+  const primaryAction = resolveWorkspacePrimaryAction({
+    path,
+    root,
+    session,
+    projects,
+  });
 
   return (
     <div className="app-layout">
@@ -419,21 +433,14 @@ export function AppShell({
                               ? "Project command center"
                               : "Authorized project records"}
               </h2>
-              {root !== "admin" &&
-                root !== "university" &&
-                !hasCareerWorkspace &&
-                path !== "/client/projects/new" && (
-                  <Link
-                    className="button button-primary"
-                    href={
-                      root === "client"
-                        ? "/client/projects/new"
-                        : `${path}/settings`
-                    }
-                  >
-                    Next action
-                  </Link>
-                )}
+              {primaryAction?.href ? (
+                <Link
+                  className="button button-primary"
+                  href={primaryAction.href}
+                >
+                  {primaryAction.label}
+                </Link>
+              ) : null}
             </div>
             {studentCareerPage ? (
               <StudentCareerWorkspace page={studentCareerPage} />

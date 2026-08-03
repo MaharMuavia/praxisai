@@ -8,6 +8,7 @@ export const talentKeys = {
   all: ["talent"] as const,
   opportunities: ["talent", "opportunities"] as const,
   proposals: ["talent", "proposals"] as const,
+  reviewQueue: ["talent", "review-queue"] as const,
 };
 export const opportunitiesQuery = () =>
   queryOptions({

@@ -1,6 +1,6 @@
-import { AppShell } from "@/components/app-shell";
 import { ContentPage } from "@/components/content-page";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 const publicPages: Record<
   string,
@@ -184,10 +184,10 @@ const publicPages: Record<
     description:
       "Tell us whether you are bringing a project, preparing for paid work, supervising technical delivery, or exploring a university partnership.",
     points: [
-      "The public contact form is not yet connected to a production intake endpoint, so this page does not pretend to submit a request.",
-      "Companies can use the authenticated project intake once their organization has an active workspace.",
-      "Students can review the preparation path and begin through the supported account flow when applications are enabled.",
-      "Partnership and expert-lead workflows require an operator-configured intake capability before they can accept records.",
+      "Public submissions create a privacy-safe intake record for human review and return a support correlation ID.",
+      "Companies can also use the authenticated project intake once their organization has an active workspace.",
+      "Students, expert leads, and universities can submit context without creating an account first.",
+      "No unrelated marketing communication is sent without separate consent.",
     ],
   },
   "how-it-works/clients": {
@@ -297,65 +297,6 @@ const publicPages: Record<
   },
 };
 
-const descriptions: Record<string, string> = {
-  client:
-    "Projects, decisions, funding, milestones, and released deliverables for the active client organization.",
-  student:
-    "Offers, supervised delivery work, earnings, appeals, portfolio controls, and verified project credentials.",
-  lead: "Compensated supervision, plan reviews, delivery evidence, technical recommendations, and declared conflicts.",
-  ops: "Human approval queues, delivery risk, funding exceptions, agent evidence, appeals, payouts, and audit history.",
-  admin:
-    "Integration status, failed jobs, access controls, retention configuration, and production safety warnings.",
-  university:
-    "Consented student evidence and privacy-safe cohort outcomes under an active institutional agreement.",
-};
-
-const workspacePageMetadata: Record<
-  string,
-  { title: string; description: string }
-> = {
-  client: {
-    title: "Employer workspace",
-    description:
-      "Turn business needs into supervised paid projects, compare student evidence, and make accountable hiring decisions.",
-  },
-  "client/proposals": {
-    title: "Student proposals",
-    description:
-      "Compare each student's approach, delivery plan, evidence, price, and availability before recording a decision.",
-  },
-  "client/opportunities/new": {
-    title: "Publish a paid project",
-    description:
-      "Give students the business context, deliverables, skills, supervision, budget, and proposal requirements they need.",
-  },
-  "client/projects/new": {
-    title: "Create a project",
-    description:
-      "Capture the outcome, delivery boundaries, and guardrails used to create the immutable client intake snapshot.",
-  },
-  student: {
-    title: "Career launchpad",
-    description:
-      "Build practical skills, prove them through project evidence, and compete for transparent paid opportunities.",
-  },
-  "student/learn": {
-    title: "Learn real project skills",
-    description:
-      "Follow structured paths built around briefs, practice work, feedback, and evidence you can use in proposals.",
-  },
-  "student/opportunities": {
-    title: "Paid project opportunities",
-    description:
-      "Review complete employer briefs and submit a professional proposal without hidden work or unpaid trials.",
-  },
-  "student/proposals": {
-    title: "My project proposals",
-    description:
-      "Track every proposal, employer decision, commercial term, and next step from one auditable record.",
-  },
-};
-
 function titleFrom(path: string) {
   const segment = path.split("/").at(-1) ?? "Overview";
   if (/^[0-9a-f-]{20,}$/i.test(segment)) return "Project command center";
@@ -393,18 +334,7 @@ export default async function CatchAllPage({
   if (
     ["client", "student", "lead", "ops", "admin", "university"].includes(root)
   ) {
-    const pageMetadata = workspacePageMetadata[path];
-    return (
-      <AppShell
-        path={`/${path}`}
-        title={pageMetadata?.title ?? titleFrom(path)}
-        description={
-          pageMetadata?.description ??
-          descriptions[root] ??
-          "Authorized workspace"
-        }
-      />
-    );
+    notFound();
   }
   if (["signup", "auth", "invite", "onboarding", "portfolio"].includes(root)) {
     return (
