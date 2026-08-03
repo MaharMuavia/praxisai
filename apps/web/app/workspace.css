@@ -1740,6 +1740,168 @@ select {
   }
 }
 
+.agent-operations-center {
+  display: grid;
+  gap: 18px;
+}
+.agent-operations-center > .demo-boundary-notice {
+  margin-bottom: 2px;
+}
+.agent-ops-metrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+}
+.agent-ops-metrics > div {
+  background: var(--workspace-surface, #fff);
+  border: 1px solid var(--workspace-border, #d7e0dc);
+  border-radius: 12px;
+  display: grid;
+  gap: 5px;
+  padding: 18px;
+}
+.agent-ops-metrics span,
+.agent-ops-metrics small,
+.agent-ops-label {
+  color: var(--workspace-muted, #62736e);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.agent-ops-metrics strong {
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+.agent-ops-metrics small {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.agent-ops-metrics small svg {
+  color: #287453;
+}
+.agent-ops-panel {
+  padding: 0;
+}
+.agent-ops-panel .panel-header p {
+  color: var(--workspace-muted, #62736e);
+  margin: 4px 0 0;
+}
+.agent-ops-panel .status-badge {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+.agent-ops-list {
+  border-top: 1px solid var(--workspace-border, #d7e0dc);
+}
+.agent-ops-row {
+  align-items: center;
+  border-bottom: 1px solid var(--workspace-border, #d7e0dc);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1.5fr 0.9fr 1.15fr 1.2fr 1.25fr;
+  padding: 18px 22px;
+}
+.agent-ops-row:last-child {
+  border-bottom: 0;
+}
+.agent-ops-row > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.agent-ops-row strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.agent-ops-row small {
+  color: var(--workspace-muted, #62736e);
+  font-size: 11px;
+}
+.agent-ops-row-title {
+  align-items: center;
+  display: flex !important;
+  gap: 10px;
+}
+.agent-ops-row-title > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.agent-ops-status {
+  align-items: center;
+  border-radius: 10px;
+  display: flex;
+  height: 34px;
+  justify-content: center;
+  min-width: 34px;
+}
+.agent-ops-success {
+  background: #e0f2e8;
+  color: #287453;
+}
+.agent-ops-warning {
+  background: #fff2d5;
+  color: #956516;
+}
+.agent-ops-critical {
+  background: #fbe4e2;
+  color: #b5423e;
+}
+.agent-ops-boundary {
+  align-items: flex-start;
+  background: #f3f1fb;
+  border: 1px solid #ddd8f6;
+  border-radius: 12px;
+  color: #4d467b;
+  display: flex;
+  gap: 10px;
+  line-height: 1.5;
+  padding: 14px 16px;
+}
+.agent-ops-boundary svg {
+  color: #6354b8;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+@media (max-width: 1000px) {
+  .agent-ops-row {
+    grid-template-columns: 1.4fr 1fr 1fr;
+  }
+  .agent-ops-row > div:nth-child(4),
+  .agent-ops-row > div:nth-child(5) {
+    grid-column: span 1;
+  }
+}
+@media (max-width: 700px) {
+  .agent-ops-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .agent-ops-row {
+    align-items: start;
+    grid-template-columns: 1fr 1fr;
+    padding: 16px;
+  }
+  .agent-ops-row-title {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 440px) {
+  .agent-ops-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .agent-ops-metrics > div {
+    padding: 14px;
+  }
+  .agent-ops-metrics strong {
+    font-size: 25px;
+  }
+}
+
 /* PraxisAI product polish */
 :root {
   --surface: #ffffff;

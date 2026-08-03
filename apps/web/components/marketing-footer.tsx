@@ -10,6 +10,8 @@ const columns = [
       ["For companies", "/for-companies"],
       ["Solutions", "/solutions"],
       ["Pricing", "/pricing"],
+      ["Judge walkthrough", "/judge"],
+      ["Evidence map", "/evidence"],
     ],
   },
   {
@@ -30,6 +32,7 @@ const columns = [
       ["Student protection", "/trust/student-protection"],
       ["Data & privacy", "/trust/data-and-privacy"],
       ["Accessibility", "/accessibility"],
+      ["Business model", "/business-model"],
     ],
   },
 ];
