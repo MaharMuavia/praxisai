@@ -1,12 +1,59 @@
+import hashlib
+import json
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.service import SessionPrincipal
-from app.domain.models import AuditEvent, PublicIntakeSubmission
+from app.domain.models import (
+    AuditEvent,
+    Organization,
+    OrganizationMembership,
+    PublicIntakeSubmission,
+    User,
+)
 from app.domain.schemas import PublicIntakeSubmissionCreate, PublicIntakeSubmissionUpdate
+
+
+class IdempotencyConflict(ValueError):
+    pass
+
+
+class InvalidIntakeTransition(ValueError):
+    pass
+
+
+class IntakeVersionConflict(ValueError):
+    pass
+
+
+def submission_payload_hash(body: PublicIntakeSubmissionCreate) -> str:
+    canonical = json.dumps(
+        body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+    ).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
+async def find_submission(
+    session: AsyncSession, *, idempotency_key: str
+) -> PublicIntakeSubmission | None:
+    result = await session.scalars(
+        select(PublicIntakeSubmission).where(
+            PublicIntakeSubmission.idempotency_key == idempotency_key
+        )
+    )
+    return result.first()
+
+
+def ensure_idempotency_matches(
+    submission: PublicIntakeSubmission, *, payload_hash: str
+) -> PublicIntakeSubmission:
+    if submission.payload_hash and submission.payload_hash != payload_hash:
+        raise IdempotencyConflict("Idempotency-Key was already used for different content")
+    return submission
 
 
 async def create_submission(
@@ -16,14 +63,12 @@ async def create_submission(
     idempotency_key: str,
     correlation_id: uuid.UUID,
 ) -> PublicIntakeSubmission:
-    existing = await session.scalar(
-        select(PublicIntakeSubmission).where(
-            PublicIntakeSubmission.idempotency_key == idempotency_key
-        )
-    )
+    payload_hash = submission_payload_hash(body)
+    existing = await find_submission(session, idempotency_key=idempotency_key)
     if existing is not None:
-        return existing
+        return ensure_idempotency_matches(existing, payload_hash=payload_hash)
 
+    now = datetime.now(UTC)
     payload = body.model_dump(
         mode="json",
         exclude={
@@ -48,13 +93,24 @@ async def create_submission(
         consent_snapshot={
             "granted": True,
             "version": "public-intake-v1",
-            "captured_at": datetime.now(UTC).isoformat(),
+            "captured_at": now.isoformat(),
+            "purpose": "review_and_pathway_contact",
         },
         idempotency_key=idempotency_key,
         correlation_id=correlation_id,
+        payload_hash=payload_hash,
+        retention_expires_at=now + timedelta(days=180),
     )
     session.add(submission)
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        await session.rollback()
+        existing = await find_submission(session, idempotency_key=idempotency_key)
+        if existing is None:
+            raise exc
+        return ensure_idempotency_matches(existing, payload_hash=payload_hash)
+
     session.add(
         AuditEvent(
             actor_id=None,
@@ -76,12 +132,71 @@ async def list_submissions(
 ) -> list[PublicIntakeSubmission]:
     query = (
         select(PublicIntakeSubmission)
+        .where(PublicIntakeSubmission.deleted_at.is_(None))
         .order_by(PublicIntakeSubmission.created_at.desc())
         .limit(limit)
     )
     if status:
         query = query.where(PublicIntakeSubmission.status == status)
     return list((await session.scalars(query)).all())
+
+
+async def get_submission(
+    session: AsyncSession, *, submission_id: uuid.UUID
+) -> PublicIntakeSubmission:
+    submission = await session.get(PublicIntakeSubmission, submission_id)
+    if submission is None or submission.deleted_at is not None:
+        raise LookupError("Intake submission not found")
+    return submission
+
+
+async def _validate_owner(session: AsyncSession, owner_id: uuid.UUID | None) -> None:
+    if owner_id is None:
+        return
+    owner = await session.scalar(
+        select(User)
+        .join(OrganizationMembership, OrganizationMembership.user_id == User.id)
+        .join(Organization, Organization.id == OrganizationMembership.organization_id)
+        .where(
+            and_(
+                User.id == owner_id,
+                User.is_active.is_(True),
+                OrganizationMembership.is_active.is_(True),
+                OrganizationMembership.role.in_(["coordinator", "platform_admin"]),
+                Organization.kind == "internal",
+            )
+        )
+    )
+    if owner is None:
+        raise ValueError("Owner must be an active operations coordinator")
+
+
+_ALLOWED_TRANSITIONS: dict[str, set[str]] = {
+    "NEW": {"IN_REVIEW", "REJECTED"},
+    "IN_REVIEW": {"QUALIFIED", "REJECTED"},
+    "QUALIFIED": {"CONVERTED", "REJECTED"},
+    "REJECTED": {"IN_REVIEW"},
+    "CONVERTED": set(),
+}
+
+
+def _validate_transition(
+    submission: PublicIntakeSubmission, body: PublicIntakeSubmissionUpdate
+) -> None:
+    if body.status != submission.status and body.status not in _ALLOWED_TRANSITIONS.get(
+        submission.status, set()
+    ):
+        raise InvalidIntakeTransition(
+            f"Cannot move intake from {submission.status} to {body.status}"
+        )
+    if body.status == "REJECTED" and not body.rejection_reason:
+        raise InvalidIntakeTransition("A rejection reason is required")
+    if body.status == "QUALIFIED" and not body.qualification_notes:
+        raise InvalidIntakeTransition("Qualification notes are required")
+    if body.status == "CONVERTED" and not body.conversion_evidence:
+        raise InvalidIntakeTransition("Conversion evidence is required")
+    if submission.status == "REJECTED" and body.status == "IN_REVIEW" and not body.reopen_reason:
+        raise InvalidIntakeTransition("A reopen reason is required")
 
 
 async def update_submission(
@@ -93,13 +208,25 @@ async def update_submission(
     correlation_id: uuid.UUID,
 ) -> PublicIntakeSubmission:
     submission = await session.get(PublicIntakeSubmission, submission_id)
-    if submission is None:
+    if submission is None or submission.deleted_at is not None:
         raise LookupError("Intake submission not found")
+    if submission.version != body.expected_version:
+        raise IntakeVersionConflict("This intake record changed; reload before updating")
+    _validate_transition(submission, body)
+    await _validate_owner(session, body.owner_id)
+
+    old_status = submission.status
+    old_owner_id = submission.owner_id
     submission.status = body.status
     submission.owner_id = body.owner_id
     submission.qualification_notes = body.qualification_notes
     submission.rejection_reason = body.rejection_reason
+    submission.conversion_evidence = body.conversion_evidence
     submission.reviewed_at = datetime.now(UTC)
+    submission.version += 1
+    if body.status == "REJECTED":
+        submission.retention_expires_at = datetime.now(UTC) + timedelta(days=30)
+
     session.add(
         AuditEvent(
             actor_id=principal.user_id,
@@ -109,9 +236,63 @@ async def update_submission(
             resource_id=submission.id,
             correlation_id=correlation_id,
             payload={
+                "from_status": old_status,
                 "status": body.status,
+                "from_owner_id": str(old_owner_id) if old_owner_id else None,
                 "owner_id": str(body.owner_id) if body.owner_id else None,
+                "version": submission.version,
+                "reason": body.reopen_reason or body.rejection_reason,
             },
+        )
+    )
+    await session.commit()
+    await session.refresh(submission)
+    return submission
+
+
+async def anonymize_expired_submissions(session: AsyncSession, *, now: datetime) -> int:
+    rows = list(
+        (
+            await session.scalars(
+                select(PublicIntakeSubmission).where(
+                    PublicIntakeSubmission.retention_expires_at <= now,
+                    PublicIntakeSubmission.anonymized_at.is_(None),
+                    PublicIntakeSubmission.deleted_at.is_(None),
+                )
+            )
+        ).all()
+    )
+    for submission in rows:
+        submission.contact_email = "redacted@invalid.local"
+        submission.payload = {"redacted": True, "kind": submission.kind}
+        submission.consent_snapshot = {"redacted": True}
+        submission.anonymized_at = now
+    await session.commit()
+    return len(rows)
+
+
+async def anonymize_submission(
+    session: AsyncSession,
+    *,
+    submission_id: uuid.UUID,
+    principal: SessionPrincipal,
+    correlation_id: uuid.UUID,
+) -> PublicIntakeSubmission:
+    submission = await get_submission(session, submission_id=submission_id)
+    now = datetime.now(UTC)
+    submission.contact_email = "redacted@invalid.local"
+    submission.payload = {"redacted": True, "kind": submission.kind}
+    submission.consent_snapshot = {"redacted": True}
+    submission.anonymized_at = now
+    session.add(
+        AuditEvent(
+            actor_id=principal.user_id,
+            organization_id=principal.organization_id,
+            action="public_intake.anonymized",
+            resource_type="public_intake_submission",
+            resource_id=submission.id,
+            correlation_id=correlation_id,
+            payload={"reason": "privacy_retention_request", "anonymized_at": now.isoformat()},
         )
     )
     await session.commit()

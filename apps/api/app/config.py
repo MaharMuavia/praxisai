@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     session_secret: str = Field(default="local-session-secret-change-before-sharing", min_length=32)
     csrf_secret: str = Field(default="local-csrf-secret-change-before-sharing", min_length=32)
     cors_origins: list[str] = ["http://localhost:3000"]
+    trusted_proxy_ips: list[str] = []
     cookie_secure: bool = False
 
     identity_provider: Literal["local", "firebase"] = "local"

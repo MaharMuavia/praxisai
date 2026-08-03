@@ -4,7 +4,7 @@ import { praxisFetch, type components } from "@praxisai/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useRef, useState, type ReactNode } from "react";
 import { ClientProjectIntake } from "./client-project-intake";
 import { EmployerTalentWorkspace } from "./employer-talent-workspace";
 import { ProjectCommandCenter } from "./project-command-center";
@@ -37,10 +37,12 @@ export function AppShell({
   path,
   title,
   description,
+  children,
 }: {
   path: string;
   title: string;
   description: string;
+  children?: ReactNode;
 }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
@@ -399,351 +401,379 @@ export function AppShell({
               isDemoPreview || demoEnvironment.showEnvironmentBanner
             }
           />
-          {!hasCareerWorkspace && (
-            <section className="metric-grid" aria-label="Workspace metrics">
-              {metricItems.map(([label, value]) => (
-                <div className="metric" key={label}>
-                  <div className="metric-label">{label}</div>
-                  <div className="metric-value">
-                    {value === undefined || value === null ? "—" : value}
+          {children ?? (
+            <>
+              {!hasCareerWorkspace && (
+                <section className="metric-grid" aria-label="Workspace metrics">
+                  {metricItems.map(([label, value]) => (
+                    <div className="metric" key={label}>
+                      <div className="metric-label">{label}</div>
+                      <div className="metric-value">
+                        {value === undefined || value === null ? "—" : value}
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              )}
+              {!hasCareerWorkspace && path === `/${root}` && (
+                <WorkspaceOverview role={root} />
+              )}
+              <section
+                className={hasCareerWorkspace ? "career-panel" : "panel"}
+              >
+                <div className="panel-header">
+                  <h2>
+                    {studentCareerPage
+                      ? "Student career workspace"
+                      : employerTalentPage
+                        ? "Employer hiring workspace"
+                        : root === "university"
+                          ? "Purpose-limited institutional data"
+                          : root === "admin"
+                            ? "Provider and job health"
+                            : roleWorkspaceData
+                              ? "Authorized workspace records"
+                              : path === "/client/projects/new"
+                                ? "Project intake"
+                                : projectDetailId
+                                  ? "Project command center"
+                                  : "Authorized project records"}
+                  </h2>
+                  {primaryAction?.href ? (
+                    <Link
+                      className="button button-primary"
+                      href={primaryAction.href}
+                    >
+                      {primaryAction.label}
+                    </Link>
+                  ) : null}
+                </div>
+                {studentCareerPage ? (
+                  <StudentCareerWorkspace page={studentCareerPage} />
+                ) : employerTalentPage ? (
+                  <EmployerTalentWorkspace page={employerTalentPage} />
+                ) : path === "/client/projects/new" ? (
+                  <ClientProjectIntake />
+                ) : error ? (
+                  <div className="empty">
+                    <div className="error">
+                      Workspace API unavailable. Sign in through the demo login
+                      or start the API.
+                      <br />
+                      {error}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </section>
-          )}
-          {!hasCareerWorkspace && path === `/${root}` && (
-            <WorkspaceOverview role={root} />
-          )}
-          <section className={hasCareerWorkspace ? "career-panel" : "panel"}>
-            <div className="panel-header">
-              <h2>
-                {studentCareerPage
-                  ? "Student career workspace"
-                  : employerTalentPage
-                    ? "Employer hiring workspace"
-                    : root === "university"
-                      ? "Purpose-limited institutional data"
-                      : root === "admin"
-                        ? "Provider and job health"
-                        : roleWorkspaceData
-                          ? "Authorized workspace records"
-                          : path === "/client/projects/new"
-                            ? "Project intake"
-                            : projectDetailId
-                              ? "Project command center"
-                              : "Authorized project records"}
-              </h2>
-              {primaryAction?.href ? (
-                <Link
-                  className="button button-primary"
-                  href={primaryAction.href}
-                >
-                  {primaryAction.label}
-                </Link>
-              ) : null}
-            </div>
-            {studentCareerPage ? (
-              <StudentCareerWorkspace page={studentCareerPage} />
-            ) : employerTalentPage ? (
-              <EmployerTalentWorkspace page={employerTalentPage} />
-            ) : path === "/client/projects/new" ? (
-              <ClientProjectIntake />
-            ) : error ? (
-              <div className="empty">
-                <div className="error">
-                  Workspace API unavailable. Sign in through the demo login or
-                  start the API.
-                  <br />
-                  {error}
-                </div>
-              </div>
-            ) : root === "university" ? (
-              universityMetrics === null || universityExports === null ? (
-                <div
-                  className="skeleton"
-                  aria-label="Loading university data"
-                />
-              ) : universityMetrics.suppressed ? (
-                <div className="empty">
-                  Aggregate outcomes are suppressed because the consented cohort
-                  is smaller than {universityMetrics.minimum_cohort_size}. No
-                  individual records are exposed.
-                </div>
-              ) : (
-                <>
-                  <div className="data-row">
-                    <span>
-                      <strong>Consented cohort</strong>
-                      <small>
-                        As of{" "}
-                        {new Date(universityMetrics.as_of).toLocaleString()}
-                      </small>
-                    </span>
-                    <span className="status-badge">Reportable</span>
-                    <span>
-                      <small>Verified work</small>
-                      <strong>
-                        {universityMetrics.verified_work_minutes ?? 0} min
-                      </strong>
-                    </span>
-                    <span>✓</span>
-                  </div>
-                  {universityExports.length === 0 ? (
+                ) : root === "university" ? (
+                  universityMetrics === null || universityExports === null ? (
+                    <div
+                      className="skeleton"
+                      aria-label="Loading university data"
+                    />
+                  ) : universityMetrics.suppressed ? (
                     <div className="empty">
-                      No purpose-limited exports have been requested.
+                      Aggregate outcomes are suppressed because the consented
+                      cohort is smaller than{" "}
+                      {universityMetrics.minimum_cohort_size}. No individual
+                      records are exposed.
                     </div>
                   ) : (
-                    universityExports.map((item) => (
-                      <div className="data-row" key={item.id}>
+                    <>
+                      <div className="data-row">
                         <span>
-                          <strong>Institutional export</strong>
-                          <small>{item.purpose}</small>
+                          <strong>Consented cohort</strong>
+                          <small>
+                            As of{" "}
+                            {new Date(universityMetrics.as_of).toLocaleString()}
+                          </small>
                         </span>
-                        <span className="status-badge">{item.status}</span>
+                        <span className="status-badge">Reportable</span>
                         <span>
-                          <small>Expires</small>
+                          <small>Verified work</small>
                           <strong>
-                            {new Date(item.expires_at).toLocaleDateString()}
+                            {universityMetrics.verified_work_minutes ?? 0} min
                           </strong>
+                        </span>
+                        <span>✓</span>
+                      </div>
+                      {universityExports.length === 0 ? (
+                        <div className="empty">
+                          No purpose-limited exports have been requested.
+                        </div>
+                      ) : (
+                        universityExports.map((item) => (
+                          <div className="data-row" key={item.id}>
+                            <span>
+                              <strong>Institutional export</strong>
+                              <small>{item.purpose}</small>
+                            </span>
+                            <span className="status-badge">{item.status}</span>
+                            <span>
+                              <small>Expires</small>
+                              <strong>
+                                {new Date(item.expires_at).toLocaleDateString()}
+                              </strong>
+                            </span>
+                            <span>→</span>
+                          </div>
+                        ))
+                      )}
+                      <form
+                        className="action-form"
+                        onSubmit={submitUniversityExport}
+                      >
+                        <label htmlFor="export-purpose">Export purpose</label>
+                        <textarea
+                          id="export-purpose"
+                          minLength={20}
+                          maxLength={2000}
+                          onChange={(event) =>
+                            setExportPurpose(event.target.value)
+                          }
+                          required
+                          rows={3}
+                          value={exportPurpose}
+                        />
+                        <button
+                          className="button button-primary"
+                          disabled={isSubmitting || exportPurpose.length < 20}
+                          type="submit"
+                        >
+                          {isSubmitting
+                            ? "Requesting…"
+                            : "Request expiring export"}
+                        </button>
+                      </form>
+                    </>
+                  )
+                ) : root === "admin" ? (
+                  jobs === null || integrations === null ? (
+                    <div
+                      className="skeleton"
+                      aria-label="Loading platform health"
+                    />
+                  ) : (
+                    <>
+                      {integrations.map((item) => (
+                        <div className="data-row" key={item.provider}>
+                          <span>
+                            <strong>
+                              {item.provider.replaceAll("_", " ")}
+                            </strong>
+                            <small>{item.mode} mode</small>
+                          </span>
+                          <span className="status-badge">
+                            {item.configured ? "Configured" : "Needs setup"}
+                          </span>
+                          <span>
+                            <small>External effects</small>
+                            <strong>
+                              {item.live_side_effects_enabled
+                                ? "Enabled"
+                                : "Off"}
+                            </strong>
+                            <small>
+                              {item.last_sync_status
+                                ? `Last sync: ${item.last_sync_status}`
+                                : "No synchronization evidence"}
+                            </small>
+                          </span>
+                          <span>•</span>
+                        </div>
+                      ))}
+                      {jobs.length === 0 && (
+                        <div className="empty">
+                          No dead-letter jobs require recovery.
+                        </div>
+                      )}
+                      {jobs.length > 0 && (
+                        <div className="action-form">
+                          <label htmlFor="recovery-reason">
+                            Recovery reason
+                          </label>
+                          <textarea
+                            id="recovery-reason"
+                            minLength={20}
+                            maxLength={2000}
+                            onChange={(event) =>
+                              setRecoveryReason(event.target.value)
+                            }
+                            required
+                            rows={3}
+                            value={recoveryReason}
+                          />
+                        </div>
+                      )}
+                      {jobs.map((job) => (
+                        <div className="data-row" key={job.id}>
+                          <span>
+                            <strong>{job.event_type}</strong>
+                            <small>{job.last_error ?? "Handler failed"}</small>
+                          </span>
+                          <span className="status-badge">{job.status}</span>
+                          <span>
+                            <small>Attempts</small>
+                            <strong>{job.attempts}</strong>
+                          </span>
+                          <button
+                            className="button button-ghost"
+                            disabled={
+                              isSubmitting || recoveryReason.length < 20
+                            }
+                            onClick={() => void recoverJob(job.id)}
+                            type="button"
+                          >
+                            Recover
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )
+                ) : projectDetailId ? (
+                  projectWorkspace === null ? (
+                    <div
+                      className="skeleton"
+                      aria-label="Loading project command center"
+                    />
+                  ) : (
+                    <ProjectCommandCenter
+                      onWorkspaceChange={setProjectWorkspace}
+                      role={session?.active_membership.role ?? ""}
+                      workspace={projectWorkspace}
+                    />
+                  )
+                ) : roleWorkspaceData ? (
+                  <RoleWorkspaceRecords
+                    data={roleWorkspaceData}
+                    onOfferDecision={(offerId, decision) =>
+                      void decideOffer(offerId, decision)
+                    }
+                    submittingOfferId={submittingOfferId}
+                  />
+                ) : projects === null ? (
+                  <div className="skeleton" aria-label="Loading projects" />
+                ) : projects.length === 0 ? (
+                  <div className="empty">
+                    No authorized records. Use the valid next action above to
+                    begin.
+                  </div>
+                ) : (
+                  projects.map((project) => (
+                    <Link
+                      className="data-row"
+                      href={`/${root === "ops" ? "ops" : root}/projects/${project.id}`}
+                      key={project.id}
+                    >
+                      <span>
+                        <strong>{project.title}</strong>
+                        <small>
+                          {project.category.replaceAll("_", " ")}
+                          {project.is_demo ? " · Demo data" : ""}
+                        </small>
+                      </span>
+                      <span className="status-badge">
+                        {project.state.replaceAll("_", " ")}
+                      </span>
+                      <span>
+                        <small>Funding guard</small>
+                        <strong>
+                          {project.currency}{" "}
+                          {(
+                            project.required_deposit_minor / 100
+                          ).toLocaleString()}
+                        </strong>
+                      </span>
+                      <span>→</span>
+                    </Link>
+                  ))
+                )}
+              </section>
+              {(actionError || actionNotice) && (
+                <div
+                  className={
+                    actionError
+                      ? "error action-message"
+                      : "success action-message"
+                  }
+                >
+                  {actionError ?? actionNotice}
+                </div>
+              )}
+              {root === "ops" && jobs !== null && (
+                <section className="panel">
+                  <div className="panel-header">
+                    <h2>Dead-letter recovery queue</h2>
+                    <Link className="button button-ghost" href="/admin/jobs">
+                      Open job operations
+                    </Link>
+                  </div>
+                  {jobs.length === 0 ? (
+                    <div className="empty">
+                      No dead-letter jobs require recovery.
+                    </div>
+                  ) : (
+                    jobs.map((job) => (
+                      <div className="data-row" key={job.id}>
+                        <span>
+                          <strong>{job.event_type}</strong>
+                          <small>
+                            {job.aggregate_type} · {job.aggregate_id}
+                          </small>
+                        </span>
+                        <span className="status-badge">{job.status}</span>
+                        <span>
+                          <small>Attempts</small>
+                          <strong>{job.attempts}</strong>
                         </span>
                         <span>→</span>
                       </div>
                     ))
                   )}
-                  <form
-                    className="action-form"
-                    onSubmit={submitUniversityExport}
-                  >
-                    <label htmlFor="export-purpose">Export purpose</label>
-                    <textarea
-                      id="export-purpose"
-                      minLength={20}
-                      maxLength={2000}
-                      onChange={(event) => setExportPurpose(event.target.value)}
-                      required
-                      rows={3}
-                      value={exportPurpose}
-                    />
-                    <button
-                      className="button button-primary"
-                      disabled={isSubmitting || exportPurpose.length < 20}
-                      type="submit"
-                    >
-                      {isSubmitting ? "Requesting…" : "Request expiring export"}
-                    </button>
-                  </form>
-                </>
-              )
-            ) : root === "admin" ? (
-              jobs === null || integrations === null ? (
-                <div
-                  className="skeleton"
-                  aria-label="Loading platform health"
-                />
-              ) : (
-                <>
-                  {integrations.map((item) => (
-                    <div className="data-row" key={item.provider}>
-                      <span>
-                        <strong>{item.provider.replaceAll("_", " ")}</strong>
-                        <small>{item.mode} mode</small>
-                      </span>
-                      <span className="status-badge">
-                        {item.configured ? "Configured" : "Needs setup"}
-                      </span>
-                      <span>
-                        <small>External effects</small>
-                        <strong>
-                          {item.live_side_effects_enabled ? "Enabled" : "Off"}
-                        </strong>
-                        <small>
-                          {item.last_sync_status
-                            ? `Last sync: ${item.last_sync_status}`
-                            : "No synchronization evidence"}
-                        </small>
-                      </span>
-                      <span>•</span>
-                    </div>
-                  ))}
-                  {jobs.length === 0 && (
-                    <div className="empty">
-                      No dead-letter jobs require recovery.
-                    </div>
-                  )}
-                  {jobs.length > 0 && (
-                    <div className="action-form">
-                      <label htmlFor="recovery-reason">Recovery reason</label>
-                      <textarea
-                        id="recovery-reason"
-                        minLength={20}
-                        maxLength={2000}
-                        onChange={(event) =>
-                          setRecoveryReason(event.target.value)
-                        }
-                        required
-                        rows={3}
-                        value={recoveryReason}
-                      />
-                    </div>
-                  )}
-                  {jobs.map((job) => (
-                    <div className="data-row" key={job.id}>
-                      <span>
-                        <strong>{job.event_type}</strong>
-                        <small>{job.last_error ?? "Handler failed"}</small>
-                      </span>
-                      <span className="status-badge">{job.status}</span>
-                      <span>
-                        <small>Attempts</small>
-                        <strong>{job.attempts}</strong>
-                      </span>
-                      <button
-                        className="button button-ghost"
-                        disabled={isSubmitting || recoveryReason.length < 20}
-                        onClick={() => void recoverJob(job.id)}
-                        type="button"
-                      >
-                        Recover
-                      </button>
-                    </div>
-                  ))}
-                </>
-              )
-            ) : projectDetailId ? (
-              projectWorkspace === null ? (
-                <div
-                  className="skeleton"
-                  aria-label="Loading project command center"
-                />
-              ) : (
-                <ProjectCommandCenter
-                  onWorkspaceChange={setProjectWorkspace}
-                  role={session?.active_membership.role ?? ""}
-                  workspace={projectWorkspace}
-                />
-              )
-            ) : roleWorkspaceData ? (
-              <RoleWorkspaceRecords
-                data={roleWorkspaceData}
-                onOfferDecision={(offerId, decision) =>
-                  void decideOffer(offerId, decision)
-                }
-                submittingOfferId={submittingOfferId}
-              />
-            ) : projects === null ? (
-              <div className="skeleton" aria-label="Loading projects" />
-            ) : projects.length === 0 ? (
-              <div className="empty">
-                No authorized records. Use the valid next action above to begin.
-              </div>
-            ) : (
-              projects.map((project) => (
-                <Link
-                  className="data-row"
-                  href={`/${root === "ops" ? "ops" : root}/projects/${project.id}`}
-                  key={project.id}
-                >
-                  <span>
-                    <strong>{project.title}</strong>
-                    <small>
-                      {project.category.replaceAll("_", " ")}
-                      {project.is_demo ? " · Demo data" : ""}
-                    </small>
-                  </span>
-                  <span className="status-badge">
-                    {project.state.replaceAll("_", " ")}
-                  </span>
-                  <span>
-                    <small>Funding guard</small>
-                    <strong>
-                      {project.currency}{" "}
-                      {(project.required_deposit_minor / 100).toLocaleString()}
-                    </strong>
-                  </span>
-                  <span>→</span>
-                </Link>
-              ))
-            )}
-          </section>
-          {(actionError || actionNotice) && (
-            <div
-              className={
-                actionError ? "error action-message" : "success action-message"
-              }
-            >
-              {actionError ?? actionNotice}
-            </div>
-          )}
-          {root === "ops" && jobs !== null && (
-            <section className="panel">
-              <div className="panel-header">
-                <h2>Dead-letter recovery queue</h2>
-                <Link className="button button-ghost" href="/admin/jobs">
-                  Open job operations
-                </Link>
-              </div>
-              {jobs.length === 0 ? (
-                <div className="empty">
-                  No dead-letter jobs require recovery.
-                </div>
-              ) : (
-                jobs.map((job) => (
-                  <div className="data-row" key={job.id}>
-                    <span>
-                      <strong>{job.event_type}</strong>
-                      <small>
-                        {job.aggregate_type} · {job.aggregate_id}
-                      </small>
-                    </span>
-                    <span className="status-badge">{job.status}</span>
-                    <span>
-                      <small>Attempts</small>
-                      <strong>{job.attempts}</strong>
-                    </span>
-                    <span>→</span>
-                  </div>
-                ))
+                </section>
               )}
-            </section>
-          )}
-          {path.endsWith("/settings") && notificationPreferences !== null && (
-            <section className="panel">
-              <div className="panel-header">
-                <h2>Notification preferences</h2>
-              </div>
-              {notificationPreferences.map((preference) => {
-                const required = [
-                  "payments",
-                  "credentials",
-                  "appeals",
-                ].includes(preference.category);
-                return (
-                  <div className="preference-row" key={preference.category}>
-                    <span>
-                      <strong>{preference.category}</strong>
-                      <small>
-                        {required
-                          ? "Required fairness and financial notice"
-                          : "Optional in-app notice"}
-                      </small>
-                    </span>
-                    <button
-                      aria-pressed={preference.enabled}
-                      className="button button-ghost"
-                      disabled={required}
-                      onClick={() => void togglePreference(preference)}
-                      type="button"
-                    >
-                      {required
-                        ? "Required"
-                        : preference.enabled
-                          ? "On"
-                          : "Off"}
-                    </button>
-                  </div>
-                );
-              })}
-            </section>
+              {path.endsWith("/settings") &&
+                notificationPreferences !== null && (
+                  <section className="panel">
+                    <div className="panel-header">
+                      <h2>Notification preferences</h2>
+                    </div>
+                    {notificationPreferences.map((preference) => {
+                      const required = [
+                        "payments",
+                        "credentials",
+                        "appeals",
+                      ].includes(preference.category);
+                      return (
+                        <div
+                          className="preference-row"
+                          key={preference.category}
+                        >
+                          <span>
+                            <strong>{preference.category}</strong>
+                            <small>
+                              {required
+                                ? "Required fairness and financial notice"
+                                : "Optional in-app notice"}
+                            </small>
+                          </span>
+                          <button
+                            aria-pressed={preference.enabled}
+                            className="button button-ghost"
+                            disabled={required}
+                            onClick={() => void togglePreference(preference)}
+                            type="button"
+                          >
+                            {required
+                              ? "Required"
+                              : preference.enabled
+                                ? "On"
+                                : "Off"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </section>
+                )}
+            </>
           )}
         </div>
       </main>

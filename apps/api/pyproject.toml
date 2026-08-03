@@ -6,6 +6,7 @@ dependencies = [
   "alembic==1.16.5",
   "asyncpg==0.30.0",
   "cryptography==45.0.7",
+  "email-validator==2.3.0",
   "fastapi==0.116.1",
   "firebase-admin==7.1.0",
   "google-cloud-kms==3.5.1",

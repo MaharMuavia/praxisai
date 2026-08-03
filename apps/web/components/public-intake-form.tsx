@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiBase } from "../lib/api";
@@ -9,58 +9,109 @@ const intakeSchema = z
   .object({
     kind: z.enum(["company", "student", "expert_lead", "university"]),
     full_name: z.string().trim().min(2, "Enter your full name").max(160),
-    email: z
-      .string()
-      .trim()
-      .email("Enter a valid work or personal email")
-      .max(320),
+    email: z.string().trim().email("Enter a valid email").max(320),
     country: z.string().trim().min(2, "Enter your country").max(80),
     organization: z.string().trim().max(200),
-    summary: z.string().trim().min(20, "Add at least 20 characters").max(4_000),
-    track: z.string().trim().max(120),
+    summary: z.string().trim().max(4_000),
+    desired_result: z.string().trim().max(4_000),
+    project_category: z.string().trim().max(80),
+    target_timeline: z.string().trim().max(120),
+    data_sensitivity: z.enum([
+      "public",
+      "internal",
+      "confidential",
+      "restricted",
+    ]),
+    track: z.string().trim().max(2_000),
+    education_status: z.string().trim().max(120),
     availability: z.string().trim(),
+    profile_url: z.string().trim(),
+    role: z.string().trim().max(120),
+    cohort_context: z.string().trim().max(2_000),
+    privacy_requirements: z.string().trim().max(4_000),
     consent: z.boolean().refine((value) => value, "Consent is required"),
     honeypot: z.string().max(200),
   })
   .superRefine((value, context) => {
-    if (value.kind === "company" && !value.organization) {
-      context.addIssue({
-        code: "custom",
-        path: ["organization"],
-        message: "Enter your company name",
-      });
+    const required = (field: keyof typeof value, message: string, min = 2) => {
+      const candidate = value[field];
+      if (typeof candidate !== "string" || candidate.length < min) {
+        context.addIssue({ code: "custom", path: [field], message });
+      }
+    };
+    if (value.kind === "company") {
+      required("organization", "Enter your company name");
+      required("summary", "Describe the business problem (20+ characters)", 20);
+      required(
+        "desired_result",
+        "Describe the desired result (10+ characters)",
+        10,
+      );
+      required("project_category", "Enter a project category");
+      required("target_timeline", "Enter a target timeline");
     }
-    if (value.kind === "university" && !value.organization) {
-      context.addIssue({
-        code: "custom",
-        path: ["organization"],
-        message: "Enter your institution",
-      });
+    if (value.kind === "student") {
+      required("education_status", "Tell us your education status");
+      required("track", "Tell us your technical focus");
+      required(
+        "summary",
+        "Add at least 20 characters about your experience",
+        20,
+      );
+      if (
+        !Number.isInteger(Number(value.availability)) ||
+        Number(value.availability) < 1
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["availability"],
+          message: "Enter weekly hours (1–80)",
+        });
+      }
     }
-    if (
-      (value.kind === "student" || value.kind === "expert_lead") &&
-      !value.track
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["track"],
-        message: "Tell us your technical focus",
-      });
+    if (value.kind === "expert_lead") {
+      required("track", "Tell us your technical specializations");
+      required(
+        "summary",
+        "Add at least 20 characters about your experience",
+        20,
+      );
+      if (
+        !Number.isInteger(Number(value.availability)) ||
+        Number(value.availability) < 1
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["availability"],
+          message: "Enter weekly hours (1–80)",
+        });
+      }
+      if (!/^https?:\/\/[^\s]+$/i.test(value.profile_url)) {
+        context.addIssue({
+          code: "custom",
+          path: ["profile_url"],
+          message: "Enter a public profile URL",
+        });
+      }
     }
-    if (
-      (value.kind === "student" || value.kind === "expert_lead") &&
-      !value.availability
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["availability"],
-        message: "Tell us your weekly availability",
-      });
+    if (value.kind === "university") {
+      required("organization", "Enter your institution");
+      required("role", "Tell us your role");
+      required(
+        "summary",
+        "Describe the partnership purpose (20+ characters)",
+        20,
+      );
+      required("cohort_context", "Describe the cohort context");
+      required(
+        "privacy_requirements",
+        "Describe privacy requirements (20+ characters)",
+        20,
+      );
     }
   });
 
 type IntakeForm = z.input<typeof intakeSchema>;
-
 const defaults: IntakeForm = {
   kind: "company",
   full_name: "",
@@ -68,12 +119,20 @@ const defaults: IntakeForm = {
   country: "",
   organization: "",
   summary: "",
+  desired_result: "",
+  project_category: "",
+  target_timeline: "",
+  data_sensitivity: "internal",
   track: "",
+  education_status: "",
   availability: "",
+  profile_url: "",
+  role: "",
+  cohort_context: "",
+  privacy_requirements: "",
   consent: false,
   honeypot: "",
 };
-
 const kindLabels = {
   company: "Company project",
   student: "Student application",
@@ -85,14 +144,23 @@ export function PublicIntakeForm() {
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const idempotencyKey = useRef(crypto.randomUUID());
   const {
     register,
     handleSubmit,
     watch,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm<IntakeForm>({ defaultValues: defaults });
   const kind = watch("kind");
+
+  const onInvalid = (formErrors: typeof errors) => {
+    const firstField = Object.keys(formErrors)[0] as
+      | keyof IntakeForm
+      | undefined;
+    if (firstField) setFocus(firstField);
+  };
 
   async function submit(values: IntakeForm) {
     setServerError(null);
@@ -106,69 +174,100 @@ export function PublicIntakeForm() {
       }
       return;
     }
+    const value = parsed.data;
+    const common = {
+      kind: value.kind,
+      full_name: value.full_name,
+      email: value.email,
+      country: value.country,
+      consent: value.consent,
+      source: "website-contact",
+      honeypot: value.honeypot,
+    };
+    const body =
+      value.kind === "company"
+        ? {
+            ...common,
+            company_name: value.organization,
+            business_problem: value.summary,
+            desired_result: value.desired_result,
+            project_category: value.project_category,
+            target_timeline: value.target_timeline,
+            data_sensitivity: value.data_sensitivity,
+          }
+        : value.kind === "student"
+          ? {
+              ...common,
+              education_status: value.education_status,
+              technical_track: value.track,
+              weekly_availability: Number(value.availability),
+              experience_summary: value.summary,
+            }
+          : value.kind === "expert_lead"
+            ? {
+                ...common,
+                technical_specializations: value.track,
+                years_experience: 1,
+                weekly_availability: Number(value.availability),
+                profile_url: value.profile_url,
+                rate_expectations: undefined,
+              }
+            : {
+                ...common,
+                institution: value.organization,
+                role: value.role,
+                intended_purpose: value.summary,
+                cohort_context: value.cohort_context,
+                privacy_requirements: value.privacy_requirements,
+              };
     setSubmitting(true);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
     try {
-      const response = await fetch(`${apiBase}/public/${parsed.data.kind}`, {
+      const response = await fetch(`${apiBase}/public/${value.kind}`, {
         method: "POST",
         credentials: "include",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
+          "Idempotency-Key": idempotencyKey.current,
         },
-        body: JSON.stringify({
-          kind: parsed.data.kind,
-          full_name: parsed.data.full_name,
-          email: parsed.data.email,
-          country: parsed.data.country,
-          consent: parsed.data.consent,
-          source: "website-contact",
-          company_name:
-            parsed.data.kind === "company"
-              ? parsed.data.organization
-              : undefined,
-          institution:
-            parsed.data.kind === "university"
-              ? parsed.data.organization
-              : undefined,
-          business_problem:
-            parsed.data.kind === "company" ? parsed.data.summary : undefined,
-          intended_purpose:
-            parsed.data.kind === "university" ? parsed.data.summary : undefined,
-          experience_summary:
-            parsed.data.kind === "student" ? parsed.data.summary : undefined,
-          technical_specializations:
-            parsed.data.kind === "expert_lead"
-              ? parsed.data.summary
-              : undefined,
-          technical_track: parsed.data.track || undefined,
-          weekly_availability: parsed.data.availability
-            ? Number(parsed.data.availability)
-            : undefined,
-          honeypot: parsed.data.honeypot,
-        }),
+        body: JSON.stringify(body),
       });
-      const body = (await response.json().catch(() => null)) as {
+      const responseBody = (await response.json().catch(() => null)) as {
         error?: { message?: string; correlation_id?: string };
         correlation_id?: string;
       } | null;
+      const correlation =
+        responseBody?.error?.correlation_id ??
+        responseBody?.correlation_id ??
+        response.headers.get("X-Correlation-ID");
       if (!response.ok) {
-        const correlation =
-          body?.error?.correlation_id ??
-          response.headers.get("X-Correlation-ID");
+        const message =
+          response.status === 409
+            ? "This request was already submitted with different content. Please refresh and try again."
+            : response.status === 429
+              ? "Too many submissions from this address. Please try again later."
+              : (responseBody?.error?.message ??
+                "Unable to submit this request");
         throw new Error(
-          `${body?.error?.message ?? "Unable to submit this request"}${correlation ? ` (Support ID: ${correlation})` : ""}`,
+          `${message}${correlation ? ` (Support ID: ${correlation})` : ""}`,
         );
       }
       setSubmitted(
-        `Received. Your ${kindLabels[parsed.data.kind].toLowerCase()} is now queued for human review. Support ID: ${body?.correlation_id ?? response.headers.get("X-Correlation-ID") ?? "available in your confirmation"}.`,
+        `Received. Your ${kindLabels[value.kind].toLowerCase()} is queued for human review. Support ID: ${correlation ?? "available in your confirmation"}.`,
       );
+      idempotencyKey.current = crypto.randomUUID();
     } catch (reason: unknown) {
       setServerError(
-        reason instanceof Error
-          ? reason.message
-          : "Unable to submit this request",
+        reason instanceof DOMException && reason.name === "AbortError"
+          ? "The request timed out. Your form is still filled in; try again."
+          : reason instanceof Error
+            ? reason.message
+            : "Unable to submit this request",
       );
     } finally {
+      window.clearTimeout(timeout);
       setSubmitting(false);
     }
   }
@@ -177,7 +276,7 @@ export function PublicIntakeForm() {
     kind === "company"
       ? "What business problem should the project address?"
       : kind === "university"
-        ? "What partnership or privacy question should we understand?"
+        ? "What partnership purpose should we understand?"
         : "Tell us about your experience and goals";
   const organizationLabel =
     kind === "company"
@@ -185,7 +284,6 @@ export function PublicIntakeForm() {
       : kind === "university"
         ? "Institution"
         : "Organization or affiliation (optional)";
-
   return (
     <div className="public-intake-card">
       <div className="public-intake-heading">
@@ -206,9 +304,14 @@ export function PublicIntakeForm() {
           {serverError}
         </div>
       ) : null}
+      {Object.keys(errors).length ? (
+        <div className="error" role="alert" tabIndex={-1}>
+          Please correct the highlighted fields before submitting.
+        </div>
+      ) : null}
       <form
         className="public-intake-form"
-        onSubmit={handleSubmit(submit)}
+        onSubmit={handleSubmit(submit, onInvalid)}
         noValidate
       >
         <label>
@@ -261,8 +364,57 @@ export function PublicIntakeForm() {
             <span className="field-error">{errors.summary.message}</span>
           ) : null}
         </label>
-        {kind === "student" || kind === "expert_lead" ? (
+        {kind === "company" ? (
           <div className="public-intake-grid">
+            <label>
+              Desired result
+              <input {...register("desired_result")} />
+              {errors.desired_result ? (
+                <span className="field-error">
+                  {errors.desired_result.message}
+                </span>
+              ) : null}
+            </label>
+            <label>
+              Project category
+              <input {...register("project_category")} />
+              {errors.project_category ? (
+                <span className="field-error">
+                  {errors.project_category.message}
+                </span>
+              ) : null}
+            </label>
+            <label>
+              Target timeline
+              <input {...register("target_timeline")} />
+              {errors.target_timeline ? (
+                <span className="field-error">
+                  {errors.target_timeline.message}
+                </span>
+              ) : null}
+            </label>
+            <label>
+              Data sensitivity
+              <select {...register("data_sensitivity")}>
+                <option value="internal">Internal</option>
+                <option value="public">Public</option>
+                <option value="confidential">Confidential</option>
+                <option value="restricted">Restricted</option>
+              </select>
+            </label>
+          </div>
+        ) : null}
+        {kind === "student" ? (
+          <div className="public-intake-grid">
+            <label>
+              Education status
+              <input {...register("education_status")} />
+              {errors.education_status ? (
+                <span className="field-error">
+                  {errors.education_status.message}
+                </span>
+              ) : null}
+            </label>
             <label>
               Technical focus
               <input {...register("track")} />
@@ -282,6 +434,70 @@ export function PublicIntakeForm() {
               {errors.availability ? (
                 <span className="field-error">
                   {errors.availability.message}
+                </span>
+              ) : null}
+            </label>
+          </div>
+        ) : null}
+        {kind === "expert_lead" ? (
+          <div className="public-intake-grid">
+            <label>
+              Technical specializations
+              <input {...register("track")} />
+              {errors.track ? (
+                <span className="field-error">{errors.track.message}</span>
+              ) : null}
+            </label>
+            <label>
+              Weekly availability (hours)
+              <input
+                {...register("availability")}
+                inputMode="numeric"
+                type="number"
+                min="1"
+                max="80"
+              />
+              {errors.availability ? (
+                <span className="field-error">
+                  {errors.availability.message}
+                </span>
+              ) : null}
+            </label>
+            <label>
+              Public profile URL
+              <input {...register("profile_url")} type="url" />
+              {errors.profile_url ? (
+                <span className="field-error">
+                  {errors.profile_url.message}
+                </span>
+              ) : null}
+            </label>
+          </div>
+        ) : null}
+        {kind === "university" ? (
+          <div className="public-intake-grid">
+            <label>
+              Your role
+              <input {...register("role")} />
+              {errors.role ? (
+                <span className="field-error">{errors.role.message}</span>
+              ) : null}
+            </label>
+            <label>
+              Cohort context
+              <textarea {...register("cohort_context")} rows={3} />
+              {errors.cohort_context ? (
+                <span className="field-error">
+                  {errors.cohort_context.message}
+                </span>
+              ) : null}
+            </label>
+            <label>
+              Privacy requirements
+              <textarea {...register("privacy_requirements")} rows={3} />
+              {errors.privacy_requirements ? (
+                <span className="field-error">
+                  {errors.privacy_requirements.message}
                 </span>
               ) : null}
             </label>

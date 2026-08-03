@@ -1,3 +1,4 @@
+import ipaddress
 import uuid
 from typing import Annotated
 
@@ -5,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import DbSession, IdempotencyKey, correlation_id, require_roles
 from app.auth.service import SessionPrincipal
+from app.config import Settings, get_settings
 from app.domain.enums import Role
 from app.domain.models import PublicIntakeSubmission
 from app.domain.schemas import (
@@ -13,7 +15,19 @@ from app.domain.schemas import (
     PublicIntakeSubmissionUpdate,
     PublicIntakeSubmissionView,
 )
-from app.intake.service import create_submission, list_submissions, update_submission
+from app.intake.service import (
+    IdempotencyConflict,
+    IntakeVersionConflict,
+    InvalidIntakeTransition,
+    anonymize_submission,
+    create_submission,
+    ensure_idempotency_matches,
+    find_submission,
+    get_submission,
+    list_submissions,
+    submission_payload_hash,
+    update_submission,
+)
 from app.rate_limits.service import RateLimitExceeded, consume_rate_limit
 
 router = APIRouter(tags=["public intake"])
@@ -23,8 +37,28 @@ OperationsPrincipal = Annotated[
 ]
 
 
-async def _limit_public_submission(session: DbSession, request: Request, email: str) -> None:
-    client_host = request.client.host if request.client else "unknown"
+def _client_ip(request: Request, settings: Settings) -> str:
+    peer = request.client.host if request.client else "unknown"
+    try:
+        trusted = {ipaddress.ip_address(value) for value in settings.trusted_proxy_ips}
+        peer_address = ipaddress.ip_address(peer)
+    except ValueError:
+        return peer
+    if peer_address not in trusted:
+        return peer
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    first = forwarded.split(",", maxsplit=1)[0].strip()
+    try:
+        ipaddress.ip_address(first)
+    except ValueError:
+        return peer
+    return first
+
+
+async def _limit_public_submission(
+    session: DbSession, request: Request, email: str, settings: Settings
+) -> None:
+    client_host = _client_ip(request, settings)
     try:
         await consume_rate_limit(
             session, raw_key=f"public-intake:ip:{client_host}", limit=10, window_seconds=3600
@@ -45,18 +79,30 @@ async def submit_public_intake(
     request: Request,
     session: DbSession,
     idempotency_key: IdempotencyKey,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> PublicIntakeReceipt:
     if kind != body.kind:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Intake kind does not match the route")
     if body.honeypot:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unable to accept this submission")
-    await _limit_public_submission(session, request, body.email)
-    submission = await create_submission(
-        session,
-        body=body,
-        idempotency_key=idempotency_key,
-        correlation_id=correlation_id(request),
-    )
+    existing = await find_submission(session, idempotency_key=idempotency_key)
+    if existing is not None:
+        try:
+            ensure_idempotency_matches(existing, payload_hash=submission_payload_hash(body))
+        except IdempotencyConflict as exc:
+            raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+        submission = existing
+    else:
+        await _limit_public_submission(session, request, body.email, settings)
+        try:
+            submission = await create_submission(
+                session,
+                body=body,
+                idempotency_key=idempotency_key,
+                correlation_id=correlation_id(request),
+            )
+        except IdempotencyConflict as exc:
+            raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return PublicIntakeReceipt(
         id=submission.id,
         kind=submission.kind,
@@ -89,6 +135,40 @@ async def review_intake(
             session,
             submission_id=submission_id,
             body=body,
+            principal=principal,
+            correlation_id=correlation_id(request),
+        )
+    except LookupError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except IntakeVersionConflict as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except (InvalidIntakeTransition, ValueError) as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
+@router.get("/ops/intake/{submission_id}", response_model=PublicIntakeSubmissionView)
+async def intake_detail(
+    submission_id: uuid.UUID,
+    principal: OperationsPrincipal,
+    session: DbSession,
+) -> PublicIntakeSubmission:
+    try:
+        return await get_submission(session, submission_id=submission_id)
+    except LookupError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+
+
+@router.post("/ops/intake/{submission_id}/anonymize", response_model=PublicIntakeSubmissionView)
+async def anonymize_intake(
+    submission_id: uuid.UUID,
+    principal: OperationsPrincipal,
+    session: DbSession,
+    request: Request,
+) -> PublicIntakeSubmission:
+    try:
+        return await anonymize_submission(
+            session,
+            submission_id=submission_id,
             principal=principal,
             correlation_id=correlation_id(request),
         )

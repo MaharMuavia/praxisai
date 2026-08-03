@@ -35,13 +35,15 @@ async def test_public_company_intake_is_persisted_and_idempotent() -> None:
     payload = {
         "kind": "company",
         "full_name": "Taylor Example",
-        "email": "taylor@example.test",
+        "email": "taylor@example.org",
         "country": "Pakistan",
         "consent": True,
         "company_name": "Example Studio",
         "business_problem": "We need a reviewed workflow for a recurring internal process.",
         "desired_result": "A tested and documented review surface for the operations team.",
         "project_category": "workflow_automation",
+        "target_timeline": "This quarter",
+        "data_sensitivity": "internal",
         "honeypot": "",
     }
     try:
@@ -57,7 +59,7 @@ async def test_public_company_intake_is_persisted_and_idempotent() -> None:
                 json=payload,
             )
 
-        assert first.status_code == 201
+        assert first.status_code == 201, first.text
         assert second.status_code == 201
         assert first.json()["id"] == second.json()["id"]
         async with factory() as session:
@@ -116,7 +118,11 @@ async def test_operations_can_review_public_intake() -> None:
             response = await client.patch(
                 f"/api/v1/ops/intake/{submission_id}",
                 headers={"X-CSRF-Token": "csrf"},
-                json={"status": "IN_REVIEW", "qualification_notes": "Needs a human follow-up."},
+                json={
+                    "status": "IN_REVIEW",
+                    "qualification_notes": "Needs a human follow-up.",
+                    "expected_version": 1,
+                },
             )
         assert response.status_code == 200
         assert response.json()["status"] == "IN_REVIEW"

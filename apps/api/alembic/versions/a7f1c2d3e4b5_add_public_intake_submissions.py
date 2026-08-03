@@ -20,8 +20,12 @@ def upgrade() -> None:
     op.create_table(
         "public_intake_submissions",
         sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.Column("kind", sa.String(length=32), nullable=False),
         sa.Column("status", sa.String(length=32), nullable=False),
         sa.Column("contact_email", sa.String(length=320), nullable=False),
@@ -37,21 +41,39 @@ def upgrade() -> None:
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["owner_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("idempotency_key"),
     )
     op.create_index("ix_public_intake_submissions_kind", "public_intake_submissions", ["kind"])
     op.create_index("ix_public_intake_submissions_status", "public_intake_submissions", ["status"])
-    op.create_index("ix_public_intake_submissions_contact_email", "public_intake_submissions", ["contact_email"])
-    op.create_index("ix_public_intake_submissions_idempotency_key", "public_intake_submissions", ["idempotency_key"])
-    op.create_index("ix_public_intake_submissions_correlation_id", "public_intake_submissions", ["correlation_id"])
-    op.create_index("ix_public_intake_submissions_owner_id", "public_intake_submissions", ["owner_id"])
+    op.create_index(
+        "ix_public_intake_submissions_contact_email", "public_intake_submissions", ["contact_email"]
+    )
+    op.create_index(
+        "ix_public_intake_submissions_idempotency_key",
+        "public_intake_submissions",
+        ["idempotency_key"],
+        unique=True,
+    )
+    op.create_index(
+        "ix_public_intake_submissions_correlation_id",
+        "public_intake_submissions",
+        ["correlation_id"],
+    )
+    op.create_index(
+        "ix_public_intake_submissions_owner_id", "public_intake_submissions", ["owner_id"]
+    )
 
 
 def downgrade() -> None:
     op.drop_index("ix_public_intake_submissions_owner_id", table_name="public_intake_submissions")
-    op.drop_index("ix_public_intake_submissions_correlation_id", table_name="public_intake_submissions")
-    op.drop_index("ix_public_intake_submissions_idempotency_key", table_name="public_intake_submissions")
-    op.drop_index("ix_public_intake_submissions_contact_email", table_name="public_intake_submissions")
+    op.drop_index(
+        "ix_public_intake_submissions_correlation_id", table_name="public_intake_submissions"
+    )
+    op.drop_index(
+        "ix_public_intake_submissions_idempotency_key", table_name="public_intake_submissions"
+    )
+    op.drop_index(
+        "ix_public_intake_submissions_contact_email", table_name="public_intake_submissions"
+    )
     op.drop_index("ix_public_intake_submissions_status", table_name="public_intake_submissions")
     op.drop_index("ix_public_intake_submissions_kind", table_name="public_intake_submissions")
     op.drop_table("public_intake_submissions")

@@ -53,6 +53,15 @@ describe("PublicIntakeForm", () => {
         },
       },
     );
+    fireEvent.change(screen.getByLabelText("Desired result"), {
+      target: { value: "A clear, tested workflow for the operations team." },
+    });
+    fireEvent.change(screen.getByLabelText("Project category"), {
+      target: { value: "workflow automation" },
+    });
+    fireEvent.change(screen.getByLabelText("Target timeline"), {
+      target: { value: "This quarter" },
+    });
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(
       screen.getByRole("button", { name: "Submit for human review" }),
@@ -107,13 +116,22 @@ describe("PublicIntakeForm", () => {
         },
       },
     );
+    fireEvent.change(screen.getByLabelText("Desired result"), {
+      target: { value: "A clear, tested workflow for the operations team." },
+    });
+    fireEvent.change(screen.getByLabelText("Project category"), {
+      target: { value: "workflow automation" },
+    });
+    fireEvent.change(screen.getByLabelText("Target timeline"), {
+      target: { value: "This quarter" },
+    });
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(
       screen.getByRole("button", { name: "Submit for human review" }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Submission rate limit reached",
+      "Too many submissions from this address",
     );
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
