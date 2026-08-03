@@ -1,10 +1,13 @@
-import { WorkspaceRoute } from "@/components/workspace/workspace-route";
+import { AppShell } from "@/components/app-shell";
+import { IsolatedWorkspacePage } from "@/features/workspace/isolated-workspace-page";
 export default function OperationsRisksPage() {
   return (
-    <WorkspaceRoute
+    <AppShell
       path="/ops/risks"
       title="Risks"
       description="Review open delivery risks and recorded decisions."
-    />
+    >
+      <IsolatedWorkspacePage mode="risks" />
+    </AppShell>
   );
 }

@@ -1,6 +1,35 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { apiBase } from "../api";
 
+export type ApiError = Error & {
+  status: number;
+  code?: string;
+  correlationId?: string;
+  details?: Record<string, unknown>;
+};
+
+export async function parseApiError(response: Response): Promise<ApiError> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: {
+      code?: string;
+      message?: string;
+      correlation_id?: string;
+      details?: Record<string, unknown>;
+    };
+  } | null;
+  const error = new Error(
+    body?.error?.message ?? `Request failed (${response.status})`,
+  ) as ApiError;
+  error.status = response.status;
+  error.code = body?.error?.code;
+  error.correlationId =
+    body?.error?.correlation_id ??
+    response.headers.get("X-Correlation-ID") ??
+    undefined;
+  error.details = body?.error?.details;
+  return error;
+}
+
 export async function fetchQuery<T>(
   path: string,
   signal: AbortSignal,
@@ -11,7 +40,7 @@ export async function fetchQuery<T>(
     signal,
   }).then(async (response) => {
     if (!response.ok) {
-      throw new Error(`Request failed (${response.status})`);
+      throw await parseApiError(response);
     }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;

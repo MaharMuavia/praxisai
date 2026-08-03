@@ -1,9 +1,10 @@
+import base64
 import hashlib
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +13,7 @@ from app.domain.models import (
     AuditEvent,
     Organization,
     OrganizationMembership,
+    PublicIntakeIdempotency,
     PublicIntakeSubmission,
     User,
 )
@@ -28,6 +30,15 @@ class InvalidIntakeTransition(ValueError):
 
 class IntakeVersionConflict(ValueError):
     pass
+
+
+_ALLOWED_TRANSITIONS: dict[str, set[str]] = {
+    "NEW": {"IN_REVIEW", "REJECTED"},
+    "IN_REVIEW": {"QUALIFIED", "REJECTED"},
+    "QUALIFIED": {"CONVERTED", "REJECTED"},
+    "REJECTED": {"IN_REVIEW"},
+    "CONVERTED": set(),
+}
 
 
 def submission_payload_hash(body: PublicIntakeSubmissionCreate) -> str:
@@ -54,6 +65,90 @@ def ensure_idempotency_matches(
     if submission.payload_hash and submission.payload_hash != payload_hash:
         raise IdempotencyConflict("Idempotency-Key was already used for different content")
     return submission
+
+
+async def reserve_idempotency(
+    session: AsyncSession,
+    *,
+    idempotency_key: str,
+    payload_hash: str,
+    kind: str,
+    correlation_id: uuid.UUID,
+) -> PublicIntakeSubmission | None:
+    """Reserve a key before rate limiting so retries cannot consume another quota slot."""
+    existing = await session.scalar(
+        select(PublicIntakeIdempotency).where(
+            PublicIntakeIdempotency.idempotency_key == idempotency_key
+        )
+    )
+    if existing is not None:
+        if existing.payload_hash != payload_hash:
+            raise IdempotencyConflict("Idempotency-Key was already used for different content")
+        if existing.status == "COMPLETED" and existing.submission_id:
+            submission = await session.get(PublicIntakeSubmission, existing.submission_id)
+            if submission is not None:
+                return submission
+        if existing.status == "FAILED":
+            existing.status = "RESERVED"
+            existing.correlation_id = correlation_id
+            await session.commit()
+            return None
+        raise IdempotencyConflict("A submission with this Idempotency-Key is still being processed")
+
+    reservation = PublicIntakeIdempotency(
+        idempotency_key=idempotency_key,
+        payload_hash=payload_hash,
+        kind=kind,
+        status="RESERVED",
+        correlation_id=correlation_id,
+    )
+    session.add(reservation)
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        existing = await session.scalar(
+            select(PublicIntakeIdempotency).where(
+                PublicIntakeIdempotency.idempotency_key == idempotency_key
+            )
+        )
+        if existing is None:
+            raise exc
+        if existing.payload_hash != payload_hash:
+            raise IdempotencyConflict(
+                "Idempotency-Key was already used for different content"
+            ) from exc
+        if existing.status == "COMPLETED" and existing.submission_id:
+            return await session.get(PublicIntakeSubmission, existing.submission_id)
+        raise IdempotencyConflict(
+            "A submission with this Idempotency-Key is still being processed"
+        ) from exc
+    return None
+
+
+async def mark_idempotency_failed(session: AsyncSession, *, idempotency_key: str) -> None:
+    await session.rollback()
+    reservation = await session.scalar(
+        select(PublicIntakeIdempotency).where(
+            PublicIntakeIdempotency.idempotency_key == idempotency_key
+        )
+    )
+    if reservation is not None and reservation.status != "COMPLETED":
+        reservation.status = "FAILED"
+        await session.commit()
+
+
+async def _complete_idempotency(
+    session: AsyncSession, *, idempotency_key: str, submission_id: uuid.UUID
+) -> None:
+    reservation = await session.scalar(
+        select(PublicIntakeIdempotency).where(
+            PublicIntakeIdempotency.idempotency_key == idempotency_key
+        )
+    )
+    if reservation is not None:
+        reservation.status = "COMPLETED"
+        reservation.submission_id = submission_id
 
 
 async def create_submission(
@@ -91,7 +186,7 @@ async def create_submission(
         campaign=body.campaign.strip() if body.campaign else None,
         payload=payload,
         consent_snapshot={
-            "granted": True,
+            "granted": body.consent is True,
             "version": "public-intake-v1",
             "captured_at": now.isoformat(),
             "purpose": "review_and_pathway_contact",
@@ -122,23 +217,89 @@ async def create_submission(
             payload={"kind": body.kind, "source": body.source, "campaign": body.campaign},
         )
     )
+    await _complete_idempotency(
+        session, idempotency_key=idempotency_key, submission_id=submission.id
+    )
     await session.commit()
     await session.refresh(submission)
     return submission
 
 
-async def list_submissions(
-    session: AsyncSession, *, status: str | None, limit: int
-) -> list[PublicIntakeSubmission]:
-    query = (
-        select(PublicIntakeSubmission)
-        .where(PublicIntakeSubmission.deleted_at.is_(None))
-        .order_by(PublicIntakeSubmission.created_at.desc())
-        .limit(limit)
+def _cursor_value(value: datetime, submission_id: uuid.UUID) -> str:
+    raw = json.dumps({"created_at": value.isoformat(), "id": str(submission_id)}).encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
+    try:
+        padded = cursor + "=" * (-len(cursor) % 4)
+        value = json.loads(base64.urlsafe_b64decode(padded).decode())
+        return datetime.fromisoformat(value["created_at"]), uuid.UUID(value["id"])
+    except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("Invalid intake queue cursor") from exc
+
+
+async def list_submission_summaries(
+    session: AsyncSession,
+    *,
+    status: str | None,
+    kind: str | None,
+    owner_id: uuid.UUID | None,
+    source: str | None,
+    search: str | None,
+    action_required: bool | None,
+    cursor: str | None,
+    page_size: int,
+) -> tuple[list[PublicIntakeSubmission], str | None]:
+    query = select(PublicIntakeSubmission).where(
+        PublicIntakeSubmission.deleted_at.is_(None),
+        PublicIntakeSubmission.anonymized_at.is_(None),
     )
     if status:
         query = query.where(PublicIntakeSubmission.status == status)
-    return list((await session.scalars(query)).all())
+    if kind:
+        query = query.where(PublicIntakeSubmission.kind == kind)
+    if owner_id:
+        query = query.where(PublicIntakeSubmission.owner_id == owner_id)
+    if source:
+        query = query.where(PublicIntakeSubmission.source == source)
+    if search:
+        pattern = f"%{search}%"
+        query = query.where(
+            or_(
+                PublicIntakeSubmission.payload["full_name"].as_string().ilike(pattern),
+                PublicIntakeSubmission.source.ilike(pattern),
+                PublicIntakeSubmission.campaign.ilike(pattern),
+            )
+        )
+    if action_required is True:
+        query = query.where(PublicIntakeSubmission.status.in_(["NEW", "IN_REVIEW"]))
+    if cursor:
+        created_at, submission_id = decode_cursor(cursor)
+        query = query.where(
+            or_(
+                PublicIntakeSubmission.created_at < created_at,
+                and_(
+                    PublicIntakeSubmission.created_at == created_at,
+                    PublicIntakeSubmission.id < submission_id,
+                ),
+            )
+        )
+    rows = list(
+        (
+            await session.scalars(
+                query.order_by(
+                    PublicIntakeSubmission.created_at.desc(), PublicIntakeSubmission.id.desc()
+                ).limit(page_size + 1)
+            )
+        ).all()
+    )
+    next_cursor = (
+        _cursor_value(rows[page_size - 1].created_at, rows[page_size - 1].id)
+        if len(rows) > page_size
+        else None
+    )
+    return rows[:page_size], next_cursor
 
 
 async def get_submission(
@@ -162,7 +323,7 @@ async def _validate_owner(session: AsyncSession, owner_id: uuid.UUID | None) -> 
                 User.id == owner_id,
                 User.is_active.is_(True),
                 OrganizationMembership.is_active.is_(True),
-                OrganizationMembership.role.in_(["coordinator", "platform_admin"]),
+                OrganizationMembership.role.in_(("coordinator", "platform_admin")),
                 Organization.kind == "internal",
             )
         )
@@ -171,13 +332,10 @@ async def _validate_owner(session: AsyncSession, owner_id: uuid.UUID | None) -> 
         raise ValueError("Owner must be an active operations coordinator")
 
 
-_ALLOWED_TRANSITIONS: dict[str, set[str]] = {
-    "NEW": {"IN_REVIEW", "REJECTED"},
-    "IN_REVIEW": {"QUALIFIED", "REJECTED"},
-    "QUALIFIED": {"CONVERTED", "REJECTED"},
-    "REJECTED": {"IN_REVIEW"},
-    "CONVERTED": set(),
-}
+def allowed_transitions(submission: PublicIntakeSubmission) -> list[str]:
+    if submission.deleted_at or submission.anonymized_at or submission.withdrawal_requested_at:
+        return []
+    return sorted(_ALLOWED_TRANSITIONS.get(submission.status, set()))
 
 
 def _validate_transition(
@@ -207,9 +365,15 @@ async def update_submission(
     principal: SessionPrincipal,
     correlation_id: uuid.UUID,
 ) -> PublicIntakeSubmission:
-    submission = await session.get(PublicIntakeSubmission, submission_id)
+    submission = await session.scalar(
+        select(PublicIntakeSubmission)
+        .where(PublicIntakeSubmission.id == submission_id)
+        .with_for_update()
+    )
     if submission is None or submission.deleted_at is not None:
         raise LookupError("Intake submission not found")
+    if submission.anonymized_at or submission.withdrawal_requested_at:
+        raise InvalidIntakeTransition("Privacy-terminal intake records cannot be reviewed")
     if submission.version != body.expected_version:
         raise IntakeVersionConflict("This intake record changed; reload before updating")
     _validate_transition(submission, body)
@@ -226,7 +390,6 @@ async def update_submission(
     submission.version += 1
     if body.status == "REJECTED":
         submission.retention_expires_at = datetime.now(UTC) + timedelta(days=30)
-
     session.add(
         AuditEvent(
             actor_id=principal.user_id,
@@ -250,23 +413,36 @@ async def update_submission(
     return submission
 
 
+def _redact_submission(submission: PublicIntakeSubmission, now: datetime) -> None:
+    submission.contact_email = None
+    submission.source = None
+    submission.campaign = None
+    submission.owner_id = None
+    submission.qualification_notes = None
+    submission.rejection_reason = None
+    submission.conversion_evidence = None
+    submission.payload = {"redacted": True, "kind": submission.kind}
+    submission.consent_snapshot = {"redacted": True}
+    submission.anonymized_at = now
+    submission.withdrawal_requested_at = submission.withdrawal_requested_at or now
+
+
 async def anonymize_expired_submissions(session: AsyncSession, *, now: datetime) -> int:
     rows = list(
         (
             await session.scalars(
-                select(PublicIntakeSubmission).where(
+                select(PublicIntakeSubmission)
+                .where(
                     PublicIntakeSubmission.retention_expires_at <= now,
                     PublicIntakeSubmission.anonymized_at.is_(None),
                     PublicIntakeSubmission.deleted_at.is_(None),
                 )
+                .with_for_update(skip_locked=True)
             )
         ).all()
     )
     for submission in rows:
-        submission.contact_email = "redacted@invalid.local"
-        submission.payload = {"redacted": True, "kind": submission.kind}
-        submission.consent_snapshot = {"redacted": True}
-        submission.anonymized_at = now
+        _redact_submission(submission, now)
     await session.commit()
     return len(rows)
 
@@ -279,11 +455,10 @@ async def anonymize_submission(
     correlation_id: uuid.UUID,
 ) -> PublicIntakeSubmission:
     submission = await get_submission(session, submission_id=submission_id)
+    if submission.anonymized_at:
+        return submission
     now = datetime.now(UTC)
-    submission.contact_email = "redacted@invalid.local"
-    submission.payload = {"redacted": True, "kind": submission.kind}
-    submission.consent_snapshot = {"redacted": True}
-    submission.anonymized_at = now
+    _redact_submission(submission, now)
     session.add(
         AuditEvent(
             actor_id=principal.user_id,
@@ -298,3 +473,91 @@ async def anonymize_submission(
     await session.commit()
     await session.refresh(submission)
     return submission
+
+
+async def request_withdrawal(
+    session: AsyncSession,
+    *,
+    submission_id: uuid.UUID,
+    principal: SessionPrincipal,
+    reason: str,
+    correlation_id: uuid.UUID,
+) -> PublicIntakeSubmission:
+    submission = await get_submission(session, submission_id=submission_id)
+    if submission.anonymized_at:
+        return submission
+    submission.withdrawal_requested_at = submission.withdrawal_requested_at or datetime.now(UTC)
+    session.add(
+        AuditEvent(
+            actor_id=principal.user_id,
+            organization_id=principal.organization_id,
+            action="public_intake.withdrawal_requested",
+            resource_type="public_intake_submission",
+            resource_id=submission.id,
+            correlation_id=correlation_id,
+            payload={"reason": reason},
+        )
+    )
+    await session.commit()
+    await session.refresh(submission)
+    return submission
+
+
+async def delete_submission(
+    session: AsyncSession,
+    *,
+    submission_id: uuid.UUID,
+    principal: SessionPrincipal,
+    reason: str,
+    correlation_id: uuid.UUID,
+) -> None:
+    submission = await get_submission(session, submission_id=submission_id)
+    now = datetime.now(UTC)
+    _redact_submission(submission, now)
+    submission.deleted_at = now
+    session.add(
+        AuditEvent(
+            actor_id=principal.user_id,
+            organization_id=principal.organization_id,
+            action="public_intake.deleted",
+            resource_type="public_intake_submission",
+            resource_id=submission.id,
+            correlation_id=correlation_id,
+            payload={"reason": reason},
+        )
+    )
+    await session.commit()
+
+
+async def list_owners(session: AsyncSession) -> list[User]:
+    return list(
+        (
+            await session.scalars(
+                select(User)
+                .join(OrganizationMembership, OrganizationMembership.user_id == User.id)
+                .join(Organization, Organization.id == OrganizationMembership.organization_id)
+                .where(
+                    User.is_active.is_(True),
+                    OrganizationMembership.is_active.is_(True),
+                    OrganizationMembership.role.in_(("coordinator", "platform_admin")),
+                    Organization.kind == "internal",
+                )
+                .order_by(User.display_name)
+            )
+        ).all()
+    )
+
+
+async def list_audit_events(session: AsyncSession, *, submission_id: uuid.UUID) -> list[AuditEvent]:
+    return list(
+        (
+            await session.scalars(
+                select(AuditEvent)
+                .where(
+                    AuditEvent.resource_type == "public_intake_submission",
+                    AuditEvent.resource_id == submission_id,
+                )
+                .order_by(AuditEvent.created_at.asc())
+            )
+        ).all()
+    )

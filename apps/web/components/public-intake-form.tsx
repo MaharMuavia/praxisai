@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiBase } from "../lib/api";
+import { parseApiError } from "../lib/queries/shared";
 
 const intakeSchema = z
   .object({
@@ -25,6 +26,8 @@ const intakeSchema = z
     track: z.string().trim().max(2_000),
     education_status: z.string().trim().max(120),
     availability: z.string().trim(),
+    years_experience: z.string().trim(),
+    rate_expectations: z.string().trim().max(500),
     profile_url: z.string().trim(),
     role: z.string().trim().max(120),
     cohort_context: z.string().trim().max(2_000),
@@ -86,6 +89,16 @@ const intakeSchema = z
           message: "Enter weekly hours (1–80)",
         });
       }
+      if (
+        !Number.isInteger(Number(value.years_experience)) ||
+        Number(value.years_experience) < 1
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["years_experience"],
+          message: "Enter years of experience (1â€“70)",
+        });
+      }
       if (!/^https?:\/\/[^\s]+$/i.test(value.profile_url)) {
         context.addIssue({
           code: "custom",
@@ -126,6 +139,8 @@ const defaults: IntakeForm = {
   track: "",
   education_status: "",
   availability: "",
+  years_experience: "",
+  rate_expectations: "",
   profile_url: "",
   role: "",
   cohort_context: "",
@@ -151,6 +166,7 @@ export function PublicIntakeForm() {
     watch,
     setError,
     setFocus,
+    reset,
     formState: { errors },
   } = useForm<IntakeForm>({ defaultValues: defaults });
   const kind = watch("kind");
@@ -207,10 +223,11 @@ export function PublicIntakeForm() {
             ? {
                 ...common,
                 technical_specializations: value.track,
-                years_experience: 1,
+                years_experience: Number(value.years_experience),
                 weekly_availability: Number(value.availability),
                 profile_url: value.profile_url,
-                rate_expectations: undefined,
+                experience_summary: value.summary,
+                rate_expectations: value.rate_expectations || undefined,
               }
             : {
                 ...common,
@@ -234,30 +251,26 @@ export function PublicIntakeForm() {
         },
         body: JSON.stringify(body),
       });
-      const responseBody = (await response.json().catch(() => null)) as {
-        error?: { message?: string; correlation_id?: string };
-        correlation_id?: string;
-      } | null;
-      const correlation =
-        responseBody?.error?.correlation_id ??
-        responseBody?.correlation_id ??
-        response.headers.get("X-Correlation-ID");
       if (!response.ok) {
+        const parsedError = await parseApiError(response);
         const message =
-          response.status === 409
-            ? "This request was already submitted with different content. Please refresh and try again."
-            : response.status === 429
+          parsedError.status === 409
+            ? "This request conflicts with an existing submission. Reload the page or use a new request."
+            : parsedError.status === 429
               ? "Too many submissions from this address. Please try again later."
-              : (responseBody?.error?.message ??
-                "Unable to submit this request");
+              : parsedError.message;
         throw new Error(
-          `${message}${correlation ? ` (Support ID: ${correlation})` : ""}`,
+          `${message}${parsedError.correlationId ? ` (Support ID: ${parsedError.correlationId})` : ""}`,
         );
       }
+      const responseBody = (await response.json()) as {
+        correlation_id?: string;
+      };
+      const correlation =
+        responseBody.correlation_id ?? response.headers.get("X-Correlation-ID");
       setSubmitted(
         `Received. Your ${kindLabels[value.kind].toLowerCase()} is queued for human review. Support ID: ${correlation ?? "available in your confirmation"}.`,
       );
-      idempotencyKey.current = crypto.randomUUID();
     } catch (reason: unknown) {
       setServerError(
         reason instanceof DOMException && reason.name === "AbortError"
@@ -306,224 +319,271 @@ export function PublicIntakeForm() {
       ) : null}
       {Object.keys(errors).length ? (
         <div className="error" role="alert" tabIndex={-1}>
-          Please correct the highlighted fields before submitting.
+          <span id="intake-error-summary">
+            Please correct the highlighted fields before submitting.
+          </span>
         </div>
       ) : null}
-      <form
-        className="public-intake-form"
-        onSubmit={handleSubmit(submit, onInvalid)}
-        noValidate
-      >
-        <label>
-          I am contacting PraxisAI about
-          <select {...register("kind")}>
-            {Object.entries(kindLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          {errors.kind ? (
-            <span className="field-error">{errors.kind.message}</span>
-          ) : null}
-        </label>
-        <div className="public-intake-grid">
-          <label>
-            Full name
-            <input {...register("full_name")} autoComplete="name" />
-            {errors.full_name ? (
-              <span className="field-error">{errors.full_name.message}</span>
-            ) : null}
-          </label>
-          <label>
-            Email
-            <input {...register("email")} autoComplete="email" type="email" />
-            {errors.email ? (
-              <span className="field-error">{errors.email.message}</span>
-            ) : null}
-          </label>
-          <label>
-            Country
-            <input {...register("country")} autoComplete="country-name" />
-            {errors.country ? (
-              <span className="field-error">{errors.country.message}</span>
-            ) : null}
-          </label>
-          <label>
-            {organizationLabel}
-            <input {...register("organization")} />
-            {errors.organization ? (
-              <span className="field-error">{errors.organization.message}</span>
-            ) : null}
-          </label>
-        </div>
-        <label>
-          {summaryLabel}
-          <textarea {...register("summary")} rows={5} />
-          {errors.summary ? (
-            <span className="field-error">{errors.summary.message}</span>
-          ) : null}
-        </label>
-        {kind === "company" ? (
-          <div className="public-intake-grid">
-            <label>
-              Desired result
-              <input {...register("desired_result")} />
-              {errors.desired_result ? (
-                <span className="field-error">
-                  {errors.desired_result.message}
-                </span>
-              ) : null}
-            </label>
-            <label>
-              Project category
-              <input {...register("project_category")} />
-              {errors.project_category ? (
-                <span className="field-error">
-                  {errors.project_category.message}
-                </span>
-              ) : null}
-            </label>
-            <label>
-              Target timeline
-              <input {...register("target_timeline")} />
-              {errors.target_timeline ? (
-                <span className="field-error">
-                  {errors.target_timeline.message}
-                </span>
-              ) : null}
-            </label>
-            <label>
-              Data sensitivity
-              <select {...register("data_sensitivity")}>
-                <option value="internal">Internal</option>
-                <option value="public">Public</option>
-                <option value="confidential">Confidential</option>
-                <option value="restricted">Restricted</option>
-              </select>
-            </label>
-          </div>
-        ) : null}
-        {kind === "student" ? (
-          <div className="public-intake-grid">
-            <label>
-              Education status
-              <input {...register("education_status")} />
-              {errors.education_status ? (
-                <span className="field-error">
-                  {errors.education_status.message}
-                </span>
-              ) : null}
-            </label>
-            <label>
-              Technical focus
-              <input {...register("track")} />
-              {errors.track ? (
-                <span className="field-error">{errors.track.message}</span>
-              ) : null}
-            </label>
-            <label>
-              Weekly availability (hours)
-              <input
-                {...register("availability")}
-                inputMode="numeric"
-                type="number"
-                min="1"
-                max="80"
-              />
-              {errors.availability ? (
-                <span className="field-error">
-                  {errors.availability.message}
-                </span>
-              ) : null}
-            </label>
-          </div>
-        ) : null}
-        {kind === "expert_lead" ? (
-          <div className="public-intake-grid">
-            <label>
-              Technical specializations
-              <input {...register("track")} />
-              {errors.track ? (
-                <span className="field-error">{errors.track.message}</span>
-              ) : null}
-            </label>
-            <label>
-              Weekly availability (hours)
-              <input
-                {...register("availability")}
-                inputMode="numeric"
-                type="number"
-                min="1"
-                max="80"
-              />
-              {errors.availability ? (
-                <span className="field-error">
-                  {errors.availability.message}
-                </span>
-              ) : null}
-            </label>
-            <label>
-              Public profile URL
-              <input {...register("profile_url")} type="url" />
-              {errors.profile_url ? (
-                <span className="field-error">
-                  {errors.profile_url.message}
-                </span>
-              ) : null}
-            </label>
-          </div>
-        ) : null}
-        {kind === "university" ? (
-          <div className="public-intake-grid">
-            <label>
-              Your role
-              <input {...register("role")} />
-              {errors.role ? (
-                <span className="field-error">{errors.role.message}</span>
-              ) : null}
-            </label>
-            <label>
-              Cohort context
-              <textarea {...register("cohort_context")} rows={3} />
-              {errors.cohort_context ? (
-                <span className="field-error">
-                  {errors.cohort_context.message}
-                </span>
-              ) : null}
-            </label>
-            <label>
-              Privacy requirements
-              <textarea {...register("privacy_requirements")} rows={3} />
-              {errors.privacy_requirements ? (
-                <span className="field-error">
-                  {errors.privacy_requirements.message}
-                </span>
-              ) : null}
-            </label>
-          </div>
-        ) : null}
-        <label className="public-intake-honeypot" aria-hidden="true">
-          Website
-          <input {...register("honeypot")} tabIndex={-1} autoComplete="off" />
-        </label>
-        <label className="public-intake-consent">
-          <input {...register("consent")} type="checkbox" /> I agree that
-          PraxisAI may use this information to review this request and contact
-          me about the stated pathway. It will not be used for unrelated
-          marketing.
-          {errors.consent ? (
-            <span className="field-error">{errors.consent.message}</span>
-          ) : null}
-        </label>
+      {submitted ? (
         <button
-          className="ui-button ui-button-primary"
-          disabled={submitting}
-          type="submit"
+          className="ui-button ui-button-secondary"
+          type="button"
+          onClick={() => {
+            reset(defaults);
+            setSubmitted(null);
+            setServerError(null);
+            idempotencyKey.current = crypto.randomUUID();
+          }}
         >
-          {submitting ? "Submitting securely…" : "Submit for human review"}
+          Submit another request
         </button>
-      </form>
+      ) : (
+        <form
+          className="public-intake-form"
+          onSubmit={handleSubmit(submit, onInvalid)}
+          noValidate
+          aria-describedby={
+            Object.keys(errors).length ? "intake-error-summary" : undefined
+          }
+        >
+          <label>
+            I am contacting PraxisAI about
+            <select {...register("kind")}>
+              {Object.entries(kindLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {errors.kind ? (
+              <span className="field-error">{errors.kind.message}</span>
+            ) : null}
+          </label>
+          <div className="public-intake-grid">
+            <label>
+              Full name
+              <input {...register("full_name")} autoComplete="name" />
+              {errors.full_name ? (
+                <span className="field-error">{errors.full_name.message}</span>
+              ) : null}
+            </label>
+            <label>
+              Email
+              <input {...register("email")} autoComplete="email" type="email" />
+              {errors.email ? (
+                <span className="field-error">{errors.email.message}</span>
+              ) : null}
+            </label>
+            <label>
+              Country
+              <input {...register("country")} autoComplete="country-name" />
+              {errors.country ? (
+                <span className="field-error">{errors.country.message}</span>
+              ) : null}
+            </label>
+            <label>
+              {organizationLabel}
+              <input {...register("organization")} />
+              {errors.organization ? (
+                <span className="field-error">
+                  {errors.organization.message}
+                </span>
+              ) : null}
+            </label>
+          </div>
+          <label>
+            {summaryLabel}
+            <textarea {...register("summary")} rows={5} />
+            {errors.summary ? (
+              <span className="field-error">{errors.summary.message}</span>
+            ) : null}
+          </label>
+          {kind === "company" ? (
+            <div className="public-intake-grid">
+              <label>
+                Desired result
+                <input {...register("desired_result")} />
+                {errors.desired_result ? (
+                  <span className="field-error">
+                    {errors.desired_result.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Project category
+                <input {...register("project_category")} />
+                {errors.project_category ? (
+                  <span className="field-error">
+                    {errors.project_category.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Target timeline
+                <input {...register("target_timeline")} />
+                {errors.target_timeline ? (
+                  <span className="field-error">
+                    {errors.target_timeline.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Data sensitivity
+                <select {...register("data_sensitivity")}>
+                  <option value="internal">Internal</option>
+                  <option value="public">Public</option>
+                  <option value="confidential">Confidential</option>
+                  <option value="restricted">Restricted</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
+          {kind === "student" ? (
+            <div className="public-intake-grid">
+              <label>
+                Education status
+                <input {...register("education_status")} />
+                {errors.education_status ? (
+                  <span className="field-error">
+                    {errors.education_status.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Technical focus
+                <input {...register("track")} />
+                {errors.track ? (
+                  <span className="field-error">{errors.track.message}</span>
+                ) : null}
+              </label>
+              <label>
+                Weekly availability (hours)
+                <input
+                  {...register("availability")}
+                  inputMode="numeric"
+                  type="number"
+                  min="1"
+                  max="80"
+                />
+                {errors.availability ? (
+                  <span className="field-error">
+                    {errors.availability.message}
+                  </span>
+                ) : null}
+              </label>
+            </div>
+          ) : null}
+          {kind === "expert_lead" ? (
+            <div className="public-intake-grid">
+              <label>
+                Technical specializations
+                <input {...register("track")} />
+                {errors.track ? (
+                  <span className="field-error">{errors.track.message}</span>
+                ) : null}
+              </label>
+              <label>
+                Years of experience
+                <input
+                  {...register("years_experience")}
+                  inputMode="numeric"
+                  type="number"
+                  min="1"
+                  max="70"
+                  aria-invalid={errors.years_experience ? "true" : "false"}
+                  aria-describedby={
+                    errors.years_experience
+                      ? "years-experience-error"
+                      : undefined
+                  }
+                />
+                {errors.years_experience ? (
+                  <span id="years-experience-error" className="field-error">
+                    {errors.years_experience.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Weekly availability (hours)
+                <input
+                  {...register("availability")}
+                  inputMode="numeric"
+                  type="number"
+                  min="1"
+                  max="80"
+                />
+                {errors.availability ? (
+                  <span className="field-error">
+                    {errors.availability.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Public profile URL
+                <input {...register("profile_url")} type="url" />
+                {errors.profile_url ? (
+                  <span className="field-error">
+                    {errors.profile_url.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Rate expectations (optional)
+                <input {...register("rate_expectations")} maxLength={500} />
+              </label>
+            </div>
+          ) : null}
+          {kind === "university" ? (
+            <div className="public-intake-grid">
+              <label>
+                Your role
+                <input {...register("role")} />
+                {errors.role ? (
+                  <span className="field-error">{errors.role.message}</span>
+                ) : null}
+              </label>
+              <label>
+                Cohort context
+                <textarea {...register("cohort_context")} rows={3} />
+                {errors.cohort_context ? (
+                  <span className="field-error">
+                    {errors.cohort_context.message}
+                  </span>
+                ) : null}
+              </label>
+              <label>
+                Privacy requirements
+                <textarea {...register("privacy_requirements")} rows={3} />
+                {errors.privacy_requirements ? (
+                  <span className="field-error">
+                    {errors.privacy_requirements.message}
+                  </span>
+                ) : null}
+              </label>
+            </div>
+          ) : null}
+          <label className="public-intake-honeypot" aria-hidden="true">
+            Website
+            <input {...register("honeypot")} tabIndex={-1} autoComplete="off" />
+          </label>
+          <label className="public-intake-consent">
+            <input {...register("consent")} type="checkbox" /> I agree that
+            PraxisAI may use this information to review this request and contact
+            me about the stated pathway. It will not be used for unrelated
+            marketing.
+            {errors.consent ? (
+              <span className="field-error">{errors.consent.message}</span>
+            ) : null}
+          </label>
+          <button
+            className="ui-button ui-button-primary"
+            disabled={submitting}
+            type="submit"
+          >
+            {submitting ? "Submitting securely…" : "Submit for human review"}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

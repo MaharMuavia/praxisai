@@ -884,7 +884,7 @@ class PublicIntakeSubmission(EntityMixin, Base):
     __tablename__ = "public_intake_submissions"
     kind: Mapped[str] = mapped_column(String(32), index=True)
     status: Mapped[str] = mapped_column(String(32), default="NEW", index=True)
-    contact_email: Mapped[str] = mapped_column(String(320), index=True)
+    contact_email: Mapped[str | None] = mapped_column(String(320), index=True)
     source: Mapped[str | None] = mapped_column(String(120))
     campaign: Mapped[str | None] = mapped_column(String(120))
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
@@ -902,6 +902,18 @@ class PublicIntakeSubmission(EntityMixin, Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     withdrawal_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PublicIntakeIdempotency(EntityMixin, Base):
+    __tablename__ = "public_intake_idempotencies"
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(20), default="RESERVED", index=True)
+    submission_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("public_intake_submissions.id"), unique=True, nullable=True
+    )
+    correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
 
 
 class RateLimitBucket(EntityMixin, Base):

@@ -504,6 +504,7 @@
             "title": "Company Website"
           },
           "consent": {
+            "const": true,
             "title": "Consent",
             "type": "boolean"
           },
@@ -1157,6 +1158,7 @@
             "title": "Campaign"
           },
           "consent": {
+            "const": true,
             "title": "Consent",
             "type": "boolean"
           },
@@ -1169,6 +1171,12 @@
           "email": {
             "format": "email",
             "title": "Email",
+            "type": "string"
+          },
+          "experience_summary": {
+            "maxLength": 4000,
+            "minLength": 20,
+            "title": "Experience Summary",
             "type": "string"
           },
           "full_name": {
@@ -1247,6 +1255,7 @@
           "technical_specializations",
           "years_experience",
           "weekly_availability",
+          "experience_summary",
           "profile_url"
         ],
         "title": "ExpertLeadInquiryCreate",
@@ -3313,6 +3322,123 @@
         "title": "PublicCredential",
         "type": "object"
       },
+      "PublicIntakeAuditView": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "correlation_id": {
+            "format": "uuid",
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "resource_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Id"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "resource_id",
+          "correlation_id",
+          "payload",
+          "created_at"
+        ],
+        "title": "PublicIntakeAuditView",
+        "type": "object"
+      },
+      "PublicIntakeOwnerView": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "email"
+        ],
+        "title": "PublicIntakeOwnerView",
+        "type": "object"
+      },
+      "PublicIntakeQueueResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicIntakeSubmissionSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "PublicIntakeQueueResponse",
+        "type": "object"
+      },
+      "PublicIntakeReason": {
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "PublicIntakeReason",
+        "type": "object"
+      },
       "PublicIntakeReceipt": {
         "properties": {
           "correlation_id": {
@@ -3364,6 +3490,127 @@
         ],
         "title": "PublicIntakeStatus",
         "type": "string"
+      },
+      "PublicIntakeSubmissionSummary": {
+        "properties": {
+          "action_required": {
+            "title": "Action Required",
+            "type": "boolean"
+          },
+          "anonymized_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anonymized At"
+          },
+          "campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "company",
+              "student",
+              "expert_lead",
+              "university"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "retention_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Expires At"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicIntakeStatus"
+          },
+          "withdrawal_requested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawal Requested At"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "display_name",
+          "source",
+          "campaign",
+          "owner_id",
+          "created_at",
+          "retention_expires_at",
+          "anonymized_at",
+          "withdrawal_requested_at",
+          "action_required"
+        ],
+        "title": "PublicIntakeSubmissionSummary",
+        "type": "object"
       },
       "PublicIntakeSubmissionUpdate": {
         "additionalProperties": false,
@@ -3446,6 +3693,13 @@
       },
       "PublicIntakeSubmissionView": {
         "properties": {
+          "allowed_transitions": {
+            "items": {
+              "$ref": "#/components/schemas/PublicIntakeStatus"
+            },
+            "title": "Allowed Transitions",
+            "type": "array"
+          },
           "anonymized_at": {
             "anyOf": [
               {
@@ -3470,8 +3724,15 @@
             "title": "Campaign"
           },
           "contact_email": {
-            "title": "Contact Email",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
           },
           "conversion_evidence": {
             "anyOf": [
@@ -3493,6 +3754,18 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
           },
           "id": {
             "format": "uuid",
@@ -3589,6 +3862,18 @@
           "version": {
             "title": "Version",
             "type": "integer"
+          },
+          "withdrawal_requested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawal Requested At"
           }
         },
         "required": [
@@ -3608,7 +3893,10 @@
           "version",
           "conversion_evidence",
           "retention_expires_at",
-          "anonymized_at"
+          "anonymized_at",
+          "deleted_at",
+          "withdrawal_requested_at",
+          "allowed_transitions"
         ],
         "title": "PublicIntakeSubmissionView",
         "type": "object"
@@ -4355,6 +4643,7 @@
             "title": "Campaign"
           },
           "consent": {
+            "const": true,
             "title": "Consent",
             "type": "boolean"
           },
@@ -4966,6 +5255,7 @@
             "type": "string"
           },
           "consent": {
+            "const": true,
             "title": "Consent",
             "type": "boolean"
           },
@@ -6863,13 +7153,114 @@
           },
           {
             "in": "query",
-            "name": "limit",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "owner_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Owner Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 160,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action_required",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Required"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
             "required": false,
             "schema": {
               "default": 50,
-              "maximum": 200,
+              "maximum": 100,
               "minimum": 1,
-              "title": "Limit",
+              "title": "Page Size",
               "type": "integer"
             }
           },
@@ -6895,11 +7286,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PublicIntakeSubmissionView"
-                  },
-                  "title": "Response Intake Queue Api V1 Ops Intake Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/PublicIntakeQueueResponse"
                 }
               }
             },
@@ -6917,6 +7304,59 @@
           }
         },
         "summary": "Intake Queue",
+        "tags": [
+          "public intake"
+        ]
+      }
+    },
+    "/api/v1/ops/intake/owners": {
+      "get": {
+        "operationId": "intake_owners_api_v1_ops_intake_owners_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PublicIntakeOwnerView"
+                  },
+                  "title": "Response Intake Owners Api V1 Ops Intake Owners Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Intake Owners",
         "tags": [
           "public intake"
         ]
@@ -7102,6 +7542,200 @@
           }
         },
         "summary": "Anonymize Intake",
+        "tags": [
+          "public intake"
+        ]
+      }
+    },
+    "/api/v1/ops/intake/{submission_id}/audit": {
+      "get": {
+        "operationId": "intake_audit_api_v1_ops_intake__submission_id__audit_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PublicIntakeAuditView"
+                  },
+                  "title": "Response Intake Audit Api V1 Ops Intake  Submission Id  Audit Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Intake Audit",
+        "tags": [
+          "public intake"
+        ]
+      }
+    },
+    "/api/v1/ops/intake/{submission_id}/delete": {
+      "post": {
+        "operationId": "delete_intake_api_v1_ops_intake__submission_id__delete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicIntakeReason"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Intake",
+        "tags": [
+          "public intake"
+        ]
+      }
+    },
+    "/api/v1/ops/intake/{submission_id}/withdraw": {
+      "post": {
+        "operationId": "withdraw_intake_api_v1_ops_intake__submission_id__withdraw_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicIntakeReason"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIntakeSubmissionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Withdraw Intake",
         "tags": [
           "public intake"
         ]

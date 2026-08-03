@@ -84,6 +84,14 @@ export function AppShell({
           : null;
   const hasCareerWorkspace =
     studentCareerPage !== null || employerTalentPage !== null;
+  const isolatedRoute = [
+    "/admin/jobs",
+    "/student/offers",
+    "/lead/offers",
+    "/university/exports",
+    "/ops/approvals",
+    "/ops/risks",
+  ].includes(path);
   const {
     session,
     projects,
@@ -110,7 +118,7 @@ export function AppShell({
     setJobs,
     setOffers,
     setProjectWorkspace,
-  } = useWorkspaceData({ path, root, projectDetailId });
+  } = useWorkspaceData({ path, root, projectDetailId, isolatedRoute });
 
   const roleWorkspaceData: RoleWorkspaceData | null =
     path === "/client/invoices"

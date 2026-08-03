@@ -18,6 +18,7 @@ async def consume_rate_limit(
     raw_key: str,
     limit: int,
     window_seconds: int,
+    commit: bool = True,
 ) -> None:
     bucket_key = hashlib.sha256(raw_key.encode()).hexdigest()
     now = datetime.now(UTC)
@@ -36,7 +37,10 @@ async def consume_rate_limit(
                 )
             )
             try:
-                await session.commit()
+                if commit:
+                    await session.commit()
+                else:
+                    await session.flush()
                 return
             except IntegrityError:
                 await session.rollback()
@@ -53,5 +57,6 @@ async def consume_rate_limit(
             raise RateLimitExceeded("Rate limit exceeded; retry after the current window")
         else:
             bucket.request_count += 1
-        await session.commit()
+        if commit:
+            await session.commit()
         return

@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -17,7 +18,31 @@ from app.domain.models import (
     PublicIntakeSubmission,
     User,
 )
+from app.domain.schemas import PublicIntakeSubmissionCreate
 from app.main import app
+
+
+def test_public_intake_contract_requires_true_consent_and_expert_evidence() -> None:
+    adapter = TypeAdapter(PublicIntakeSubmissionCreate)
+    expert = {
+        "kind": "expert_lead",
+        "full_name": "Expert Example",
+        "email": "expert@example.org",
+        "country": "Pakistan",
+        "consent": True,
+        "technical_specializations": "Python and data systems",
+        "years_experience": 8,
+        "weekly_availability": 10,
+        "experience_summary": "I have delivered production data systems for multiple teams.",
+        "profile_url": "https://example.org/expert",
+    }
+    parsed = adapter.validate_python(expert)
+    assert parsed.years_experience == 8
+    assert parsed.experience_summary.startswith("I have delivered")
+    with pytest.raises(ValidationError):
+        adapter.validate_python({**expert, "consent": False})
+    with pytest.raises(ValidationError):
+        adapter.validate_python({key: value for key, value in expert.items() if key != "consent"})
 
 
 @pytest.mark.asyncio
