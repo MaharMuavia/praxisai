@@ -2,8 +2,8 @@ import uuid
 from collections.abc import AsyncIterator
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
 from httpx import ASGITransport, AsyncClient
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
