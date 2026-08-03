@@ -517,6 +517,23 @@ export interface paths {
         patch: operations["review_intake_api_v1_ops_intake__submission_id__patch"];
         trace?: never;
     };
+    "/api/v1/ops/intake/{submission_id}/anonymize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Anonymize Intake */
+        post: operations["anonymize_intake_api_v1_ops_intake__submission_id__anonymize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ops/integrations": {
         parameters: {
             query?: never;
@@ -4431,6 +4448,39 @@ export interface operations {
                 "application/json": components["schemas"]["PublicIntakeSubmissionUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIntakeSubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    anonymize_intake_api_v1_ops_intake__submission_id__anonymize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

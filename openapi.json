@@ -7048,6 +7048,65 @@
         ]
       }
     },
+    "/api/v1/ops/intake/{submission_id}/anonymize": {
+      "post": {
+        "operationId": "anonymize_intake_api_v1_ops_intake__submission_id__anonymize_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicIntakeSubmissionView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Anonymize Intake",
+        "tags": [
+          "public intake"
+        ]
+      }
+    },
     "/api/v1/ops/integrations": {
       "get": {
         "operationId": "integrations_api_v1_ops_integrations_get",
