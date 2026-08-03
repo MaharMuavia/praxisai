@@ -499,6 +499,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/intake/owners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Intake Owners */
+        get: operations["intake_owners_api_v1_ops_intake_owners_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ops/intake/{submission_id}": {
         parameters: {
             query?: never;
@@ -528,6 +545,57 @@ export interface paths {
         put?: never;
         /** Anonymize Intake */
         post: operations["anonymize_intake_api_v1_ops_intake__submission_id__anonymize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/intake/{submission_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Intake Audit */
+        get: operations["intake_audit_api_v1_ops_intake__submission_id__audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/intake/{submission_id}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete Intake */
+        post: operations["delete_intake_api_v1_ops_intake__submission_id__delete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/intake/{submission_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw Intake */
+        post: operations["withdraw_intake_api_v1_ops_intake__submission_id__withdraw_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1543,8 +1611,11 @@ export interface components {
             company_name: string;
             /** Company Website */
             company_website?: string | null;
-            /** Consent */
-            consent: boolean;
+            /**
+             * Consent
+             * @constant
+             */
+            consent: true;
             /** Country */
             country: string;
             /**
@@ -1786,8 +1857,11 @@ export interface components {
         ExpertLeadInquiryCreate: {
             /** Campaign */
             campaign?: string | null;
-            /** Consent */
-            consent: boolean;
+            /**
+             * Consent
+             * @constant
+             */
+            consent: true;
             /** Country */
             country: string;
             /**
@@ -1795,6 +1869,8 @@ export interface components {
              * Format: email
              */
             email: string;
+            /** Experience Summary */
+            experience_summary: string;
             /** Full Name */
             full_name: string;
             /**
@@ -2662,6 +2738,56 @@ export interface components {
              */
             status: "VALID" | "REVOKED" | "NOT_FOUND";
         };
+        /** PublicIntakeAuditView */
+        PublicIntakeAuditView: {
+            /** Action */
+            action: string;
+            /**
+             * Correlation Id
+             * Format: uuid
+             */
+            correlation_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Resource Id */
+            resource_id: string | null;
+        };
+        /** PublicIntakeOwnerView */
+        PublicIntakeOwnerView: {
+            /** Display Name */
+            display_name: string;
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
+        /** PublicIntakeQueueResponse */
+        PublicIntakeQueueResponse: {
+            /** Items */
+            items: components["schemas"]["PublicIntakeSubmissionSummary"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** PublicIntakeReason */
+        PublicIntakeReason: {
+            /** Reason */
+            reason: string;
+        };
         /** PublicIntakeReceipt */
         PublicIntakeReceipt: {
             /**
@@ -2691,6 +2817,41 @@ export interface components {
          * @enum {string}
          */
         PublicIntakeStatus: "NEW" | "IN_REVIEW" | "QUALIFIED" | "REJECTED" | "CONVERTED";
+        /** PublicIntakeSubmissionSummary */
+        PublicIntakeSubmissionSummary: {
+            /** Action Required */
+            action_required: boolean;
+            /** Anonymized At */
+            anonymized_at: string | null;
+            /** Campaign */
+            campaign: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Display Name */
+            display_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "company" | "student" | "expert_lead" | "university";
+            /** Owner Id */
+            owner_id: string | null;
+            /** Retention Expires At */
+            retention_expires_at: string | null;
+            /** Source */
+            source: string | null;
+            status: components["schemas"]["PublicIntakeStatus"];
+            /** Withdrawal Requested At */
+            withdrawal_requested_at: string | null;
+        };
         /** PublicIntakeSubmissionUpdate */
         PublicIntakeSubmissionUpdate: {
             /** Conversion Evidence */
@@ -2709,12 +2870,14 @@ export interface components {
         };
         /** PublicIntakeSubmissionView */
         PublicIntakeSubmissionView: {
+            /** Allowed Transitions */
+            allowed_transitions: components["schemas"]["PublicIntakeStatus"][];
             /** Anonymized At */
             anonymized_at: string | null;
             /** Campaign */
             campaign: string | null;
             /** Contact Email */
-            contact_email: string;
+            contact_email: string | null;
             /** Conversion Evidence */
             conversion_evidence: string | null;
             /**
@@ -2727,6 +2890,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Deleted At */
+            deleted_at: string | null;
             /**
              * Id
              * Format: uuid
@@ -2756,6 +2921,8 @@ export interface components {
             status: components["schemas"]["PublicIntakeStatus"];
             /** Version */
             version: number;
+            /** Withdrawal Requested At */
+            withdrawal_requested_at: string | null;
         };
         /** QAReviewView */
         QAReviewView: {
@@ -3107,8 +3274,11 @@ export interface components {
             accessibility_needs?: string | null;
             /** Campaign */
             campaign?: string | null;
-            /** Consent */
-            consent: boolean;
+            /**
+             * Consent
+             * @constant
+             */
+            consent: true;
             /** Country */
             country: string;
             /** Education Status */
@@ -3328,8 +3498,11 @@ export interface components {
             campaign?: string | null;
             /** Cohort Context */
             cohort_context: string;
-            /** Consent */
-            consent: boolean;
+            /**
+             * Consent
+             * @constant
+             */
+            consent: true;
             /** Country */
             country: string;
             /**
@@ -4369,7 +4542,13 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string | null;
-                limit?: number;
+                kind?: string | null;
+                owner_id?: string | null;
+                source?: string | null;
+                search?: string | null;
+                action_required?: boolean | null;
+                cursor?: string | null;
+                page_size?: number;
             };
             header?: never;
             path?: never;
@@ -4385,7 +4564,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PublicIntakeSubmissionView"][];
+                    "application/json": components["schemas"]["PublicIntakeQueueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intake_owners_api_v1_ops_intake_owners_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIntakeOwnerView"][];
                 };
             };
             /** @description Validation Error */
@@ -4481,6 +4691,111 @@ export interface operations {
             };
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIntakeSubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    intake_audit_api_v1_ops_intake__submission_id__audit_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIntakeAuditView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_intake_api_v1_ops_intake__submission_id__delete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicIntakeReason"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdraw_intake_api_v1_ops_intake__submission_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicIntakeReason"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

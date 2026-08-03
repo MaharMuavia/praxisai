@@ -82,10 +82,12 @@ export function useWorkspaceData({
   path,
   root,
   projectDetailId,
+  isolatedRoute = false,
 }: {
   path: string;
   root: string;
   projectDetailId: string | null;
+  isolatedRoute?: boolean;
 }) {
   const queryClient = useQueryClient();
   const sessionQuery = useWorkspaceQuery<Session>(
@@ -109,33 +111,33 @@ export function useWorkspaceData({
   const projectsQuery = useWorkspaceQuery<{ items: Project[] }>(
     projectKeys.list,
     "/projects",
-    root !== "university",
+    root !== "university" && !isolatedRoute,
     { items: demoWorkspaceSnapshot.projects },
   );
   const universityMetricsQuery = useWorkspaceQuery<UniversityMetrics>(
     universityKeys.metrics,
     "/university/metrics",
-    root === "university",
+    root === "university" && !isolatedRoute,
   );
   const universityExportsQuery = useWorkspaceQuery<UniversityExport[]>(
     universityKeys.exports,
     "/university/exports",
-    root === "university",
+    root === "university" && !isolatedRoute,
   );
   const dashboardQuery = useWorkspaceQuery<Dashboard>(
     operationsKeys.dashboard,
     "/ops/dashboard",
-    root === "ops" || root === "admin",
+    (root === "ops" || root === "admin") && !isolatedRoute,
   );
   const jobsQuery = useWorkspaceQuery<OperationsJob[]>(
     operationsKeys.jobs,
     "/ops/jobs?status=DEAD_LETTER",
-    root === "ops" || root === "admin",
+    (root === "ops" || root === "admin") && !isolatedRoute,
   );
   const integrationsQuery = useWorkspaceQuery<Integration[]>(
     operationsKeys.integrations,
     "/ops/integrations",
-    root === "ops" || root === "admin",
+    (root === "ops" || root === "admin") && !isolatedRoute,
   );
   const invoicesQuery = useWorkspaceQuery<ClientInvoice[]>(
     billingKeys.invoices,
@@ -160,17 +162,17 @@ export function useWorkspaceData({
   const approvalsQuery = useWorkspaceQuery<ApprovalQueueItem[]>(
     operationsKeys.approvals,
     "/ops/approval-queue",
-    path === "/ops/approvals",
+    path === "/ops/approvals" && !isolatedRoute,
   );
   const risksQuery = useWorkspaceQuery<RiskQueueItem[]>(
     operationsKeys.risks,
     "/ops/risk-queue",
-    path === "/ops/risks",
+    path === "/ops/risks" && !isolatedRoute,
   );
   const offersQuery = useWorkspaceQuery<Offer[]>(
     offerKeys.list,
     "/assignment-offers",
-    path === "/student/offers" || path === "/lead/offers",
+    (path === "/student/offers" || path === "/lead/offers") && !isolatedRoute,
   );
   const projectWorkspaceQuery = useWorkspaceQuery<ProjectWorkspace>(
     projectKeys.workspace(projectDetailId ?? ""),

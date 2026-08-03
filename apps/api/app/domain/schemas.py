@@ -571,7 +571,7 @@ class PublicIntakeCommon(BaseModel):
     full_name: str = Field(min_length=2, max_length=160)
     email: EmailStr
     country: str = Field(min_length=2, max_length=80)
-    consent: bool
+    consent: Literal[True]
     source: str | None = Field(default=None, max_length=120)
     campaign: str | None = Field(default=None, max_length=120)
     honeypot: str = Field(default="", max_length=200)
@@ -605,6 +605,7 @@ class ExpertLeadInquiryCreate(PublicIntakeCommon):
     technical_specializations: str = Field(min_length=2, max_length=2_000)
     years_experience: int = Field(ge=1, le=70)
     weekly_availability: int = Field(ge=1, le=80)
+    experience_summary: str = Field(min_length=20, max_length=4_000)
     profile_url: HttpUrl
     rate_expectations: str | None = Field(default=None, max_length=500)
 
@@ -631,7 +632,7 @@ class PublicIntakeSubmissionView(ApiModel):
     id: uuid.UUID
     kind: PublicIntakeKind
     status: PublicIntakeStatus
-    contact_email: str
+    contact_email: str | None
     source: str | None
     campaign: str | None
     payload: dict[str, Any]
@@ -645,6 +646,48 @@ class PublicIntakeSubmissionView(ApiModel):
     conversion_evidence: str | None
     retention_expires_at: datetime | None
     anonymized_at: datetime | None
+    deleted_at: datetime | None
+    withdrawal_requested_at: datetime | None
+    allowed_transitions: list[PublicIntakeStatus]
+
+
+class PublicIntakeSubmissionSummary(ApiModel):
+    id: uuid.UUID
+    kind: PublicIntakeKind
+    status: PublicIntakeStatus
+    display_name: str
+    source: str | None
+    campaign: str | None
+    owner_id: uuid.UUID | None
+    created_at: datetime
+    retention_expires_at: datetime | None
+    anonymized_at: datetime | None
+    withdrawal_requested_at: datetime | None
+    action_required: bool
+
+
+class PublicIntakeQueueResponse(BaseModel):
+    items: list[PublicIntakeSubmissionSummary]
+    next_cursor: str | None
+
+
+class PublicIntakeOwnerView(ApiModel):
+    id: uuid.UUID
+    display_name: str
+    email: str
+
+
+class PublicIntakeAuditView(ApiModel):
+    id: uuid.UUID
+    action: str
+    resource_id: uuid.UUID | None
+    correlation_id: uuid.UUID
+    payload: dict[str, Any]
+    created_at: datetime
+
+
+class PublicIntakeReason(BaseModel):
+    reason: str = Field(min_length=10, max_length=2_000)
 
 
 class PublicIntakeReceipt(BaseModel):

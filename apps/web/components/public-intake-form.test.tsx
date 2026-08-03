@@ -74,6 +74,15 @@ describe("PublicIntakeForm", () => {
       new Headers(requestInit?.headers).get("Idempotency-Key"),
     ).toBeTruthy();
     expect(screen.getByRole("status")).toHaveTextContent("corr-company-1");
+    expect(
+      screen.queryByRole("button", { name: "Submit for human review" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Submit another request" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Submit for human review" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps the form in an error state when the API rejects the submission", async () => {
