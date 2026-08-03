@@ -3,7 +3,7 @@
 import { praxisFetch, type components } from "@praxisai/api-client";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { ClientProjectIntake } from "./client-project-intake";
 import { EmployerTalentWorkspace } from "./employer-talent-workspace";
 import { ProjectCommandCenter } from "./project-command-center";
@@ -19,30 +19,17 @@ import {
   WorkspaceSidebar,
 } from "./workspace-layout";
 import { navigation, rootFor } from "./workspace-navigation";
-import { demoWorkspaceSnapshot, withDemoFallback } from "../lib/demo-data";
 import { apiBase } from "../lib/api";
 import { demoEnvironment } from "../lib/demo-environment";
 import type { WorkspaceSearchItem } from "./workspace-command-menu";
 import { getFirebaseAuth } from "../lib/firebase";
+import { useWorkspaceData } from "./workspace/use-workspace-data";
 
-type Session = components["schemas"]["SessionView"];
-type Project = components["schemas"]["ProjectView"];
-type Dashboard = components["schemas"]["DashboardSummary"];
 type OperationsJob = components["schemas"]["OperationsJobView"];
-type Integration = components["schemas"]["IntegrationStatus"];
-type UniversityMetrics = components["schemas"]["UniversityMetrics"];
 type UniversityExport = components["schemas"]["UniversityExportView"];
-type Notification = components["schemas"]["NotificationView"];
 type NotificationPreference =
   components["schemas"]["NotificationPreferenceView"];
-type ClientInvoice = components["schemas"]["ClientInvoiceView"];
-type StudentCredential = components["schemas"]["StudentCredentialView"];
-type EarningsItem = components["schemas"]["EarningsItemView"];
-type LeadReviewQueueItem = components["schemas"]["LeadReviewQueueItem"];
-type ApprovalQueueItem = components["schemas"]["ApprovalQueueItem"];
-type RiskQueueItem = components["schemas"]["RiskQueueItem"];
 type Offer = components["schemas"]["OfferView"];
-type ProjectWorkspace = components["schemas"]["ProjectWorkspaceView"];
 
 export function AppShell({
   path,
@@ -53,46 +40,15 @@ export function AppShell({
   title: string;
   description: string;
 }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [projects, setProjects] = useState<Project[] | null>(null);
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [jobs, setJobs] = useState<OperationsJob[] | null>(null);
-  const [integrations, setIntegrations] = useState<Integration[] | null>(null);
-  const [universityMetrics, setUniversityMetrics] =
-    useState<UniversityMetrics | null>(null);
-  const [universityExports, setUniversityExports] = useState<
-    UniversityExport[] | null
-  >(null);
-  const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [exportPurpose, setExportPurpose] = useState("");
   const [recoveryReason, setRecoveryReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[] | null>(
-    null,
-  );
-  const [notificationPreferences, setNotificationPreferences] = useState<
-    NotificationPreference[] | null
-  >(null);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [clientInvoices, setClientInvoices] = useState<ClientInvoice[] | null>(
-    null,
-  );
-  const [studentCredentials, setStudentCredentials] = useState<
-    StudentCredential[] | null
-  >(null);
-  const [earnings, setEarnings] = useState<EarningsItem[] | null>(null);
-  const [leadReviews, setLeadReviews] = useState<LeadReviewQueueItem[] | null>(
-    null,
-  );
-  const [approvals, setApprovals] = useState<ApprovalQueueItem[] | null>(null);
-  const [risks, setRisks] = useState<RiskQueueItem[] | null>(null);
-  const [offers, setOffers] = useState<Offer[] | null>(null);
   const [submittingOfferId, setSubmittingOfferId] = useState<string | null>(
     null,
   );
-  const [isDemoPreview, setIsDemoPreview] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
   const [logoutBusy, setLogoutBusy] = useState(false);
@@ -123,166 +79,33 @@ export function AppShell({
           : null;
   const hasCareerWorkspace =
     studentCareerPage !== null || employerTalentPage !== null;
-  const [projectWorkspace, setProjectWorkspace] =
-    useState<ProjectWorkspace | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const requests: Promise<void>[] = [
-      withDemoFallback(
-        praxisFetch<Session>(apiBase, "/auth/me"),
-        demoWorkspaceSnapshot.session,
-      ).then(({ data: nextSession, isDemo }) => {
-        if (active) {
-          setSession(nextSession);
-          setIsDemoPreview((current) => current || isDemo);
-        }
-      }),
-      withDemoFallback(
-        Promise.all([
-          praxisFetch<Notification[]>(apiBase, "/notifications"),
-          praxisFetch<NotificationPreference[]>(
-            apiBase,
-            "/notifications/preferences",
-          ),
-        ]),
-        [
-          demoWorkspaceSnapshot.notifications,
-          demoWorkspaceSnapshot.notificationPreferences,
-        ] as [Notification[], NotificationPreference[]],
-      ).then(({ data, isDemo }) => {
-        const [items, preferences] = data;
-        if (active) {
-          setNotifications(items);
-          setNotificationPreferences(preferences);
-          setIsDemoPreview((current) => current || isDemo);
-        }
-      }),
-    ];
-    if (root === "university") {
-      requests.push(
-        Promise.all([
-          praxisFetch<UniversityMetrics>(apiBase, "/university/metrics"),
-          praxisFetch<UniversityExport[]>(apiBase, "/university/exports"),
-        ]).then(([metrics, exports]) => {
-          if (active) {
-            setUniversityMetrics(metrics);
-            setUniversityExports(exports);
-          }
-        }),
-      );
-    } else {
-      requests.push(
-        withDemoFallback(
-          praxisFetch<{ items: Project[] }>(apiBase, "/projects"),
-          { items: demoWorkspaceSnapshot.projects },
-        ).then(({ data: projectList, isDemo }) => {
-          if (active) {
-            setProjects(projectList.items);
-            setIsDemoPreview((current) => current || isDemo);
-          }
-        }),
-      );
-    }
-    if (root === "ops" || root === "admin") {
-      requests.push(
-        Promise.all([
-          praxisFetch<Dashboard>(apiBase, "/ops/dashboard"),
-          praxisFetch<OperationsJob[]>(apiBase, "/ops/jobs?status=DEAD_LETTER"),
-          praxisFetch<Integration[]>(apiBase, "/ops/integrations"),
-        ]).then(([summary, failedJobs, providerHealth]) => {
-          if (active) {
-            setDashboard(summary);
-            setJobs(failedJobs);
-            setIntegrations(providerHealth);
-          }
-        }),
-      );
-    }
-    if (path === "/client/invoices") {
-      requests.push(
-        praxisFetch<ClientInvoice[]>(apiBase, "/client/invoices").then(
-          (items) => {
-            if (active) setClientInvoices(items);
-          },
-        ),
-      );
-    }
-    if (path === "/student/credentials") {
-      requests.push(
-        praxisFetch<StudentCredential[]>(
-          apiBase,
-          "/students/me/credentials",
-        ).then((items) => {
-          if (active) setStudentCredentials(items);
-        }),
-      );
-    }
-    if (path === "/student/earnings" || path === "/lead/earnings") {
-      requests.push(
-        praxisFetch<EarningsItem[]>(apiBase, "/participants/me/earnings").then(
-          (items) => {
-            if (active) setEarnings(items);
-          },
-        ),
-      );
-    }
-    if (path === "/lead") {
-      requests.push(
-        praxisFetch<LeadReviewQueueItem[]>(
-          apiBase,
-          "/leads/me/review-queue",
-        ).then((items) => {
-          if (active) setLeadReviews(items);
-        }),
-      );
-    }
-    if (path === "/ops/approvals") {
-      requests.push(
-        praxisFetch<ApprovalQueueItem[]>(apiBase, "/ops/approval-queue").then(
-          (items) => {
-            if (active) setApprovals(items);
-          },
-        ),
-      );
-    }
-    if (path === "/ops/risks") {
-      requests.push(
-        praxisFetch<RiskQueueItem[]>(apiBase, "/ops/risk-queue").then(
-          (items) => {
-            if (active) setRisks(items);
-          },
-        ),
-      );
-    }
-    if (path === "/student/offers" || path === "/lead/offers") {
-      requests.push(
-        praxisFetch<Offer[]>(apiBase, "/assignment-offers").then((items) => {
-          if (active) setOffers(items);
-        }),
-      );
-    }
-    if (projectDetailId) {
-      setProjectWorkspace(null);
-      requests.push(
-        praxisFetch<ProjectWorkspace>(
-          apiBase,
-          `/projects/${projectDetailId}/workspace`,
-        ).then((workspace) => {
-          if (active) setProjectWorkspace(workspace);
-        }),
-      );
-    }
-    Promise.all(requests).catch((reason: unknown) => {
-      if (active)
-        setError(
-          reason instanceof Error ? reason.message : "Unable to load workspace",
-        );
-    });
-    return () => {
-      active = false;
-    };
-  }, [path, projectDetailId, root]);
+  const {
+    session,
+    projects,
+    dashboard,
+    jobs,
+    integrations,
+    universityMetrics,
+    universityExports,
+    notifications,
+    notificationPreferences,
+    clientInvoices,
+    studentCredentials,
+    earnings,
+    leadReviews,
+    approvals,
+    risks,
+    offers,
+    projectWorkspace,
+    error,
+    isDemoPreview,
+    setNotifications,
+    setNotificationPreferences,
+    setUniversityExports,
+    setJobs,
+    setOffers,
+    setProjectWorkspace,
+  } = useWorkspaceData({ path, root, projectDetailId });
 
   const roleWorkspaceData: RoleWorkspaceData | null =
     path === "/client/invoices"

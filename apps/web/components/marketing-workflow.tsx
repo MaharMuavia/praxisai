@@ -98,7 +98,7 @@ export function MarketingWorkflow() {
 
   useEffect(() => {
     const update = () =>
-      setDocumentVisible(document.visibilityState === "visible");
+      setDocumentVisible(document.visibilityState !== "hidden");
     update();
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);

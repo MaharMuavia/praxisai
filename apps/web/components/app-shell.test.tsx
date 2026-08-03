@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AppProviders } from "../app/providers";
 import { AppShell } from "./app-shell";
 
 afterEach(() => {
@@ -68,11 +69,13 @@ describe("AppShell university workspace", () => {
     );
 
     render(
-      <AppShell
-        path="/university"
-        title="Outcomes"
-        description="Privacy-safe outcomes"
-      />,
+      <AppProviders>
+        <AppShell
+          path="/university"
+          title="Outcomes"
+          description="Privacy-safe outcomes"
+        />
+      </AppProviders>,
     );
 
     expect(

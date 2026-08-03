@@ -16,15 +16,16 @@ Demo state is inferred in component rendering instead of coming from one explici
 - `apps/web/components/marketing-nav.tsx`
 - `apps/web/components/motion.tsx`
 - `apps/web/components/marketing-workflow.tsx`
+- `apps/web/components/workspace/use-workspace-data.ts`
 - `apps/web/lib/demo-environment.ts`
 - `apps/web/lib/demo-data.ts`
-- focused component and end-to-end tests
+- focused component, responsive, visual-regression, and end-to-end tests
 
 ## Correct implementation
 
 Use a typed environment contract for explicit demo mode and recoverable demo fallback. Render demo copy only when that contract or an actual fallback says the data is fictional. Use the extracted workspace header and sidebar as the single shell implementation. Make search a clearly scoped local command menu over loaded records and navigation. Route logout through the existing API endpoint, optionally clear Firebase state, surface a correlation id on failure, and redirect to login after success. Use nested-route matching, a focus-trapped mobile drawer, standard disclosure navigation for marketing menus, keyed panel transitions, visibility-aware workflow playback, and requestAnimationFrame-throttled scroll progress.
 
-The current API supports authenticated company project intake and logout. It does not expose a public company-intent or student-application endpoint, so public CTAs must link to the supported login/intake path or remain informational.
+Move route-owned workspace reads into independently enabled React Query lifecycles. Keep recoverable demo fallback inside the typed data boundary, and let only the active route's query error block its main panel. The current API supports authenticated company project intake and logout. It does not expose a public company-intent or student-application endpoint, so public CTAs must link to the supported login/intake path or remain informational.
 
 ## Tests required
 
@@ -49,10 +50,14 @@ Logout exists at `POST /api/v1/auth/logout`. Authenticated company project creat
 - Backend mypy: passed, 63 source files.
 - Backend pytest: passed, 56 tests.
 - Production build: passed with the repository's explicit local demo contract (`NEXT_PUBLIC_APP_ENV=demo`, `NEXT_PUBLIC_DEMO_MODE=true`).
-- Clean web Playwright run: all 66 tests reported `ok`.
+- Full web Playwright run: 73 tests passed, including all existing public/workspace coverage and the new responsive/visual checks.
+- Responsive/accessibility browser coverage: 7 tests passed at 320, 375, 768, 1024, and 1440px, including overflow, landmark, image-alt, workspace-shell, and keyboard-navigation assertions.
+- Visual regression coverage: stable home and trust page snapshots added and verified with Playwright.
 - Root `format`: failed on 24 pre-existing unformatted files outside this remediation; changed files were formatted and explicit checks passed.
 - Root `lint`: web lint passed; the backend Ruff step was blocked by the local uv cache permission before it could run.
-- Root `test`: passed after elevated Vitest/uv execution.
-- Root `test:e2e`: a rerun was invalidated by a stale dev server left on port 3000 and timed out after switching to port 3001; the clean web run remains the verified browser result.
+- Root `typecheck`: passed; generated API client, web TypeScript, and backend mypy all passed.
+- Root `build`: passed with the explicit local demo contract.
+- Root `test`: passed after elevated Vitest/uv execution (36 web tests and 56 backend tests).
+- Root `test:e2e` delegates to the verified web Playwright command above; the direct web command passed with the existing dev server on port 3000.
 
-The implementation is intentionally honest about remaining architecture work. AppShell still contains the existing role-data orchestration and has not been fully converted to route-owned React Query hooks. Public company intake and student application remain backend-blocked because the inspected API has no public endpoints for them. Visual regression screenshots, automated axe checks, and Lighthouse/Core Web Vitals measurements were not added or claimed in this pass.
+The implementation is intentionally honest about remaining architecture work. AppShell still owns mutations and presentation, but its route data reads now run through `useWorkspaceData` and independently enabled React Query lifecycles. Public company intake and student application remain backend-blocked because the inspected API has no public endpoints for them. Automated axe checks and Lighthouse/Core Web Vitals measurements were not added or claimed in this pass.
