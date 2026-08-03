@@ -10,6 +10,8 @@ export const operationsKeys = {
   dashboard: ["operations", "dashboard"] as const,
   jobs: ["operations", "jobs"] as const,
   integrations: ["operations", "integrations"] as const,
+  approvals: ["operations", "approvals"] as const,
+  risks: ["operations", "risks"] as const,
 };
 export const operationsDashboardQuery = () =>
   queryOptions({

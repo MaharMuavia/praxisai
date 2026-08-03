@@ -11,6 +11,7 @@ import {
 import { MarketingFooter } from "./marketing-footer";
 import { MarketingNav } from "./marketing-nav";
 import { Button } from "./ui";
+import { PublicIntakeForm } from "./public-intake-form";
 
 export function ContentPage({
   title,
@@ -389,9 +390,7 @@ function RouteExperience({ path }: { path: string }) {
       <section className="marketing-section route-experience route-experience-contact">
         <div className="marketing-container">
           <p className="marketing-eyebrow">Choose a supported path</p>
-          <h2>
-            No dead-end contact form. Start where the current product can help.
-          </h2>
+          <h2>Start where the current product can help.</h2>
           <div className="contact-path-grid">
             <Button href="/login" variant="primary">
               Company project brief <ArrowRight size={16} aria-hidden="true" />
@@ -406,11 +405,7 @@ function RouteExperience({ path }: { path: string }) {
               University pathway <ArrowRight size={16} aria-hidden="true" />
             </Button>
           </div>
-          <p className="route-disclaimer">
-            A public intake endpoint and student application endpoint are not
-            enabled in the inspected API, so this page does not simulate
-            submission or display unavailable email addresses.
-          </p>
+          <PublicIntakeForm />
         </div>
       </section>
     );

@@ -4,7 +4,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@praxisai/api-client";
 import { useMemo, type SetStateAction } from "react";
 import { demoWorkspaceSnapshot, withDemoFallback } from "../../lib/demo-data";
+import { authKeys } from "../../lib/queries/auth";
+import { billingKeys } from "../../lib/queries/billing";
+import { credentialKeys } from "../../lib/queries/credentials";
+import { notificationKeys } from "../../lib/queries/notifications";
+import { offerKeys } from "../../lib/queries/offers";
+import { operationsKeys } from "../../lib/queries/operations";
+import { projectKeys } from "../../lib/queries/projects";
 import { fetchQuery, retryTransientError } from "../../lib/queries/shared";
+import { talentKeys } from "../../lib/queries/talent";
+import { universityKeys } from "../../lib/queries/university";
 
 type Session = components["schemas"]["SessionView"];
 type Project = components["schemas"]["ProjectView"];
@@ -80,91 +89,91 @@ export function useWorkspaceData({
 }) {
   const queryClient = useQueryClient();
   const sessionQuery = useWorkspaceQuery<Session>(
-    ["auth", "session"],
+    authKeys.session,
     "/auth/me",
     true,
     demoWorkspaceSnapshot.session,
   );
   const notificationsQuery = useWorkspaceQuery<Notification[]>(
-    ["notifications", "list"],
+    notificationKeys.list,
     "/notifications",
     true,
     demoWorkspaceSnapshot.notifications,
   );
   const preferencesQuery = useWorkspaceQuery<NotificationPreference[]>(
-    ["notifications", "preferences"],
+    notificationKeys.preferences,
     "/notifications/preferences",
     true,
     demoWorkspaceSnapshot.notificationPreferences,
   );
   const projectsQuery = useWorkspaceQuery<{ items: Project[] }>(
-    ["projects", "list"],
+    projectKeys.list,
     "/projects",
     root !== "university",
     { items: demoWorkspaceSnapshot.projects },
   );
   const universityMetricsQuery = useWorkspaceQuery<UniversityMetrics>(
-    ["university", "metrics"],
+    universityKeys.metrics,
     "/university/metrics",
     root === "university",
   );
   const universityExportsQuery = useWorkspaceQuery<UniversityExport[]>(
-    ["university", "exports"],
+    universityKeys.exports,
     "/university/exports",
     root === "university",
   );
   const dashboardQuery = useWorkspaceQuery<Dashboard>(
-    ["operations", "dashboard"],
+    operationsKeys.dashboard,
     "/ops/dashboard",
     root === "ops" || root === "admin",
   );
   const jobsQuery = useWorkspaceQuery<OperationsJob[]>(
-    ["operations", "jobs"],
+    operationsKeys.jobs,
     "/ops/jobs?status=DEAD_LETTER",
     root === "ops" || root === "admin",
   );
   const integrationsQuery = useWorkspaceQuery<Integration[]>(
-    ["operations", "integrations"],
+    operationsKeys.integrations,
     "/ops/integrations",
     root === "ops" || root === "admin",
   );
   const invoicesQuery = useWorkspaceQuery<ClientInvoice[]>(
-    ["billing", "invoices"],
+    billingKeys.invoices,
     "/client/invoices",
     path === "/client/invoices",
   );
   const credentialsQuery = useWorkspaceQuery<StudentCredential[]>(
-    ["credentials", "mine"],
+    credentialKeys.mine,
     "/students/me/credentials",
     path === "/student/credentials",
   );
   const earningsQuery = useWorkspaceQuery<EarningsItem[]>(
-    ["billing", "earnings"],
+    billingKeys.earnings,
     "/participants/me/earnings",
     path === "/student/earnings" || path === "/lead/earnings",
   );
   const reviewsQuery = useWorkspaceQuery<LeadReviewQueueItem[]>(
-    ["lead", "review-queue"],
+    talentKeys.reviewQueue,
     "/leads/me/review-queue",
     path === "/lead",
   );
   const approvalsQuery = useWorkspaceQuery<ApprovalQueueItem[]>(
-    ["operations", "approvals"],
+    operationsKeys.approvals,
     "/ops/approval-queue",
     path === "/ops/approvals",
   );
   const risksQuery = useWorkspaceQuery<RiskQueueItem[]>(
-    ["operations", "risks"],
+    operationsKeys.risks,
     "/ops/risk-queue",
     path === "/ops/risks",
   );
   const offersQuery = useWorkspaceQuery<Offer[]>(
-    ["offers", "list"],
+    offerKeys.list,
     "/assignment-offers",
     path === "/student/offers" || path === "/lead/offers",
   );
   const projectWorkspaceQuery = useWorkspaceQuery<ProjectWorkspace>(
-    ["projects", "workspace", projectDetailId],
+    projectKeys.workspace(projectDetailId ?? ""),
     `/projects/${projectDetailId}/workspace`,
     projectDetailId !== null,
   );
@@ -244,27 +253,23 @@ export function useWorkspaceData({
       preferencesQuery,
       projectsQuery,
     ].some((query) => query.data?.isDemo === true),
-    setNotifications: useQuerySetter<Notification[]>(queryClient, [
-      "notifications",
-      "list",
-    ]),
+    setNotifications: useQuerySetter<Notification[]>(
+      queryClient,
+      notificationKeys.list,
+    ),
     setNotificationPreferences: useQuerySetter<NotificationPreference[]>(
       queryClient,
-      ["notifications", "preferences"],
+      notificationKeys.preferences,
     ),
-    setUniversityExports: useQuerySetter<UniversityExport[]>(queryClient, [
-      "university",
-      "exports",
-    ]),
-    setJobs: useQuerySetter<OperationsJob[]>(queryClient, [
-      "operations",
-      "jobs",
-    ]),
-    setOffers: useQuerySetter<Offer[]>(queryClient, ["offers", "list"]),
-    setProjectWorkspace: useQuerySetter<ProjectWorkspace>(queryClient, [
-      "projects",
-      "workspace",
-      projectDetailId,
-    ]),
+    setUniversityExports: useQuerySetter<UniversityExport[]>(
+      queryClient,
+      universityKeys.exports,
+    ),
+    setJobs: useQuerySetter<OperationsJob[]>(queryClient, operationsKeys.jobs),
+    setOffers: useQuerySetter<Offer[]>(queryClient, offerKeys.list),
+    setProjectWorkspace: useQuerySetter<ProjectWorkspace>(
+      queryClient,
+      projectKeys.workspace(projectDetailId ?? ""),
+    ),
   };
 }

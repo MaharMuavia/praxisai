@@ -16,6 +16,7 @@ from app.api import (
     billing,
     credentials,
     governance,
+    intake,
     learning,
     notifications,
     offers,
@@ -160,3 +161,4 @@ app.include_router(university.router, prefix="/api/v1")
 app.include_router(workspaces.router, prefix="/api/v1")
 app.include_router(learning.router, prefix="/api/v1")
 app.include_router(talent.router, prefix="/api/v1")
+app.include_router(intake.router, prefix="/api/v1")

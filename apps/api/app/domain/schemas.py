@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from app.domain.enums import ProjectState
 
@@ -561,6 +561,103 @@ class UniversityExportView(ApiModel):
     storage_key: str | None
     expires_at: datetime
     created_at: datetime
+
+
+PublicIntakeKind = Literal["company", "student", "expert_lead", "university"]
+PublicIntakeStatus = Literal["NEW", "IN_REVIEW", "QUALIFIED", "REJECTED", "CONVERTED"]
+
+
+class PublicIntakeSubmissionCreate(BaseModel):
+    kind: PublicIntakeKind
+    full_name: str = Field(min_length=2, max_length=160)
+    email: str = Field(min_length=5, max_length=320)
+    country: str = Field(min_length=2, max_length=80)
+    consent: bool
+    source: str | None = Field(default=None, max_length=120)
+    campaign: str | None = Field(default=None, max_length=120)
+    company_name: str | None = Field(default=None, max_length=200)
+    company_website: HttpUrl | None = None
+    timezone: str | None = Field(default=None, max_length=80)
+    business_problem: str | None = Field(default=None, min_length=20, max_length=4_000)
+    current_process: str | None = Field(default=None, max_length=4_000)
+    desired_result: str | None = Field(default=None, min_length=10, max_length=4_000)
+    project_category: str | None = Field(default=None, max_length=80)
+    budget_range: str | None = Field(default=None, max_length=80)
+    target_timeline: str | None = Field(default=None, max_length=120)
+    integrations: str | None = Field(default=None, max_length=2_000)
+    data_sensitivity: Literal["public", "internal", "confidential", "restricted"] | None = None
+    education_status: str | None = Field(default=None, max_length=120)
+    institution: str | None = Field(default=None, max_length=200)
+    technical_track: str | None = Field(default=None, max_length=120)
+    weekly_availability: int | None = Field(default=None, ge=1, le=80)
+    experience_summary: str | None = Field(default=None, max_length=4_000)
+    portfolio_url: HttpUrl | None = None
+    github_url: HttpUrl | None = None
+    linkedin_url: HttpUrl | None = None
+    accessibility_needs: str | None = Field(default=None, max_length=2_000)
+    technical_specializations: str | None = Field(default=None, max_length=2_000)
+    years_experience: int | None = Field(default=None, ge=0, le=70)
+    rate_expectations: str | None = Field(default=None, max_length=500)
+    role: str | None = Field(default=None, max_length=120)
+    cohort_size: int | None = Field(default=None, ge=1, le=10_000_000)
+    intended_purpose: str | None = Field(default=None, min_length=20, max_length=4_000)
+    privacy_requirements: str | None = Field(default=None, max_length=4_000)
+    honeypot: str = Field(default="", max_length=200)
+
+    @classmethod
+    def _required_for(cls, kind: str) -> tuple[str, ...]:
+        return {
+            "company": ("company_name", "business_problem"),
+            "student": (
+                "technical_track",
+                "weekly_availability",
+                "experience_summary",
+            ),
+            "expert_lead": ("technical_specializations", "weekly_availability"),
+            "university": ("institution", "intended_purpose"),
+        }[kind]
+
+    @model_validator(mode="after")
+    def validate_submission(self) -> "PublicIntakeSubmissionCreate":
+        if not self.consent:
+            raise ValueError("Consent is required")
+        missing = [
+            field for field in self._required_for(self.kind) if getattr(self, field) in (None, "")
+        ]
+        if missing:
+            raise ValueError(f"Missing required intake fields: {', '.join(missing)}")
+        return self
+
+
+class PublicIntakeSubmissionView(ApiModel):
+    id: uuid.UUID
+    kind: PublicIntakeKind
+    status: PublicIntakeStatus
+    contact_email: str
+    source: str | None
+    campaign: str | None
+    payload: dict[str, Any]
+    owner_id: uuid.UUID | None
+    qualification_notes: str | None
+    rejection_reason: str | None
+    reviewed_at: datetime | None
+    created_at: datetime
+    correlation_id: uuid.UUID
+
+
+class PublicIntakeReceipt(BaseModel):
+    id: uuid.UUID
+    kind: PublicIntakeKind
+    status: PublicIntakeStatus
+    received_at: datetime
+    correlation_id: uuid.UUID
+
+
+class PublicIntakeSubmissionUpdate(BaseModel):
+    status: PublicIntakeStatus
+    owner_id: uuid.UUID | None = None
+    qualification_notes: str | None = Field(default=None, max_length=4_000)
+    rejection_reason: str | None = Field(default=None, max_length=2_000)
 
 
 class TaskCreate(BaseModel):

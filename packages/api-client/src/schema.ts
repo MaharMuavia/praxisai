@@ -482,6 +482,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/intake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Intake Queue */
+        get: operations["intake_queue_api_v1_ops_intake_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/intake/{submission_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Review Intake */
+        patch: operations["review_intake_api_v1_ops_intake__submission_id__patch"];
+        trace?: never;
+    };
     "/api/v1/ops/integrations": {
         parameters: {
             query?: never;
@@ -1057,6 +1091,23 @@ export interface paths {
         get: operations["credential_qr_api_v1_public_credentials__public_slug__qr_png_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Public Intake */
+        post: operations["submit_public_intake_api_v1_public__kind__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2506,6 +2557,173 @@ export interface components {
              * @enum {string}
              */
             status: "VALID" | "REVOKED" | "NOT_FOUND";
+        };
+        /** PublicIntakeReceipt */
+        PublicIntakeReceipt: {
+            /**
+             * Correlation Id
+             * Format: uuid
+             */
+            correlation_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "company" | "student" | "expert_lead" | "university";
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NEW" | "IN_REVIEW" | "QUALIFIED" | "REJECTED" | "CONVERTED";
+        };
+        /** PublicIntakeSubmissionCreate */
+        PublicIntakeSubmissionCreate: {
+            /** Accessibility Needs */
+            accessibility_needs?: string | null;
+            /** Budget Range */
+            budget_range?: string | null;
+            /** Business Problem */
+            business_problem?: string | null;
+            /** Campaign */
+            campaign?: string | null;
+            /** Cohort Size */
+            cohort_size?: number | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Company Website */
+            company_website?: string | null;
+            /** Consent */
+            consent: boolean;
+            /** Country */
+            country: string;
+            /** Current Process */
+            current_process?: string | null;
+            /** Data Sensitivity */
+            data_sensitivity?: ("public" | "internal" | "confidential" | "restricted") | null;
+            /** Desired Result */
+            desired_result?: string | null;
+            /** Education Status */
+            education_status?: string | null;
+            /** Email */
+            email: string;
+            /** Experience Summary */
+            experience_summary?: string | null;
+            /** Full Name */
+            full_name: string;
+            /** Github Url */
+            github_url?: string | null;
+            /**
+             * Honeypot
+             * @default
+             */
+            honeypot: string;
+            /** Institution */
+            institution?: string | null;
+            /** Integrations */
+            integrations?: string | null;
+            /** Intended Purpose */
+            intended_purpose?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "company" | "student" | "expert_lead" | "university";
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
+            /** Privacy Requirements */
+            privacy_requirements?: string | null;
+            /** Project Category */
+            project_category?: string | null;
+            /** Rate Expectations */
+            rate_expectations?: string | null;
+            /** Role */
+            role?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Target Timeline */
+            target_timeline?: string | null;
+            /** Technical Specializations */
+            technical_specializations?: string | null;
+            /** Technical Track */
+            technical_track?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Weekly Availability */
+            weekly_availability?: number | null;
+            /** Years Experience */
+            years_experience?: number | null;
+        };
+        /** PublicIntakeSubmissionUpdate */
+        PublicIntakeSubmissionUpdate: {
+            /** Owner Id */
+            owner_id?: string | null;
+            /** Qualification Notes */
+            qualification_notes?: string | null;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NEW" | "IN_REVIEW" | "QUALIFIED" | "REJECTED" | "CONVERTED";
+        };
+        /** PublicIntakeSubmissionView */
+        PublicIntakeSubmissionView: {
+            /** Campaign */
+            campaign: string | null;
+            /** Contact Email */
+            contact_email: string;
+            /**
+             * Correlation Id
+             * Format: uuid
+             */
+            correlation_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "company" | "student" | "expert_lead" | "university";
+            /** Owner Id */
+            owner_id: string | null;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Qualification Notes */
+            qualification_notes: string | null;
+            /** Rejection Reason */
+            rejection_reason: string | null;
+            /** Reviewed At */
+            reviewed_at: string | null;
+            /** Source */
+            source: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NEW" | "IN_REVIEW" | "QUALIFIED" | "REJECTED" | "CONVERTED";
         };
         /** QAReviewView */
         QAReviewView: {
@@ -4033,6 +4251,77 @@ export interface operations {
             };
         };
     };
+    intake_queue_api_v1_ops_intake_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIntakeSubmissionView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_intake_api_v1_ops_intake__submission_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicIntakeSubmissionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIntakeSubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     integrations_api_v1_ops_integrations_get: {
         parameters: {
             query?: never;
@@ -5329,6 +5618,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_public_intake_api_v1_public__kind__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicIntakeSubmissionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicIntakeReceipt"];
                 };
             };
             /** @description Validation Error */
