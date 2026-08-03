@@ -77,6 +77,52 @@ test("workflow and product preview remain understandable without autoplay", asyn
   ).toBeVisible();
 });
 
+test("judge walkthrough exposes a deterministic, keyboard-accessible scenario", async ({
+  page,
+}) => {
+  await page.goto("/judge");
+  await expect(
+    page.getByRole("heading", {
+      name: /See how a real project becomes accountable career proof/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Demo environment").first()).toBeVisible();
+  const walkthrough = page.getByRole("application", {
+    name: "Interactive PraxisAI judge walkthrough",
+  });
+  await walkthrough.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("heading", { name: "Draft scope assumptions" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /14.*Control portfolio/ }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Control portfolio and credential proof",
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Restart walkthrough" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Submit a bounded project brief" }),
+  ).toBeVisible();
+});
+
+for (const path of ["/evidence", "/business-model"]) {
+  test(`${path} makes provenance and assumptions explicit`, async ({
+    page,
+  }) => {
+    await page.goto(path);
+    await expect(page.locator("h1")).toBeVisible();
+    await expect(
+      page
+        .getByText(
+          /Demo data|Illustrative unit economics|Requires external production verification/,
+        )
+        .first(),
+    ).toBeVisible();
+  });
+}
+
 test("320px layout has no horizontal overflow and reduced motion is respected", async ({
   page,
 }) => {
@@ -129,6 +175,9 @@ for (const path of [
   "/onboarding/lead",
   "/onboarding/client",
   "/portfolio/demo-student",
+  "/judge",
+  "/evidence",
+  "/business-model",
 ]) {
   test(`public route ${path} renders`, async ({ page }) => {
     await page.goto(path);

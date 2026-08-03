@@ -265,6 +265,9 @@ export function MarketingNav() {
               {item.label}
             </Link>
           ))}
+          <Link className="marketing-judge-link" href="/judge">
+            Judge walkthrough
+          </Link>
           <Link className="marketing-login-link" href="/login">
             Log in
           </Link>
@@ -328,6 +331,20 @@ export function MarketingNav() {
                 {item.label}
               </Link>
             ))}
+            <Link
+              className="mobile-menu-audience"
+              href="/judge"
+              onClick={closeMobile}
+            >
+              Judge walkthrough
+            </Link>
+            <Link
+              className="mobile-menu-audience"
+              href="/evidence"
+              onClick={closeMobile}
+            >
+              Evidence map
+            </Link>
             <Link href="/login" onClick={closeMobile}>
               Log in
             </Link>

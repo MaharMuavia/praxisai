@@ -91,6 +91,7 @@ export function AppShell({
     "/university/exports",
     "/ops/approvals",
     "/ops/risks",
+    "/ops/agent-runs",
   ].includes(path);
   const {
     session,

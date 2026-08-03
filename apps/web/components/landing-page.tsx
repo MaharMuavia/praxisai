@@ -21,6 +21,7 @@ import {
   MarketingPathways,
   MarketingProductPreview,
 } from "./marketing-product-preview";
+import { DemoNotice } from "./demo-boundary";
 import { Stagger } from "./motion";
 import { Button, Card, SectionHeader, StatusBadge } from "./ui";
 
@@ -94,11 +95,13 @@ export function LandingPage() {
             <p className="marketing-eyebrow">
               The AI-operated apprenticeship studio
             </p>
-            <h1>Turn potential into paid professional experience.</h1>
+            <h1>
+              Turn potential into paid professional experience—with proof.
+            </h1>
             <p className="marketing-lead">
-              PraxisAI prepares emerging technical talent through practical
-              learning and deploys supervised teams to deliver real projects for
-              companies.
+              PraxisAI prepares emerging technical talent, deploys supervised
+              teams to bounded company projects, and records the evidence that
+              connects learning to trusted delivery.
             </p>
             <div className="marketing-actions">
               <Button href="/contact" variant="primary">
@@ -108,12 +111,20 @@ export function LandingPage() {
               <Button href="/for-students" variant="secondary">
                 Apply for the apprenticeship
               </Button>
+              <Button href="/judge" variant="link">
+                See the 3-minute judge walkthrough{" "}
+                <ArrowRight size={15} aria-hidden="true" />
+              </Button>
             </div>
             <p className="marketing-trust-note">
               <ShieldCheck size={17} aria-hidden="true" /> Transparent pay{" "}
               <span>·</span> Human supervision <span>·</span> Verified project
               evidence
             </p>
+            <DemoNotice className="hero-demo-notice">
+              Public product previews use sanitized demo data, not customer
+              traction.
+            </DemoNotice>
           </div>
           <MarketingWorkflow />
         </div>
