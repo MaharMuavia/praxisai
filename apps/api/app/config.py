@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     gemini_api_key: str | None = None
     cloud_storage_bucket: str | None = None
+    internship_local_storage_path: Path = Path(".local/internship-uploads")
 
     payment_provider: Literal["manual_external"] = "manual_external"
     email_provider: Literal["disabled", "smtp", "sendgrid"] = "disabled"

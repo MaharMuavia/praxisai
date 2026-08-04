@@ -55,6 +55,7 @@ from app.domain.models import (
 )
 from app.domain.schemas import ExternalPayoutRequest
 from app.notifications.service import notification_event
+from seed_internships import seed_internship_demo
 
 NAMESPACE = uuid.UUID("d852f362-f05c-4eb4-899a-24e0b4d96660")
 
@@ -1190,6 +1191,8 @@ async def seed() -> None:
             human_decision=None,
             decided_by_id=None,
         )
+
+        await seed_internship_demo(session, users=users, university=university)
 
         credential_permission = await upsert(
             session,
