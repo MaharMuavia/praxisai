@@ -260,6 +260,365 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/internships/certificates/{public_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verify Certificate */
+        get: operations["verify_certificate_api_v1_internships_certificates__public_slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/application": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Application */
+        get: operations["application_api_v1_internships_me_application_get"];
+        /** Update Application Route */
+        put: operations["update_application_route_api_v1_internships_me_application_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/application/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Application Route */
+        post: operations["submit_application_route_api_v1_internships_me_application_submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Assignments */
+        get: operations["assignments_api_v1_internships_me_assignments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/assignments/{assignment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Assignment */
+        get: operations["assignment_api_v1_internships_me_assignments__assignment_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/assignments/{assignment_id}/resubmit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resubmit Route */
+        post: operations["resubmit_route_api_v1_internships_me_assignments__assignment_id__resubmit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/assignments/{assignment_id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Assignment Route */
+        post: operations["start_assignment_route_api_v1_internships_me_assignments__assignment_id__start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/assignments/{assignment_id}/submission-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submission Draft */
+        post: operations["submission_draft_api_v1_internships_me_assignments__assignment_id__submission_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/certificate-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Certificate Route */
+        get: operations["certificate_route_api_v1_internships_me_certificate_eligibility_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/curriculum": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Curriculum Route */
+        get: operations["curriculum_route_api_v1_internships_me_curriculum_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/curriculum/units/{unit_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Unit Route */
+        post: operations["complete_unit_route_api_v1_internships_me_curriculum_units__unit_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard Route */
+        get: operations["dashboard_route_api_v1_internships_me_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feedback Route */
+        get: operations["feedback_route_api_v1_internships_me_feedback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/submissions/{submission_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Submission */
+        get: operations["submission_api_v1_internships_me_submissions__submission_id__get"];
+        /** Update Submission */
+        put: operations["update_submission_api_v1_internships_me_submissions__submission_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/submissions/{submission_id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finalize Submission Route */
+        post: operations["finalize_submission_route_api_v1_internships_me_submissions__submission_id__finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Programs */
+        get: operations["programs_api_v1_internships_programs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/programs/{program_id}/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Student Signup */
+        post: operations["student_signup_api_v1_internships_programs__program_id__signup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/programs/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Program */
+        get: operations["program_api_v1_internships_programs__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/uploads/initiate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Initiate */
+        post: operations["initiate_api_v1_internships_uploads_initiate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/uploads/{upload_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete */
+        post: operations["complete_api_v1_internships_uploads__upload_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/uploads/{upload_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Upload Content */
+        put: operations["upload_content_api_v1_internships_uploads__upload_id__content_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/leads/me/review-queue": {
         parameters: {
             query?: never;
@@ -613,6 +972,108 @@ export interface paths {
         get: operations["integrations_api_v1_ops_integrations_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/internships/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Applications */
+        get: operations["applications_api_v1_ops_internships_applications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/internships/applications/{application_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Application Decision */
+        post: operations["application_decision_api_v1_ops_internships_applications__application_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/internships/enrollments/{enrollment_id}/issue-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Certificate Route */
+        post: operations["issue_certificate_route_api_v1_ops_internships_enrollments__enrollment_id__issue_certificate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/internships/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reviews */
+        get: operations["reviews_api_v1_ops_internships_reviews_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/internships/reviews/{review_id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign Review */
+        post: operations["assign_review_api_v1_ops_internships_reviews__review_id__assign_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/internships/reviews/{review_id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finalize Review Route */
+        post: operations["finalize_review_route_api_v1_ops_internships_reviews__review_id__finalize_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1471,6 +1932,142 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** ApplicationDecisionRequest */
+        ApplicationDecisionRequest: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "ACCEPTED" | "WAITLISTED" | "REJECTED";
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason: string;
+            /** Track Version Id */
+            track_version_id?: string | null;
+        };
+        /** ApplicationSubmitRequest */
+        ApplicationSubmitRequest: {
+            /** Consent Version */
+            consent_version: string;
+            /** Version */
+            version: number;
+        };
+        /** ApplicationUpdate */
+        ApplicationUpdate: {
+            /** Accessibility Requirements */
+            accessibility_requirements?: string | null;
+            /**
+             * Country
+             * @default
+             */
+            country: string;
+            /**
+             * Degree Program
+             * @default
+             */
+            degree_program: string;
+            /**
+             * Education Status
+             * @default
+             */
+            education_status: string;
+            /** Github Url */
+            github_url?: string | null;
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /**
+             * Motivation
+             * @default
+             */
+            motivation: string;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
+            /** Primary Track Id */
+            primary_track_id?: string | null;
+            /** Secondary Track Id */
+            secondary_track_id?: string | null;
+            /**
+             * Semester Status
+             * @default
+             */
+            semester_status: string;
+            /**
+             * Technical Background
+             * @default
+             */
+            technical_background: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /** University Id */
+            university_id?: string | null;
+            /** Version */
+            version: number;
+            /** Weekly Availability Hours */
+            weekly_availability_hours?: number | null;
+        };
+        /** ApplicationView */
+        ApplicationView: {
+            /**
+             * Applicant User Id
+             * Format: uuid
+             */
+            applicant_user_id: string;
+            /**
+             * Cohort Id
+             * Format: uuid
+             */
+            cohort_id: string;
+            /** Country */
+            country: string;
+            /** Decision At */
+            decision_at: string | null;
+            /** Decision Reason */
+            decision_reason: string | null;
+            /** Degree Program */
+            degree_program: string;
+            /** Education Status */
+            education_status: string;
+            /** Github Url */
+            github_url: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Demo */
+            is_demo: boolean;
+            /** Linkedin Url */
+            linkedin_url: string | null;
+            /** Motivation */
+            motivation: string;
+            /** Portfolio Url */
+            portfolio_url: string | null;
+            /** Primary Track Id */
+            primary_track_id: string | null;
+            /**
+             * Program Id
+             * Format: uuid
+             */
+            program_id: string;
+            /** Secondary Track Id */
+            secondary_track_id: string | null;
+            /** Status */
+            status: string;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Technical Background */
+            technical_background: string;
+            /** Timezone */
+            timezone: string;
+            /** Version */
+            version: number;
+            /** Weekly Availability Hours */
+            weekly_availability_hours: number | null;
+        };
         /** ApprovalQueueItem */
         ApprovalQueueItem: {
             /**
@@ -1501,6 +2098,69 @@ export interface components {
             subject_id: string;
             /** Subject Type */
             subject_type: string;
+        };
+        /** AssignmentView */
+        AssignmentView: {
+            /** Acceptance Criteria */
+            acceptance_criteria: string[];
+            /** Attempt Count */
+            attempt_count: number;
+            /** Current Submission Id */
+            current_submission_id: string | null;
+            /** Deliverables */
+            deliverables: string[];
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Late */
+            is_late: boolean;
+            /** Objectives */
+            objectives: string[];
+            /** Pass Score */
+            pass_score: number;
+            /** Problem Statement */
+            problem_statement: string;
+            /**
+             * Release At
+             * Format: date-time
+             */
+            release_at: string;
+            /** Required Artifact Types */
+            required_artifact_types: {
+                [key: string]: unknown;
+            }[];
+            /** Rubric */
+            rubric: {
+                [key: string]: unknown;
+            }[];
+            /** State */
+            state: string;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
+        /** CertificateEligibilityView */
+        CertificateEligibilityView: {
+            /** Certificate Id */
+            certificate_id: string | null;
+            /** Enrollment Id */
+            enrollment_id: string | null;
+            /** Public Slug */
+            public_slug: string | null;
+            /** Reason */
+            reason: string;
+            /** State */
+            state: string;
         };
         /** ChangeOrderCreate */
         ChangeOrderCreate: {
@@ -1601,6 +2261,38 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** CohortSummary */
+        CohortSummary: {
+            /** Application Deadline */
+            application_deadline: string | null;
+            /** Capacity */
+            capacity: number;
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Demo */
+            is_demo: boolean;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /** Status */
+            status: string;
+            /** Timezone */
+            timezone: string;
+        };
         /** CompanyIntentCreate */
         CompanyIntentCreate: {
             /** Business Problem */
@@ -1690,6 +2382,12 @@ export interface components {
             /** Summary */
             summary: string;
         };
+        /** CurriculumView */
+        CurriculumView: {
+            track: components["schemas"]["TrackSummary"];
+            /** Weeks */
+            weeks: components["schemas"]["WeekView"][];
+        };
         /** DashboardSummary */
         DashboardSummary: {
             /** Dead Letter Jobs */
@@ -1708,6 +2406,34 @@ export interface components {
             projects_by_state: {
                 [key: string]: number;
             };
+        };
+        /** DashboardView */
+        DashboardView: {
+            /** Certificate Eligibility */
+            certificate_eligibility: string | null;
+            /** Cohort Name */
+            cohort_name: string | null;
+            /** Completed Units */
+            completed_units: number;
+            /** Enrollment Id */
+            enrollment_id: string | null;
+            /** Enrollment Status */
+            enrollment_status: string | null;
+            /** Is Demo */
+            is_demo: boolean;
+            /** Passed Assignments */
+            passed_assignments: number;
+            /** Program Name */
+            program_name: string | null;
+            /** Progress Percent */
+            progress_percent: number;
+            /** Required Assignments */
+            required_assignments: number;
+            /** Required Units */
+            required_units: number;
+            /** Timeline */
+            timeline: components["schemas"]["TimelineItem"][];
+            track: components["schemas"]["TrackSummary"] | null;
         };
         /** DeadLetterRecoveryRequest */
         DeadLetterRecoveryRequest: {
@@ -1922,6 +2648,42 @@ export interface components {
             /** External Reference */
             external_reference: string;
         };
+        /** FeedbackView */
+        FeedbackView: {
+            /**
+             * Assignment Id
+             * Format: uuid
+             */
+            assignment_id: string;
+            /** Decision */
+            decision: string;
+            /**
+             * Finalized At
+             * Format: date-time
+             */
+            finalized_at: string;
+            /**
+             * Review Id
+             * Format: uuid
+             */
+            review_id: string;
+            /** Student Feedback */
+            student_feedback: string;
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+            /** Weighted Total */
+            weighted_total: number;
+        };
+        /** FinalizeSubmissionRequest */
+        FinalizeSubmissionRequest: {
+            /** Confirm */
+            confirm: boolean;
+            /** Version */
+            version: number;
+        };
         /** FirebaseSessionRequest */
         FirebaseSessionRequest: {
             /** Id Token */
@@ -1948,6 +2710,11 @@ export interface components {
             mode: string;
             /** Provider */
             provider: string;
+        };
+        /** IssueCertificateRequest */
+        IssueCertificateRequest: {
+            /** Confirm */
+            confirm: boolean;
         };
         /** JobAttemptView */
         JobAttemptView: {
@@ -2260,6 +3027,69 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** OperationsApplicationView */
+        OperationsApplicationView: {
+            /** Applicant Display Name */
+            applicant_display_name: string;
+            /** Applicant Email */
+            applicant_email: string;
+            /**
+             * Applicant User Id
+             * Format: uuid
+             */
+            applicant_user_id: string;
+            /**
+             * Cohort Id
+             * Format: uuid
+             */
+            cohort_id: string;
+            /** Country */
+            country: string;
+            /** Decision At */
+            decision_at: string | null;
+            /** Decision Reason */
+            decision_reason: string | null;
+            /** Degree Program */
+            degree_program: string;
+            /** Education Status */
+            education_status: string;
+            /** Github Url */
+            github_url: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Demo */
+            is_demo: boolean;
+            /** Linkedin Url */
+            linkedin_url: string | null;
+            /** Motivation */
+            motivation: string;
+            /** Portfolio Url */
+            portfolio_url: string | null;
+            /** Primary Track Id */
+            primary_track_id: string | null;
+            /**
+             * Program Id
+             * Format: uuid
+             */
+            program_id: string;
+            /** Secondary Track Id */
+            secondary_track_id: string | null;
+            /** Status */
+            status: string;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Technical Background */
+            technical_background: string;
+            /** Timezone */
+            timezone: string;
+            /** Version */
+            version: number;
+            /** Weekly Availability Hours */
+            weekly_availability_hours: number | null;
+        };
         /** OperationsJobView */
         OperationsJobView: {
             /**
@@ -2485,6 +3315,54 @@ export interface components {
              * Format: uuid
              */
             scope_version_id: string;
+            /** Status */
+            status: string;
+        };
+        /** ProgramDetail */
+        ProgramDetail: {
+            /** Cohorts */
+            cohorts: components["schemas"]["CohortSummary"][];
+            /** Default Timezone */
+            default_timezone: string;
+            /** Duration Weeks */
+            duration_weeks: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Demo */
+            is_demo: boolean;
+            /** Name */
+            name: string;
+            /** Public Description */
+            public_description: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Tracks */
+            tracks: components["schemas"]["TrackSummary"][];
+        };
+        /** ProgramSummary */
+        ProgramSummary: {
+            /** Default Timezone */
+            default_timezone: string;
+            /** Duration Weeks */
+            duration_weeks: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Demo */
+            is_demo: boolean;
+            /** Name */
+            name: string;
+            /** Public Description */
+            public_description: string;
+            /** Slug */
+            slug: string;
             /** Status */
             status: string;
         };
@@ -2721,6 +3599,17 @@ export interface components {
             resource_type: string;
             /** Status */
             status: string;
+        };
+        /** PublicCertificateView */
+        PublicCertificateView: {
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Public Slug */
+            public_slug: string;
+            /** State */
+            state: string;
         };
         /** PublicCredential */
         PublicCredential: {
@@ -3076,6 +3965,63 @@ export interface components {
             /** Value */
             value: number;
         };
+        /** ReviewAssignRequest */
+        ReviewAssignRequest: {
+            /**
+             * Reviewer Id
+             * Format: uuid
+             */
+            reviewer_id: string;
+        };
+        /** ReviewFinalizeRequest */
+        ReviewFinalizeRequest: {
+            /**
+             * Conflict Declared
+             * @default false
+             */
+            conflict_declared: boolean;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "PASS" | "CHANGES_REQUESTED" | "FAIL";
+            /** Private Notes */
+            private_notes?: string | null;
+            /** Scores */
+            scores: {
+                [key: string]: unknown;
+            }[];
+            /** Student Feedback */
+            student_feedback: string;
+            /** Version */
+            version: number;
+        };
+        /** ReviewQueueItem */
+        ReviewQueueItem: {
+            /**
+             * Assignment Id
+             * Format: uuid
+             */
+            assignment_id: string;
+            /** Assignment Title */
+            assignment_title: string;
+            /**
+             * Review Id
+             * Format: uuid
+             */
+            review_id: string;
+            /** Status */
+            status: string;
+            /** Student Display Name */
+            student_display_name: string;
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+            /** Version */
+            version: number;
+        };
         /** RiskQueueItem */
         RiskQueueItem: {
             /** Confidence */
@@ -3223,6 +4169,30 @@ export interface components {
              * Format: uuid
              */
             user_id: string;
+        };
+        /** SignupRequest */
+        SignupRequest: {
+            /**
+             * Cohort Id
+             * Format: uuid
+             */
+            cohort_id: string;
+            /** Consent Version */
+            consent_version: string;
+            /** Id Token */
+            id_token: string;
+        };
+        /** SignupResponse */
+        SignupResponse: {
+            /** Application Id */
+            application_id?: string | null;
+            /** Message */
+            message: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "CREATED" | "CHECK_EMAIL";
         };
         /** StaffingCandidateView */
         StaffingCandidateView: {
@@ -3408,6 +4378,54 @@ export interface components {
              */
             student_user_id: string;
         };
+        /** SubmissionDraftRequest */
+        SubmissionDraftRequest: {
+            /** Artifact Upload Ids */
+            artifact_upload_ids?: string[];
+            /** Links */
+            links?: {
+                [key: string]: string;
+            };
+            /** Text Fields */
+            text_fields?: {
+                [key: string]: string;
+            };
+        };
+        /** SubmissionView */
+        SubmissionView: {
+            /** Artifact Upload Ids */
+            artifact_upload_ids: string[];
+            /** Canonical Hash */
+            canonical_hash: string | null;
+            /** Deadline Status */
+            deadline_status: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Links */
+            links: {
+                [key: string]: string;
+            };
+            /** Previous Submission Id */
+            previous_submission_id: string | null;
+            /** State */
+            state: string;
+            /**
+             * Student Assignment Id
+             * Format: uuid
+             */
+            student_assignment_id: string;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Text Fields */
+            text_fields: {
+                [key: string]: string;
+            };
+            /** Version */
+            version: number;
+        };
         /** TaskCreate */
         TaskCreate: {
             /** Assignee Id */
@@ -3455,6 +4473,44 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** TimelineItem */
+        TimelineItem: {
+            /** Ends At */
+            ends_at?: string | null;
+            /** Label */
+            label: string;
+            /** Starts At */
+            starts_at?: string | null;
+            /** State */
+            state: string;
+        };
+        /** TrackSummary */
+        TrackSummary: {
+            /** Expected Weekly Hours */
+            expected_weekly_hours: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Skill Outcomes */
+            skill_outcomes: string[];
+            /** Slug */
+            slug: string;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+            /** Version */
+            version: number;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+        };
         /** TransitionRequest */
         TransitionRequest: {
             /** Expected Version */
@@ -3462,6 +4518,56 @@ export interface components {
             /** Reason */
             reason: string;
             to_state: components["schemas"]["ProjectState"];
+        };
+        /** UnitCompletionRequest */
+        UnitCompletionRequest: {
+            /** Evidence Summary */
+            evidence_summary: string;
+            /** Evidence Url */
+            evidence_url?: string | null;
+        };
+        /** UnitView */
+        UnitView: {
+            /** Completed */
+            completed: boolean;
+            /** Completion Rule */
+            completion_rule: {
+                [key: string]: unknown;
+            };
+            /** Deadline */
+            deadline: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Required */
+            is_required: boolean;
+            /** Objectives */
+            objectives: string[];
+            /** Ordinal */
+            ordinal: number;
+            /** Practical Exercise */
+            practical_exercise: string;
+            /** Prerequisites */
+            prerequisites: string[];
+            /** Release At */
+            release_at: string | null;
+            /** Resources */
+            resources: {
+                [key: string]: unknown;
+            }[];
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+            /** Unit Type */
+            unit_type: string;
+            /**
+             * Week Id
+             * Format: uuid
+             */
+            week_id: string;
         };
         /** UniversityExportRequest */
         UniversityExportRequest: {
@@ -3555,6 +4661,47 @@ export interface components {
             /** Verified Work Minutes */
             verified_work_minutes: number | null;
         };
+        /** UploadCompleteRequest */
+        UploadCompleteRequest: {
+            /** Sha256 */
+            sha256: string;
+        };
+        /** UploadInitiateRequest */
+        UploadInitiateRequest: {
+            /** Artifact Type */
+            artifact_type: string;
+            /**
+             * Assignment Id
+             * Format: uuid
+             */
+            assignment_id: string;
+            /** Content Type */
+            content_type: string;
+            /** Filename */
+            filename: string;
+            /** Sha256 */
+            sha256?: string | null;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** UploadView */
+        UploadView: {
+            /** Artifact Type */
+            artifact_type: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Filename */
+            filename: string;
+            /** State */
+            state: string;
+            /** Upload Id */
+            upload_id: string;
+            /** Upload Url */
+            upload_url: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -3563,6 +4710,38 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WeekView */
+        WeekView: {
+            /**
+             * Ends At
+             * Format: date-time
+             */
+            ends_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Required Assignment Count */
+            required_assignment_count: number;
+            /** Required Unit Count */
+            required_unit_count: number;
+            /**
+             * Starts At
+             * Format: date-time
+             */
+            starts_at: string;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+            /** Units */
+            units: components["schemas"]["UnitView"][];
+            /** Unlocked */
+            unlocked: boolean;
+            /** Week Number */
+            week_number: number;
         };
     };
     responses: never;
@@ -4064,6 +5243,768 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    verify_certificate_api_v1_internships_certificates__public_slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicCertificateView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    application_api_v1_internships_me_application_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_application_route_api_v1_internships_me_application_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_application_route_api_v1_internships_me_application_submit_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationSubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assignments_api_v1_internships_me_assignments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assignment_api_v1_internships_me_assignments__assignment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assignment_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resubmit_route_api_v1_internships_me_assignments__assignment_id__resubmit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assignment_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_assignment_route_api_v1_internships_me_assignments__assignment_id__start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assignment_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submission_draft_api_v1_internships_me_assignments__assignment_id__submission_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assignment_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmissionDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    certificate_route_api_v1_internships_me_certificate_eligibility_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateEligibilityView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    curriculum_route_api_v1_internships_me_curriculum_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_unit_route_api_v1_internships_me_curriculum_units__unit_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnitCompletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurriculumView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dashboard_route_api_v1_internships_me_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feedback_route_api_v1_internships_me_feedback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submission_api_v1_internships_me_submissions__submission_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_submission_api_v1_internships_me_submissions__submission_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmissionDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finalize_submission_route_api_v1_internships_me_submissions__submission_id__finalize_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinalizeSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    programs_api_v1_internships_programs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramSummary"][];
+                };
+            };
+        };
+    };
+    student_signup_api_v1_internships_programs__program_id__signup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignupResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    program_api_v1_internships_programs__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    initiate_api_v1_internships_uploads_initiate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadInitiateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_api_v1_internships_uploads__upload_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                upload_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_content_api_v1_internships_uploads__upload_id__content_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                upload_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4835,6 +6776,226 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntegrationStatus"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    applications_api_v1_ops_internships_applications_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationsApplicationView"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    application_decision_api_v1_ops_internships_applications__application_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_certificate_route_api_v1_ops_internships_enrollments__enrollment_id__issue_certificate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                enrollment_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueCertificateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reviews_api_v1_ops_internships_reviews_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewQueueItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assign_review_api_v1_ops_internships_reviews__review_id__assign_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                review_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewAssignRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewQueueItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finalize_review_route_api_v1_ops_internships_reviews__review_id__finalize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                review_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewFinalizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewQueueItem"];
                 };
             };
             /** @description Validation Error */

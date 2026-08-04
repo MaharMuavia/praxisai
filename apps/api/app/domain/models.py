@@ -923,5 +923,355 @@ class RateLimitBucket(EntityMixin, Base):
     request_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class UniversityEmailDomain(EntityMixin, Base):
+    __tablename__ = "university_email_domains"
+    __table_args__ = (UniqueConstraint("university_id", "domain"),)
+    university_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("universities.id"), index=True)
+    domain: Mapped[str] = mapped_column(String(255), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)
+    allow_subdomains: Mapped[bool] = mapped_column(Boolean, default=False)
+    verification_method: Mapped[str] = mapped_column(String(40), default="manual")
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    verified_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+
+
+class AllowedStudentEmail(EntityMixin, Base):
+    __tablename__ = "allowed_student_emails"
+    __table_args__ = (UniqueConstraint("cohort_id", "email"),)
+    cohort_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_cohorts.id"), index=True)
+    email: Mapped[str] = mapped_column(String(320), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="ACTIVE", index=True)
+    invitation_source: Mapped[str | None] = mapped_column(String(120))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class InternshipProgram(EntityMixin, Base):
+    __tablename__ = "internship_programs"
+    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(220))
+    public_description: Mapped[str] = mapped_column(Text)
+    internal_description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(30), default="DRAFT", index=True)
+    default_timezone: Mapped[str] = mapped_column(String(80), default="UTC")
+    duration_weeks: Mapped[int] = mapped_column(Integer)
+    application_opens_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    application_closes_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    minimum_age: Mapped[int | None] = mapped_column(Integer)
+    university_email_policy: Mapped[str] = mapped_column(String(30), default="REVIEW")
+    personal_email_exception_policy: Mapped[str] = mapped_column(String(30), default="REVIEW")
+    completion_policy_version: Mapped[str] = mapped_column(String(30), default="1.0")
+    certificate_policy_version: Mapped[str] = mapped_column(String(30), default="1.0")
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class InternshipTrack(EntityMixin, Base):
+    __tablename__ = "internship_tracks"
+    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(180))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class InternshipTrackVersion(EntityMixin, Base):
+    __tablename__ = "internship_track_versions"
+    __table_args__ = (UniqueConstraint("track_id", "version"),)
+    track_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_tracks.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(200))
+    summary: Mapped[str] = mapped_column(Text)
+    prerequisites: Mapped[list[str]] = mapped_column(JSON, default=list)
+    skill_outcomes: Mapped[list[str]] = mapped_column(JSON, default=list)
+    expected_weekly_hours: Mapped[int] = mapped_column(Integer, default=10)
+    status: Mapped[str] = mapped_column(String(30), default="DRAFT", index=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    learning_path_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("learning_paths.id"))
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class InternshipCohort(EntityMixin, Base):
+    __tablename__ = "internship_cohorts"
+    __table_args__ = (UniqueConstraint("program_id", "slug"),)
+    program_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_programs.id"), index=True)
+    name: Mapped[str] = mapped_column(String(220))
+    slug: Mapped[str] = mapped_column(String(120), index=True)
+    timezone: Mapped[str] = mapped_column(String(80), default="UTC")
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    capacity: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(30), default="DRAFT", index=True)
+    application_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    enrollment_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    late_policy: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    resubmission_policy: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    certificate_policy: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    coordinator_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class CohortTrack(EntityMixin, Base):
+    __tablename__ = "internship_cohort_tracks"
+    __table_args__ = (UniqueConstraint("cohort_id", "track_version_id"),)
+    cohort_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_cohorts.id"), index=True)
+    track_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_track_versions.id"), index=True
+    )
+    capacity: Mapped[int] = mapped_column(Integer)
+    reviewer_pool: Mapped[list[str]] = mapped_column(JSON, default=list)
+    instructor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+
+
+class InternshipApplication(EntityMixin, Base):
+    __tablename__ = "internship_applications"
+    __table_args__ = (UniqueConstraint("applicant_user_id", "cohort_id"),)
+    applicant_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    program_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_programs.id"), index=True)
+    cohort_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_cohorts.id"), index=True)
+    primary_track_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("internship_tracks.id"))
+    secondary_track_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("internship_tracks.id"))
+    education_status: Mapped[str] = mapped_column(String(80), default="")
+    university_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("universities.id"))
+    degree_program: Mapped[str] = mapped_column(String(180), default="")
+    semester_status: Mapped[str] = mapped_column(String(180), default="")
+    country: Mapped[str] = mapped_column(String(2), default="")
+    timezone: Mapped[str] = mapped_column(String(80), default="UTC")
+    weekly_availability_hours: Mapped[int | None] = mapped_column(Integer)
+    technical_background: Mapped[str] = mapped_column(Text, default="")
+    motivation: Mapped[str] = mapped_column(Text, default="")
+    portfolio_url: Mapped[str | None] = mapped_column(String(500))
+    github_url: Mapped[str | None] = mapped_column(String(500))
+    linkedin_url: Mapped[str | None] = mapped_column(String(500))
+    accessibility_requirements: Mapped[str | None] = mapped_column(Text)
+    email_verification_evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    consent_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(40), default="DRAFT", index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_reason: Mapped[str | None] = mapped_column(Text)
+    reviewer_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    submit_idempotency_key: Mapped[str | None] = mapped_column(String(128), unique=True)
+
+
+class CohortEnrollment(EntityMixin, Base):
+    __tablename__ = "internship_cohort_enrollments"
+    __table_args__ = (UniqueConstraint("cohort_id", "student_user_id"),)
+    cohort_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_cohorts.id"), index=True)
+    student_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    track_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_track_versions.id"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(30), default="INVITED", index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    termination_reason: Mapped[str | None] = mapped_column(Text)
+    progress_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    certificate_eligibility: Mapped[str] = mapped_column(String(30), default="NOT_ELIGIBLE")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class InternshipPhase(EntityMixin, Base):
+    __tablename__ = "internship_phases"
+    __table_args__ = (UniqueConstraint("cohort_track_id", "ordinal"),)
+    cohort_track_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_cohort_tracks.id"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(180))
+    phase_type: Mapped[str] = mapped_column(String(30))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completion_requirement: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class InternshipWeek(EntityMixin, Base):
+    __tablename__ = "internship_weeks"
+    __table_args__ = (UniqueConstraint("phase_id", "week_number"),)
+    phase_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_phases.id"), index=True)
+    week_number: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(180))
+    summary: Mapped[str] = mapped_column(Text)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    unlock_policy: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    required_unit_count: Mapped[int] = mapped_column(Integer, default=0)
+    required_assignment_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class InternshipUnit(EntityMixin, Base):
+    __tablename__ = "internship_units"
+    __table_args__ = (UniqueConstraint("week_id", "ordinal", "version"),)
+    week_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_weeks.id"), index=True)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    unit_type: Mapped[str] = mapped_column(String(30))
+    title: Mapped[str] = mapped_column(String(220))
+    summary: Mapped[str] = mapped_column(Text)
+    objectives: Mapped[list[str]] = mapped_column(JSON, default=list)
+    resources: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    practical_exercise: Mapped[str] = mapped_column(Text, default="")
+    completion_rule: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    prerequisites: Mapped[list[str]] = mapped_column(JSON, default=list)
+    release_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class InternshipUnitCompletion(EntityMixin, Base):
+    __tablename__ = "internship_unit_completions"
+    __table_args__ = (UniqueConstraint("enrollment_id", "unit_id"),)
+    enrollment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_cohort_enrollments.id"), index=True
+    )
+    unit_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_units.id"), index=True)
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    approved_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+
+
+class InternshipAssignmentTemplate(EntityMixin, Base):
+    __tablename__ = "internship_assignment_templates"
+    __table_args__ = (UniqueConstraint("track_version_id", "version", "title"),)
+    track_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_track_versions.id"), index=True
+    )
+    week_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("internship_weeks.id"), index=True)
+    title: Mapped[str] = mapped_column(String(220))
+    summary: Mapped[str] = mapped_column(Text)
+    problem_statement: Mapped[str] = mapped_column(Text)
+    objectives: Mapped[list[str]] = mapped_column(JSON, default=list)
+    required_skills: Mapped[list[str]] = mapped_column(JSON, default=list)
+    estimated_effort_hours: Mapped[int] = mapped_column(Integer)
+    starter_resources: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    constraints: Mapped[list[str]] = mapped_column(JSON, default=list)
+    deliverables: Mapped[list[str]] = mapped_column(JSON, default=list)
+    acceptance_criteria: Mapped[list[str]] = mapped_column(JSON, default=list)
+    required_artifact_types: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    rubric: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    maximum_score: Mapped[int] = mapped_column(Integer, default=100)
+    pass_score: Mapped[int] = mapped_column(Integer, default=70)
+    late_policy: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    resubmission_policy: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class InternshipCohortAssignment(EntityMixin, Base):
+    __tablename__ = "internship_cohort_assignments"
+    __table_args__ = (UniqueConstraint("cohort_track_id", "template_id"),)
+    template_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_assignment_templates.id"), index=True
+    )
+    cohort_track_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_cohort_tracks.id"), index=True
+    )
+    release_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    grace_period_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    review_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(30), default="DRAFT", index=True)
+    reviewer_pool: Mapped[list[str]] = mapped_column(JSON, default=list)
+    publish_idempotency_key: Mapped[str | None] = mapped_column(String(128), unique=True)
+
+
+class InternshipStudentAssignment(EntityMixin, Base):
+    __tablename__ = "internship_student_assignments"
+    __table_args__ = (UniqueConstraint("cohort_assignment_id", "student_user_id"),)
+    cohort_assignment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_cohort_assignments.id"), index=True
+    )
+    student_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    state: Mapped[str] = mapped_column(String(30), default="LOCKED", index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    current_submission_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    extension_state: Mapped[str] = mapped_column(String(30), default="NONE")
+    final_result: Mapped[str | None] = mapped_column(String(30))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class InternshipUpload(EntityMixin, Base):
+    __tablename__ = "internship_uploads"
+    upload_id: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    student_assignment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_student_assignments.id"), index=True
+    )
+    artifact_type: Mapped[str] = mapped_column(String(50))
+    filename: Mapped[str] = mapped_column(String(255))
+    content_type: Mapped[str] = mapped_column(String(120))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    storage_key: Mapped[str] = mapped_column(String(500))
+    state: Mapped[str] = mapped_column(String(30), default="INITIATED", index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    scan_message: Mapped[str | None] = mapped_column(String(500))
+
+
+class InternshipSubmission(EntityMixin, Base):
+    __tablename__ = "internship_submissions"
+    __table_args__ = (UniqueConstraint("student_assignment_id", "version"),)
+    student_assignment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_student_assignments.id"), index=True
+    )
+    student_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    state: Mapped[str] = mapped_column(String(30), default="DRAFT", index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    links: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+    text_fields: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+    artifact_upload_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    canonical_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    rubric_version: Mapped[int | None] = mapped_column(Integer)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deadline_status: Mapped[str | None] = mapped_column(String(20))
+    correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    finalize_idempotency_key: Mapped[str | None] = mapped_column(String(128), unique=True)
+    previous_submission_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
+
+
+class InternshipReview(EntityMixin, Base):
+    __tablename__ = "internship_reviews"
+    student_assignment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_student_assignments.id"), index=True
+    )
+    submission_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_submissions.id"), index=True
+    )
+    reviewer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="ASSIGNED", index=True)
+    scores: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    weighted_total: Mapped[int | None] = mapped_column(Integer)
+    student_feedback: Mapped[str | None] = mapped_column(Text)
+    private_notes: Mapped[str | None] = mapped_column(Text)
+    conflict_declared: Mapped[bool] = mapped_column(Boolean, default=False)
+    decision: Mapped[str | None] = mapped_column(String(30))
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), unique=True)
+
+
+class InternshipCertificate(EntityMixin, Base):
+    __tablename__ = "internship_certificates"
+    __table_args__ = (UniqueConstraint("enrollment_id"), UniqueConstraint("public_slug"))
+    enrollment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("internship_cohort_enrollments.id"), index=True
+    )
+    student_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    state: Mapped[str] = mapped_column(String(30), default="NOT_ELIGIBLE", index=True)
+    public_slug: Mapped[str | None] = mapped_column(String(100), index=True)
+    public_payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    issued_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revocation_reason: Mapped[str | None] = mapped_column(Text)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), unique=True)
+
+
 Index("ix_tasks_project_state", Task.project_id, Task.state)
 Index("ix_agent_runs_project_status", AgentRun.project_id, AgentRun.status)

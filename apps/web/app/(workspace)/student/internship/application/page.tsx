@@ -1,0 +1,5 @@
+import { InternshipStudentPortal } from "@/features/internships/internship-student-portal";
+
+export default function InternshipApplicationPage() {
+  return <InternshipStudentPortal view="application" />;
+}

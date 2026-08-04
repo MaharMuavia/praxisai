@@ -17,6 +17,10 @@ from app.api import (
     credentials,
     governance,
     intake,
+    internships_operations,
+    internships_public,
+    internships_student,
+    internships_uploads,
     learning,
     notifications,
     offers,
@@ -90,11 +94,13 @@ async def security_and_correlation(
 @app.exception_handler(HTTPException)
 async def http_error(request: Request, exc: HTTPException) -> JSONResponse:
     correlation = getattr(request.state, "correlation_id", uuid.uuid4())
+    detail: dict[str, object] = exc.detail if isinstance(exc.detail, dict) else {}
     payload = ErrorResponse(
         error=ErrorDetail(
-            code=f"http_{exc.status_code}",
-            message=str(exc.detail),
+            code=str(detail.get("code", f"http_{exc.status_code}")),
+            message=str(detail.get("message", exc.detail)),
             correlation_id=correlation,
+            details={key: value for key, value in detail.items() if key not in {"code", "message"}},
         )
     )
     return JSONResponse(status_code=exc.status_code, content=payload.model_dump(mode="json"))
@@ -162,3 +168,7 @@ app.include_router(workspaces.router, prefix="/api/v1")
 app.include_router(learning.router, prefix="/api/v1")
 app.include_router(talent.router, prefix="/api/v1")
 app.include_router(intake.router, prefix="/api/v1")
+app.include_router(internships_public.router, prefix="/api/v1")
+app.include_router(internships_student.router, prefix="/api/v1")
+app.include_router(internships_operations.router, prefix="/api/v1")
+app.include_router(internships_uploads.router, prefix="/api/v1")

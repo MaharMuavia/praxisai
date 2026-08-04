@@ -6,6 +6,7 @@ class Role(StrEnum):
     CLIENT_MEMBER = "client_member"
     STUDENT = "student"
     TECHNICAL_LEAD = "technical_lead"
+    REVIEWER = "reviewer"
     COORDINATOR = "coordinator"
     UNIVERSITY_VIEWER = "university_viewer"
     PLATFORM_ADMIN = "platform_admin"

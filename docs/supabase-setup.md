@@ -1,8 +1,9 @@
-# Supabase PostgreSQL setup
+# Supabase PostgreSQL and Storage setup
 
-PraxisAI uses Supabase only as managed PostgreSQL. Supabase Auth, Storage, Edge Functions,
-Realtime, and Row Level Security are not part of this integration; authorization remains in the
-FastAPI service layer and PostgreSQL remains the transactional system of record.
+PraxisAI uses Supabase PostgreSQL as the transactional system of record and a private Supabase
+Storage bucket for internship and commercial artifact bytes. The FastAPI service remains the
+authorization boundary. Firebase remains the identity provider for this deployment; Supabase Auth
+is not enabled by this change.
 
 See `database-schema.md` for the complete table map and `configuration-and-secrets.md` for the
 credential checklist.
@@ -26,7 +27,24 @@ Example shape only:
 DATABASE_URL=postgresql+asyncpg://postgres.PROJECT_REF:PASSWORD@POOLER_HOST:6543/postgres
 DATABASE_MIGRATION_URL=postgresql+asyncpg://postgres.PROJECT_REF:PASSWORD@POOLER_HOST:5432/postgres
 DATABASE_POOL_MODE=transaction
+STORAGE_PROVIDER=supabase
+SUPABASE_URL=https://PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=server-only-service-role-key
+SUPABASE_STORAGE_BUCKET=internship-submissions
 ```
+
+The service-role key is required only by the API. Never put it in a `NEXT_PUBLIC_*` variable or
+browser bundle.
+
+## Create the private Storage bucket
+
+Run [`supabase-storage.sql`](supabase-storage.sql) once in the Supabase SQL Editor. It creates a
+private bucket with bounded MIME types and a 100 MiB object limit. The API still enforces the
+per-artifact limits and owner binding before writing an object.
+
+The API uploads through the Supabase Storage REST API using the server-only service-role key. It
+does not expose bucket credentials to students. Upload metadata, hashes, and review state remain in
+the application tables; object bytes remain in Supabase Storage.
 
 ## Initialize an empty project
 

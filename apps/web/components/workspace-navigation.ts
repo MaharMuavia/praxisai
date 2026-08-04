@@ -3,6 +3,7 @@ import {
   BookOpen,
   BriefcaseBusiness,
   FileCheck2,
+  GraduationCap,
   LayoutDashboard,
   Send,
   Settings,
@@ -77,6 +78,9 @@ export const navigation: Record<
   ],
   student: [
     item("Overview", "/student", LayoutDashboard),
+    item("Internship", "/student/internship", GraduationCap, [
+      "internships:view_own",
+    ]),
     item("Learn", "/student/learn", BookOpen, ["learning:participate"]),
     item("Paid projects", "/student/opportunities", Search, [
       "opportunities:view",
@@ -95,6 +99,9 @@ export const navigation: Record<
   ],
   ops: [
     item("Operations", "/ops", LayoutDashboard, ["projects:operate"]),
+    item("Internships", "/ops/internships", GraduationCap, [
+      "internships:view_analytics",
+    ]),
     item("Approvals", "/ops/approvals", FileCheck2, ["approvals:decide"]),
     item("Risks", "/ops/risks", Shield, ["projects:operate"]),
     item("Projects", "/ops/projects", BriefcaseBusiness, ["projects:operate"]),

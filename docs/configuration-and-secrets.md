@@ -3,9 +3,9 @@
 Do not send plaintext passwords, private keys, service-account JSON, or connection strings through
 chat. Put them only in the local `.env` file or the deployment secret manager. `.env` is gitignored.
 
-## Required now: Supabase database and local demo
+## Required now: Supabase database, private Storage, and local demo
 
-These values are enough to run the current application with Supabase PostgreSQL:
+These values configure the current application with Supabase PostgreSQL and private Supabase Storage:
 
 | Value                                                         | Where to obtain it                                                  | Required handling                                                                                                            |
 | ------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -14,6 +14,9 @@ These values are enough to run the current application with Supabase PostgreSQL:
 | Supabase database password                                    | Chosen when creating/resetting the Supabase database                | URL-encode reserved characters before embedding it in the two connection strings. Never expose it to Next.js.                |
 | Session secret                                                | Generate locally                                                    | At least 32 random characters in `SESSION_SECRET`.                                                                           |
 | CSRF secret                                                   | Generate locally                                                    | A different value of at least 32 random characters in `CSRF_SECRET`.                                                         |
+| Supabase project URL                                          | Supabase project settings                                           | Server-only `SUPABASE_URL`; do not expose through `NEXT_PUBLIC_*`.                                                           |
+| Supabase service-role key                                     | Supabase project API settings                                      | Server-only `SUPABASE_SERVICE_ROLE_KEY`; never commit or expose it.                                                         |
+| Private Storage bucket                                        | Created with `docs/supabase-storage.sql`                           | Set `SUPABASE_STORAGE_BUCKET`; keep the bucket private.                                                                     |
 
 Set:
 
@@ -23,13 +26,16 @@ DEMO_MODE=true
 DATABASE_URL=postgresql+asyncpg://postgres.PROJECT_REF:ENCODED_PASSWORD@TRANSACTION_POOLER:6543/postgres
 DATABASE_MIGRATION_URL=postgresql+asyncpg://postgres.PROJECT_REF:ENCODED_PASSWORD@SESSION_POOLER:5432/postgres
 DATABASE_POOL_MODE=transaction
+STORAGE_PROVIDER=supabase
+SUPABASE_URL=https://PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=KEEP_THIS_SERVER_ONLY
+SUPABASE_STORAGE_BUCKET=internship-submissions
 SESSION_SECRET=GENERATE_A_RANDOM_VALUE_OF_AT_LEAST_32_CHARACTERS
 CSRF_SECRET=GENERATE_A_DIFFERENT_RANDOM_VALUE_OF_AT_LEAST_32_CHARACTERS
 ```
 
-The current server-only database integration does **not** require a Supabase project URL, anon key,
-service-role key, JWT secret, Storage key, Realtime key, or Edge Functions key. Do not add those
-credentials unless a future feature has a concrete use for them.
+The server-side database connection does not require a Supabase anon key or browser key. Private
+Storage writes do require the server-only service-role key. Do not expose it to Next.js or students.
 
 ## Optional now: real Gemini instead of fixture AI
 
@@ -60,7 +66,7 @@ Supabase Auth.
 
 | Feature                       | Required value or resource                                         | Current local behavior              |
 | ----------------------------- | ------------------------------------------------------------------ | ----------------------------------- |
-| Private artifact storage      | `CLOUD_STORAGE_BUCKET` and Google credentials                      | Local artifact provider             |
+| Private artifact storage      | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_STORAGE_BUCKET` | Supabase Storage when `STORAGE_PROVIDER=supabase` |
 | Production credential signing | `CREDENTIAL_KMS_KEY_NAME` and KMS signer permission                | Disposable gitignored demo key      |
 | Cloud Tasks outbox delivery   | `GOOGLE_CLOUD_PROJECT`, queue name, and task-enqueuer permission   | Local worker command                |
 | BigQuery analytics            | Dataset configuration and writer permission                        | Disabled                            |

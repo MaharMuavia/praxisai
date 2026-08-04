@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://praxisai:praxisai_local@localhost:5432/praxisai"
     database_migration_url: str | None = None
     database_pool_mode: Literal["direct", "session", "transaction"] = "direct"
+    storage_provider: Literal["local", "supabase", "gcs"] = "local"
+    supabase_url: str | None = None
+    supabase_service_role_key: str | None = None
+    supabase_storage_bucket: str = "internship-submissions"
+    supabase_storage_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
     session_secret: str = Field(default="local-session-secret-change-before-sharing", min_length=32)
     csrf_secret: str = Field(default="local-csrf-secret-change-before-sharing", min_length=32)
     cors_origins: list[str] = ["http://localhost:3000"]
@@ -37,6 +42,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     gemini_api_key: str | None = None
     cloud_storage_bucket: str | None = None
+    internship_local_storage_path: Path = Path(".local/internship-uploads")
 
     payment_provider: Literal["manual_external"] = "manual_external"
     email_provider: Literal["disabled", "smtp", "sendgrid"] = "disabled"
@@ -111,8 +117,15 @@ class Settings(BaseSettings):
             violations.append("missing transactional email configuration")
         if not self.otel_exporter_otlp_endpoint:
             violations.append("missing OpenTelemetry exporter")
-        if not self.cloud_storage_bucket:
-            violations.append("missing private artifact storage bucket")
+        if self.storage_provider != "supabase":
+            violations.append("STORAGE_PROVIDER=supabase")
+        if self.storage_provider == "supabase":
+            if not self.supabase_url:
+                violations.append("missing Supabase URL")
+            if not self.supabase_service_role_key:
+                violations.append("missing Supabase service-role key")
+            if not self.supabase_storage_bucket:
+                violations.append("missing Supabase Storage bucket")
         if any("localhost" in value or "127.0.0.1" in value for value in self.cors_origins):
             violations.append("local CORS origin")
         if "localhost" in self.api_base_url or "127.0.0.1" in self.api_base_url:
