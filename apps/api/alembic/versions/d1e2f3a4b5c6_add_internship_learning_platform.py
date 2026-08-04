@@ -12,7 +12,7 @@ from alembic import op
 from app.domain.models import Base
 
 revision: str = "d1e2f3a4b5c6"
-down_revision: str | None = "c8f1a2d4e609"
+down_revision: str | None = "c9d4e5f6a701"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

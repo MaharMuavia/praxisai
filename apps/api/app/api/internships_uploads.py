@@ -19,7 +19,12 @@ UploadPrincipal = Annotated[SessionPrincipal, Depends(require_roles(Role.STUDENT
 
 
 def _raise(error: InternshipError) -> None:
-    code = status.HTTP_404_NOT_FOUND if error.code == "not_found" else status.HTTP_400_BAD_REQUEST
+    if error.code == "not_found":
+        code = status.HTTP_404_NOT_FOUND
+    elif error.code == "storage_unavailable":
+        code = status.HTTP_503_SERVICE_UNAVAILABLE
+    else:
+        code = status.HTTP_400_BAD_REQUEST
     raise HTTPException(code, detail={"code": error.code, "message": str(error)}) from error
 
 

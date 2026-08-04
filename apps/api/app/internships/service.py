@@ -65,7 +65,11 @@ from app.internships.schemas import (
     UploadView,
     WeekView,
 )
-from app.internships.storage import LocalInternshipStorage
+from app.internships.storage import (
+    LocalInternshipStorage,
+    SupabaseInternshipStorage,
+    SupabaseStorageError,
+)
 
 
 class InternshipError(ValueError):
@@ -90,6 +94,10 @@ class InvalidState(InternshipError):
 
 class ValidationFailure(InternshipError):
     code = "validation_error"
+
+
+class StorageFailure(InternshipError):
+    code = "storage_unavailable"
 
 
 def now_utc() -> datetime:
@@ -1394,7 +1402,17 @@ async def receive_upload_content(
         raise InvalidState("Upload is expired or already completed")
     if len(content) != upload.size_bytes:
         raise ValidationFailure("Uploaded size does not match initiation metadata")
-    LocalInternshipStorage(settings.internship_local_storage_path).put(upload.storage_key, content)
+    try:
+        if settings.storage_provider == "supabase":
+            await SupabaseInternshipStorage(settings).put(
+                upload.storage_key, content, upload.content_type
+            )
+        else:
+            LocalInternshipStorage(settings.internship_local_storage_path).put(
+                upload.storage_key, content
+            )
+    except SupabaseStorageError as exc:
+        raise StorageFailure("Upload storage is temporarily unavailable") from exc
     upload.state = "UPLOADED"
     await session.commit()
     return UploadView(
@@ -1429,9 +1447,15 @@ async def complete_upload(
         upload.state = "EXPIRED"
         await session.commit()
         raise InvalidState("Upload is expired")
-    content = LocalInternshipStorage(settings.internship_local_storage_path).read(
-        upload.storage_key
-    )
+    try:
+        if settings.storage_provider == "supabase":
+            content = await SupabaseInternshipStorage(settings).read(upload.storage_key)
+        else:
+            content = LocalInternshipStorage(settings.internship_local_storage_path).read(
+                upload.storage_key
+            )
+    except (SupabaseStorageError, OSError) as exc:
+        raise StorageFailure("Upload storage is temporarily unavailable") from exc
     actual_hash = hashlib.sha256(content).hexdigest()
     if actual_hash != body.sha256.casefold() or (upload.sha256 and actual_hash != upload.sha256):
         upload.state = "REJECTED"

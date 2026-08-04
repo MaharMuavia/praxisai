@@ -9,6 +9,7 @@ from app.config import Settings
 from app.operations.artifacts import (
     ArtifactStorageService,
     ArtifactUploadRequest,
+    SupabaseArtifactStorage,
     verify_content_hash,
 )
 
@@ -86,3 +87,24 @@ def test_content_hash_verification():
     expected = hashlib.sha256(data).hexdigest()
     assert verify_content_hash(data, expected) is True
     assert verify_content_hash(b"tampered content", expected) is False
+
+
+def test_supabase_artifact_storage_uses_private_signed_urls():
+    response = MagicMock(is_error=False)
+    response.json.return_value = {"url": "/object/upload/sign/bucket/object"}
+    client = MagicMock()
+    client.request.return_value = response
+    settings = Settings(
+        storage_provider="supabase",
+        supabase_url="https://example.supabase.co",
+        supabase_service_role_key="service-role-secret",
+        supabase_storage_bucket="artifacts",
+        app_env="test",
+    )
+    storage = SupabaseArtifactStorage(settings, client=client)
+
+    assert storage.generate_upload_url("artifacts/demo/file.pdf", "application/pdf") == (
+        "https://example.supabase.co/storage/v1/object/upload/sign/bucket/object"
+    )
+    client.request.assert_called_once()
+    assert client.request.call_args.kwargs["headers"]["apikey"] == "service-role-secret"

@@ -40,6 +40,7 @@ URLs are private and short-lived; storage bucket paths are never exposed.
 ## Provider boundary
 
 Local/demo environments use database metadata and local/temporary storage.
-Production requires a private object store, malware scanning/quarantine
-adapter, lifecycle deletion policy, and an email provider. None of those
-provider capabilities are treated as verified by local tests alone.
+Staging and production use Supabase PostgreSQL plus a private Supabase Storage
+bucket when `STORAGE_PROVIDER=supabase`; the API service-role key is server-only.
+Malware scanning/quarantine and lifecycle deletion jobs remain operator work,
+and live Supabase connectivity is not treated as verified by local tests alone.
