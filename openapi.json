@@ -1281,6 +1281,30 @@
         "title": "CompensationShare",
         "type": "object"
       },
+      "CompletionDecisionRequest": {
+        "properties": {
+          "decision": {
+            "enum": [
+              "APPROVED",
+              "REJECTED"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "title": "CompletionDecisionRequest",
+        "type": "object"
+      },
       "CredentialIssueRequest": {
         "properties": {
           "contribution_summary": {
@@ -5465,6 +5489,21 @@
         "title": "ReputationEventCreate",
         "type": "object"
       },
+      "ResubmissionRequest": {
+        "properties": {
+          "change_summary": {
+            "maxLength": 4000,
+            "minLength": 20,
+            "title": "Change Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "change_summary"
+        ],
+        "title": "ResubmissionRequest",
+        "type": "object"
+      },
       "ReviewAssignRequest": {
         "properties": {
           "reviewer_id": {
@@ -6017,6 +6056,33 @@
         "title": "StaffingRunView",
         "type": "object"
       },
+      "StartApplicationRequest": {
+        "properties": {
+          "cohort_id": {
+            "format": "uuid",
+            "title": "Cohort Id",
+            "type": "string"
+          },
+          "consent_version": {
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Consent Version",
+            "type": "string"
+          },
+          "program_id": {
+            "format": "uuid",
+            "title": "Program Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "program_id",
+          "cohort_id",
+          "consent_version"
+        ],
+        "title": "StartApplicationRequest",
+        "type": "object"
+      },
       "StudentApplicationCreate": {
         "additionalProperties": false,
         "properties": {
@@ -6430,6 +6496,14 @@
       },
       "SubmissionView": {
         "properties": {
+          "artifact_snapshot": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Artifact Snapshot",
+            "type": "array"
+          },
           "artifact_upload_ids": {
             "items": {
               "type": "string"
@@ -6447,6 +6521,17 @@
               }
             ],
             "title": "Canonical Hash"
+          },
+          "change_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Summary"
           },
           "deadline_status": {
             "anyOf": [
@@ -6524,10 +6609,12 @@
           "links",
           "text_fields",
           "artifact_upload_ids",
+          "artifact_snapshot",
           "canonical_hash",
           "submitted_at",
           "deadline_status",
-          "previous_submission_id"
+          "previous_submission_id",
+          "change_summary"
         ],
         "title": "SubmissionView",
         "type": "object"
@@ -8350,6 +8437,65 @@
         ]
       }
     },
+    "/api/v1/internships/me/application/start": {
+      "post": {
+        "operationId": "start_application_route_api_v1_internships_me_application_start_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartApplicationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Application Route",
+        "tags": [
+          "internships student"
+        ]
+      }
+    },
     "/api/v1/internships/me/application/submit": {
       "post": {
         "operationId": "submit_application_route_api_v1_internships_me_application_submit_post",
@@ -8568,6 +8714,16 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResubmissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -11192,6 +11348,75 @@
         ]
       }
     },
+    "/api/v1/ops/internships/enrollments/{enrollment_id}/completion-decision": {
+      "post": {
+        "operationId": "completion_decision_route_api_v1_ops_internships_enrollments__enrollment_id__completion_decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "enrollment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Enrollment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletionDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Completion Decision Route Api V1 Ops Internships Enrollments  Enrollment Id  Completion Decision Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Completion Decision Route",
+        "tags": [
+          "internships operations"
+        ]
+      }
+    },
     "/api/v1/ops/internships/enrollments/{enrollment_id}/issue-certificate": {
       "post": {
         "operationId": "issue_certificate_route_api_v1_ops_internships_enrollments__enrollment_id__issue_certificate_post",
@@ -11433,6 +11658,22 @@
               "format": "uuid",
               "title": "Review Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {

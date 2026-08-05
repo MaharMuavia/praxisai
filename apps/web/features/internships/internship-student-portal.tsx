@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, StatusBadge } from "@/components/ui";
 import {
   internshipFetch,
@@ -24,17 +24,6 @@ type PortalView =
   | "assignments"
   | "feedback"
   | "certificate";
-
-const timelineLabels = [
-  "Application",
-  "Admission",
-  "Week 1",
-  "Week 2",
-  "Project 1",
-  "Project 2",
-  "Final review",
-  "Certificate",
-];
 
 export function InternshipStudentPortal({
   view,
@@ -276,23 +265,21 @@ function DashboardView({ dashboard }: { dashboard?: Dashboard }) {
           <span className="internship-demo-label">Evidence-based</span>
         </div>
         <ol className="internship-timeline">
-          {timelineLabels.map((label, index) => {
-            const item = dashboard.timeline.find((entry) =>
-              entry.label
-                .toLowerCase()
-                .includes(label.toLowerCase().split(" ")[0]),
-            );
-            const state = item?.state ?? (index < 2 ? "COMPLETE" : "UPCOMING");
+          {dashboard.timeline.map((item, index) => {
+            const state = item.state;
             return (
-              <li className={state.toLowerCase()} key={label}>
+              <li
+                className={state.toLowerCase()}
+                key={`${item.label}-${index}`}
+              >
                 <span>{index + 1}</span>
-                <strong>{label}</strong>
+                <strong>{item.label}</strong>
                 <small>
                   {state === "COMPLETE"
                     ? "Complete"
                     : state === "CURRENT"
                       ? "Current focus"
-                      : "Upcoming"}
+                      : state.replaceAll("_", " ")}
                 </small>
               </li>
             );
@@ -307,14 +294,150 @@ function ApplicationView({
   application,
 }: {
   application?: {
+    id: string;
     status: string;
     version: number;
+    primary_track_id: string | null;
+    secondary_track_id: string | null;
+    education_status: string;
+    university_id: string | null;
+    degree_program: string;
+    semester_status: string;
+    country: string;
+    timezone: string;
+    weekly_availability_hours: number | null;
     motivation: string;
     technical_background: string;
+    portfolio_url: string | null;
+    github_url: string | null;
+    linkedin_url: string | null;
+    accessibility_requirements: string | null;
     decision_reason: string | null;
     is_demo: boolean;
   };
 }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({
+    primary_track_id: "",
+    secondary_track_id: "",
+    education_status: "",
+    university_id: "",
+    degree_program: "",
+    semester_status: "",
+    country: "",
+    timezone: "UTC",
+    weekly_availability_hours: "",
+    technical_background: "",
+    motivation: "",
+    portfolio_url: "",
+    github_url: "",
+    linkedin_url: "",
+    accessibility_requirements: "",
+  });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!application) return;
+    setForm({
+      primary_track_id: application.primary_track_id ?? "",
+      secondary_track_id: application.secondary_track_id ?? "",
+      education_status: application.education_status,
+      university_id: application.university_id ?? "",
+      degree_program: application.degree_program,
+      semester_status: application.semester_status,
+      country: application.country,
+      timezone: application.timezone,
+      weekly_availability_hours:
+        application.weekly_availability_hours?.toString() ?? "",
+      technical_background: application.technical_background,
+      motivation: application.motivation,
+      portfolio_url: application.portfolio_url ?? "",
+      github_url: application.github_url ?? "",
+      linkedin_url: application.linkedin_url ?? "",
+      accessibility_requirements: application.accessibility_requirements ?? "",
+    });
+  }, [application]);
+  const editable = application
+    ? ["DRAFT", "ELIGIBILITY_REVIEW"].includes(application.status)
+    : false;
+  const persistedForm = application
+    ? {
+        primary_track_id: application.primary_track_id ?? "",
+        secondary_track_id: application.secondary_track_id ?? "",
+        education_status: application.education_status,
+        university_id: application.university_id ?? "",
+        degree_program: application.degree_program,
+        semester_status: application.semester_status,
+        country: application.country,
+        timezone: application.timezone,
+        weekly_availability_hours:
+          application.weekly_availability_hours?.toString() ?? "",
+        technical_background: application.technical_background,
+        motivation: application.motivation,
+        portfolio_url: application.portfolio_url ?? "",
+        github_url: application.github_url ?? "",
+        linkedin_url: application.linkedin_url ?? "",
+        accessibility_requirements:
+          application.accessibility_requirements ?? "",
+      }
+    : form;
+  const dirty =
+    editable && JSON.stringify(form) !== JSON.stringify(persistedForm);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  const save = useMutation({
+    mutationFn: () =>
+      internshipFetch(`/internships/me/application`, {
+        method: "PUT",
+        body: JSON.stringify({
+          version: application?.version,
+          ...form,
+          primary_track_id: form.primary_track_id || null,
+          secondary_track_id: form.secondary_track_id || null,
+          university_id: form.university_id || null,
+          weekly_availability_hours: form.weekly_availability_hours
+            ? Number(form.weekly_availability_hours)
+            : null,
+          portfolio_url: form.portfolio_url || null,
+          github_url: form.github_url || null,
+          linkedin_url: form.linkedin_url || null,
+          accessibility_requirements: form.accessibility_requirements || null,
+        }),
+      }),
+    onSuccess: async () => {
+      setErrorMessage(null);
+      await queryClient.invalidateQueries({
+        queryKey: internshipKeys.application(),
+      });
+    },
+    onError: (error) => setErrorMessage(error.message),
+  });
+  const submit = useMutation({
+    mutationFn: () =>
+      internshipFetch(`/internships/me/application/submit`, {
+        method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({
+          version: application?.version,
+          consent_version: "internship-application-v1",
+        }),
+      }),
+    onSuccess: async () => {
+      setErrorMessage(null);
+      await queryClient.invalidateQueries({
+        queryKey: internshipKeys.application(),
+      });
+    },
+    onError: (error) => setErrorMessage(error.message),
+  });
+  const update = (field: keyof typeof form, value: string) =>
+    setForm((current) => ({ ...current, [field]: value }));
   if (!application)
     return <div className="internship-loading">Loading application…</div>;
   return (
@@ -331,20 +454,197 @@ function ApplicationView({
         </StatusBadge>
       </div>
       <Card className="internship-application-card">
-        <dl>
-          <div>
-            <dt>Application version</dt>
-            <dd>{application.version}</dd>
-          </div>
-          <div>
-            <dt>Technical background</dt>
-            <dd>{application.technical_background || "Not yet provided"}</dd>
-          </div>
-          <div>
-            <dt>Motivation</dt>
-            <dd>{application.motivation || "Not yet provided"}</dd>
-          </div>
-        </dl>
+        {editable ? (
+          <form
+            className="internship-auth-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              save.mutate();
+            }}
+          >
+            <p>
+              Version {application.version}. Save a draft before submitting for
+              human review.
+            </p>
+            {errorMessage ? (
+              <div role="alert" className="internship-error">
+                {errorMessage}
+              </div>
+            ) : null}
+            <div aria-live="polite">
+              {dirty ? "Unsaved changes" : save.isSuccess ? "Draft saved" : ""}
+            </div>
+            <label>
+              Primary track
+              <input
+                value={form.primary_track_id}
+                onChange={(event) =>
+                  update("primary_track_id", event.target.value)
+                }
+                required
+              />
+            </label>
+            <label>
+              Secondary track
+              <input
+                value={form.secondary_track_id}
+                onChange={(event) =>
+                  update("secondary_track_id", event.target.value)
+                }
+              />
+            </label>
+            <label>
+              Education status
+              <input
+                value={form.education_status}
+                onChange={(event) =>
+                  update("education_status", event.target.value)
+                }
+                required
+              />
+            </label>
+            <label>
+              University ID
+              <input
+                value={form.university_id}
+                onChange={(event) =>
+                  update("university_id", event.target.value)
+                }
+              />
+            </label>
+            <label>
+              Degree
+              <input
+                value={form.degree_program}
+                onChange={(event) =>
+                  update("degree_program", event.target.value)
+                }
+                required
+              />
+            </label>
+            <label>
+              Semester or graduation state
+              <input
+                value={form.semester_status}
+                onChange={(event) =>
+                  update("semester_status", event.target.value)
+                }
+              />
+            </label>
+            <label>
+              Country
+              <input
+                value={form.country}
+                maxLength={2}
+                onChange={(event) =>
+                  update("country", event.target.value.toUpperCase())
+                }
+                required
+              />
+            </label>
+            <label>
+              Timezone
+              <input
+                value={form.timezone}
+                onChange={(event) => update("timezone", event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Weekly availability (hours)
+              <input
+                type="number"
+                min={1}
+                max={80}
+                value={form.weekly_availability_hours}
+                onChange={(event) =>
+                  update("weekly_availability_hours", event.target.value)
+                }
+                required
+              />
+            </label>
+            <label>
+              Technical background
+              <textarea
+                value={form.technical_background}
+                onChange={(event) =>
+                  update("technical_background", event.target.value)
+                }
+                required
+              />
+            </label>
+            <label>
+              Motivation
+              <textarea
+                value={form.motivation}
+                onChange={(event) => update("motivation", event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Portfolio URL
+              <input
+                type="url"
+                value={form.portfolio_url}
+                onChange={(event) =>
+                  update("portfolio_url", event.target.value)
+                }
+              />
+            </label>
+            <label>
+              GitHub URL
+              <input
+                type="url"
+                value={form.github_url}
+                onChange={(event) => update("github_url", event.target.value)}
+              />
+            </label>
+            <label>
+              LinkedIn URL
+              <input
+                type="url"
+                value={form.linkedin_url}
+                onChange={(event) => update("linkedin_url", event.target.value)}
+              />
+            </label>
+            <label>
+              Accessibility requirements (private to operations)
+              <textarea
+                value={form.accessibility_requirements}
+                onChange={(event) =>
+                  update("accessibility_requirements", event.target.value)
+                }
+              />
+            </label>
+            <div className="internship-actions">
+              <Button type="submit" disabled={save.isPending}>
+                {save.isPending ? "Saving…" : "Save draft"}
+              </Button>
+              <Button
+                type="button"
+                disabled={save.isPending || submit.isPending}
+                onClick={() => submit.mutate()}
+              >
+                {submit.isPending ? "Submitting…" : "Submit application"}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <dl>
+            <div>
+              <dt>Application version</dt>
+              <dd>{application.version}</dd>
+            </div>
+            <div>
+              <dt>Technical background</dt>
+              <dd>{application.technical_background || "Not yet provided"}</dd>
+            </div>
+            <div>
+              <dt>Motivation</dt>
+              <dd>{application.motivation || "Not yet provided"}</dd>
+            </div>
+          </dl>
+        )}
         {application.decision_reason ? (
           <div className="internship-feedback-note">
             <strong>Decision note</strong>

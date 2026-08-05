@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.auth.dependencies import DbSession, IdempotencyKey, require_roles
 from app.auth.service import SessionPrincipal
+from app.config import Settings, get_settings
 from app.domain.enums import Role
 from app.internships.schemas import (
     ApplicationSubmitRequest,
@@ -16,6 +17,8 @@ from app.internships.schemas import (
     DashboardView,
     FeedbackView,
     FinalizeSubmissionRequest,
+    ResubmissionRequest,
+    StartApplicationRequest,
     SubmissionDraftRequest,
     SubmissionView,
     UnitCompletionRequest,
@@ -38,6 +41,7 @@ from app.internships.service import (
     list_assignments,
     resubmit,
     save_submission,
+    start_application,
     start_assignment,
     submit_application,
     update_application,
@@ -63,6 +67,22 @@ def _raise(error: InternshipError) -> None:
 async def application(principal: StudentPrincipal, session: DbSession) -> ApplicationView:
     try:
         return await get_application(session, principal)
+    except InternshipError as exc:
+        _raise(exc)
+    raise AssertionError("unreachable")
+
+
+@router.post("/application/start", response_model=ApplicationView, status_code=201)
+async def start_application_route(
+    body: StartApplicationRequest,
+    principal: StudentPrincipal,
+    session: DbSession,
+    request: Request,
+) -> ApplicationView:
+    try:
+        return await start_application(
+            session, principal=principal, body=body, correlation_id=request.state.correlation_id
+        )
     except InternshipError as exc:
         _raise(exc)
     raise AssertionError("unreachable")
@@ -244,6 +264,7 @@ async def finalize_submission_route(
     session: DbSession,
     idempotency_key: IdempotencyKey,
     request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> SubmissionView:
     try:
         return await finalize_submission(
@@ -254,6 +275,7 @@ async def finalize_submission_route(
             confirm=body.confirm,
             idempotency_key=idempotency_key,
             correlation_id=request.state.correlation_id,
+            settings=settings,
         )
     except InternshipError as exc:
         _raise(exc)
@@ -263,6 +285,7 @@ async def finalize_submission_route(
 @router.post("/assignments/{assignment_id}/resubmit", response_model=SubmissionView)
 async def resubmit_route(
     assignment_id: uuid.UUID,
+    body: ResubmissionRequest,
     principal: StudentPrincipal,
     session: DbSession,
     request: Request,
@@ -272,6 +295,7 @@ async def resubmit_route(
             session,
             principal=principal,
             assignment_id=assignment_id,
+            body=body,
             correlation_id=request.state.correlation_id,
         )
     except InternshipError as exc:

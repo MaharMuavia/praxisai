@@ -5,6 +5,7 @@ from typing import Annotated, Any
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.capabilities import role_has_capability
 from app.auth.service import SessionCodec, SessionPrincipal, validate_membership
 from app.config import Settings, get_settings
 from app.db import get_session
@@ -35,6 +36,17 @@ DbSession = Annotated[AsyncSession, Depends(get_session)]
 def require_roles(*roles: Role) -> Callable[..., Coroutine[Any, Any, SessionPrincipal]]:
     async def dependency(principal: Principal) -> SessionPrincipal:
         if principal.role not in {role.value for role in roles}:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Capability denied")
+        return principal
+
+    return dependency
+
+
+def require_capability(
+    capability: str,
+) -> Callable[..., Coroutine[Any, Any, SessionPrincipal]]:
+    async def dependency(principal: Principal) -> SessionPrincipal:
+        if not role_has_capability(principal.role, capability):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Capability denied")
         return principal
 

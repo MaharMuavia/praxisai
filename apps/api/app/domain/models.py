@@ -1189,7 +1189,9 @@ class InternshipStudentAssignment(EntityMixin, Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    current_submission_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
+    current_submission_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("internship_submissions.id"), index=True
+    )
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     extension_state: Mapped[str] = mapped_column(String(30), default="NONE")
     final_result: Mapped[str | None] = mapped_column(String(30))
@@ -1226,13 +1228,17 @@ class InternshipSubmission(EntityMixin, Base):
     links: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
     text_fields: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
     artifact_upload_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    artifact_snapshot: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     canonical_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     rubric_version: Mapped[int | None] = mapped_column(Integer)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deadline_status: Mapped[str | None] = mapped_column(String(20))
     correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
     finalize_idempotency_key: Mapped[str | None] = mapped_column(String(128), unique=True)
-    previous_submission_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
+    previous_submission_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("internship_submissions.id"), index=True
+    )
+    change_summary: Mapped[str | None] = mapped_column(Text)
 
 
 class InternshipReview(EntityMixin, Base):
@@ -1243,7 +1249,7 @@ class InternshipReview(EntityMixin, Base):
     submission_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("internship_submissions.id"), index=True
     )
-    reviewer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    reviewer_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(30), default="ASSIGNED", index=True)
     scores: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     weighted_total: Mapped[int | None] = mapped_column(Integer)

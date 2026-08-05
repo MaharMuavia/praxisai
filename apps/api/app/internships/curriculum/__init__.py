@@ -1,0 +1,1 @@
+"""Cohort-scoped curriculum domain."""

@@ -1,0 +1,1 @@
+"""Internship admissions domain."""

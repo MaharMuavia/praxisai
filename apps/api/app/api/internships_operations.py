@@ -3,13 +3,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from app.auth.dependencies import DbSession, IdempotencyKey, require_roles
+from app.auth.dependencies import DbSession, IdempotencyKey, require_capability
 from app.auth.service import SessionPrincipal
-from app.domain.enums import Role
-from app.domain.models import InternshipReview, InternshipStudentAssignment
+from app.domain.models import InternshipReview
+from app.internships.reviews.service import ReviewAssignmentError, assign_reviewer
 from app.internships.schemas import (
     ApplicationDecisionRequest,
     ApplicationView,
+    CompletionDecisionRequest,
     IssueCertificateRequest,
     OperationsApplicationView,
     ReviewAssignRequest,
@@ -22,6 +23,7 @@ from app.internships.service import (
     InternshipError,
     NotFound,
     decide_application,
+    decide_completion,
     finalize_review,
     issue_certificate,
     list_operations_applications,
@@ -29,11 +31,26 @@ from app.internships.service import (
 )
 
 router = APIRouter(prefix="/ops/internships", tags=["internships operations"])
-OperationsPrincipal = Annotated[
-    SessionPrincipal,
-    Depends(
-        require_roles(Role.COORDINATOR, Role.PLATFORM_ADMIN, Role.REVIEWER, Role.TECHNICAL_LEAD)
-    ),
+ApplicationsPrincipal = Annotated[
+    SessionPrincipal, Depends(require_capability("internships:applications:view"))
+]
+DecisionPrincipal = Annotated[
+    SessionPrincipal, Depends(require_capability("internships:applications:decide"))
+]
+ReviewAssignPrincipal = Annotated[
+    SessionPrincipal, Depends(require_capability("internships:reviews:assign"))
+]
+ReviewViewPrincipal = Annotated[
+    SessionPrincipal, Depends(require_capability("internships:reviews:view_assigned"))
+]
+ReviewFinalizePrincipal = Annotated[
+    SessionPrincipal, Depends(require_capability("internships:reviews:finalize"))
+]
+CertificatePrincipal = Annotated[
+    SessionPrincipal, Depends(require_capability("internships:certificates:issue"))
+]
+CompletionPrincipal = Annotated[
+    SessionPrincipal, Depends(require_capability("internships:completion:decide"))
 ]
 
 
@@ -52,7 +69,7 @@ def _raise(error: InternshipError) -> None:
 
 @router.get("/applications", response_model=list[OperationsApplicationView])
 async def applications(
-    principal: OperationsPrincipal,
+    principal: ApplicationsPrincipal,
     session: DbSession,
     limit: int = 50,
     offset: int = 0,
@@ -67,7 +84,7 @@ async def applications(
 async def application_decision(
     application_id: uuid.UUID,
     body: ApplicationDecisionRequest,
-    principal: OperationsPrincipal,
+    principal: DecisionPrincipal,
     session: DbSession,
     request: Request,
 ) -> ApplicationView:
@@ -86,33 +103,40 @@ async def application_decision(
 
 @router.get("/reviews", response_model=list[ReviewQueueItem])
 async def reviews(
-    principal: OperationsPrincipal,
+    principal: ReviewViewPrincipal,
     session: DbSession,
     limit: int = 50,
     offset: int = 0,
 ) -> list[ReviewQueueItem]:
-    del principal
-    return await review_queue(session, limit=limit, offset=offset)
+    return await review_queue(session, principal=principal, limit=limit, offset=offset)
 
 
 @router.post("/reviews/{review_id}/assign", response_model=ReviewQueueItem)
 async def assign_review(
     review_id: uuid.UUID,
     body: ReviewAssignRequest,
-    principal: OperationsPrincipal,
+    principal: ReviewAssignPrincipal,
     session: DbSession,
     request: Request,
 ) -> ReviewQueueItem:
     review = await session.get(InternshipReview, review_id)
     if review is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Review not found")
-    reviewer = await session.get(InternshipStudentAssignment, review.student_assignment_id)
-    if reviewer is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Assignment not found")
-    review.reviewer_id = body.reviewer_id
-    review.status = "ASSIGNED"
+    try:
+        await assign_reviewer(
+            session,
+            review=review,
+            reviewer_id=body.reviewer_id,
+            principal=principal,
+            correlation_id=request.state.correlation_id,
+        )
+    except ReviewAssignmentError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail={"code": "reviewer_not_eligible", "message": str(exc)},
+        ) from exc
     await session.commit()
-    rows = await review_queue(session, limit=100, offset=0)
+    rows = await review_queue(session, principal=principal, limit=100, offset=0)
     selected = next((row for row in rows if row.review_id == review_id), None)
     if selected is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Review not found")
@@ -123,9 +147,10 @@ async def assign_review(
 async def finalize_review_route(
     review_id: uuid.UUID,
     body: ReviewFinalizeRequest,
-    principal: OperationsPrincipal,
+    principal: ReviewFinalizePrincipal,
     session: DbSession,
     request: Request,
+    idempotency_key: IdempotencyKey,
 ) -> ReviewQueueItem:
     try:
         return await finalize_review(
@@ -134,6 +159,7 @@ async def finalize_review_route(
             principal=principal,
             body=body,
             correlation_id=request.state.correlation_id,
+            idempotency_key=idempotency_key,
         )
     except InternshipError as exc:
         _raise(exc)
@@ -144,7 +170,7 @@ async def finalize_review_route(
 async def issue_certificate_route(
     enrollment_id: uuid.UUID,
     body: IssueCertificateRequest,
-    principal: OperationsPrincipal,
+    principal: CertificatePrincipal,
     session: DbSession,
     idempotency_key: IdempotencyKey,
     request: Request,
@@ -165,3 +191,25 @@ async def issue_certificate_route(
         "state": certificate.state,
         "public_slug": certificate.public_slug,
     }
+
+
+@router.post("/enrollments/{enrollment_id}/completion-decision")
+async def completion_decision_route(
+    enrollment_id: uuid.UUID,
+    body: CompletionDecisionRequest,
+    principal: CompletionPrincipal,
+    session: DbSession,
+    request: Request,
+) -> object:
+    try:
+        return await decide_completion(
+            session,
+            enrollment_id=enrollment_id,
+            principal=principal,
+            decision=body.decision,
+            reason=body.reason,
+            correlation_id=request.state.correlation_id,
+        )
+    except InternshipError as exc:
+        _raise(exc)
+    raise AssertionError("unreachable")

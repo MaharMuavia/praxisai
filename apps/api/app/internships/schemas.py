@@ -62,6 +62,12 @@ class SignupResponse(InternshipSchema):
     application_id: uuid.UUID | None = None
 
 
+class StartApplicationRequest(BaseModel):
+    program_id: uuid.UUID
+    cohort_id: uuid.UUID
+    consent_version: str = Field(min_length=1, max_length=30)
+
+
 class ApplicationUpdate(BaseModel):
     version: int = Field(ge=1)
     primary_track_id: uuid.UUID | None = None
@@ -239,15 +245,21 @@ class SubmissionView(InternshipSchema):
     links: dict[str, str]
     text_fields: dict[str, str]
     artifact_upload_ids: list[str]
+    artifact_snapshot: list[dict[str, Any]]
     canonical_hash: str | None
     submitted_at: datetime | None
     deadline_status: str | None
     previous_submission_id: uuid.UUID | None
+    change_summary: str | None
 
 
 class FinalizeSubmissionRequest(BaseModel):
     confirm: bool
     version: int = Field(ge=1)
+
+
+class ResubmissionRequest(BaseModel):
+    change_summary: str = Field(min_length=20, max_length=4_000)
 
 
 class ReviewFinalizeRequest(BaseModel):
