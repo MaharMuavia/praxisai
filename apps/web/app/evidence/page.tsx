@@ -29,14 +29,14 @@ const evidenceGroups = [
     ],
   },
   {
-    title: "CI verified",
+    title: "Automated verification configured",
     icon: CheckCircle2,
-    tone: "success",
+    tone: "warning",
     items: [
-      "TypeScript strict checks and ESLint",
-      "Frontend unit and interaction coverage",
-      "API tests, migrations, and contract-generated client checks",
-      "Production builds and end-to-end route coverage when the CI environment is available",
+      "The current branch is not claimed as CI verified until its GitHub Actions run is green",
+      "CI is configured for strict TypeScript checks, ESLint, Ruff, and Python typing",
+      "CI is configured for API, frontend, migration, generated-client, build, and route checks",
+      "Configured checks are evidence only after a specific successful run can be cited",
     ],
   },
   {

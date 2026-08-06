@@ -16,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -1190,7 +1191,12 @@ class InternshipStudentAssignment(EntityMixin, Base):
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     current_submission_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("internship_submissions.id"), index=True
+        ForeignKey(
+            "internship_submissions.id",
+            name="fk_internship_student_assignments_current_submission",
+            use_alter=True,
+        ),
+        index=True,
     )
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     extension_state: Mapped[str] = mapped_column(String(30), default="NONE")
@@ -1218,7 +1224,16 @@ class InternshipUpload(EntityMixin, Base):
 
 class InternshipSubmission(EntityMixin, Base):
     __tablename__ = "internship_submissions"
-    __table_args__ = (UniqueConstraint("student_assignment_id", "version"),)
+    __table_args__ = (
+        UniqueConstraint("student_assignment_id", "version"),
+        Index(
+            "uq_internship_submissions_one_active_draft",
+            "student_assignment_id",
+            unique=True,
+            postgresql_where=text("state = 'DRAFT'"),
+            sqlite_where=text("state = 'DRAFT'"),
+        ),
+    )
     student_assignment_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("internship_student_assignments.id"), index=True
     )

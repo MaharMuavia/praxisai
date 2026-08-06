@@ -34,14 +34,18 @@ async def assign_reviewer(
     if assignment.student_user_id == reviewer_id:
         raise ReviewAssignmentError("A student cannot review their own assignment")
     roles = (
-        await session.execute(
-            select(OrganizationMembership.role).where(
-                OrganizationMembership.user_id == reviewer_id,
-                OrganizationMembership.is_active.is_(True),
-                OrganizationMembership.role.in_(["reviewer", "technical_lead"]),
+        (
+            await session.execute(
+                select(OrganizationMembership.role).where(
+                    OrganizationMembership.user_id == reviewer_id,
+                    OrganizationMembership.is_active.is_(True),
+                    OrganizationMembership.role.in_(["reviewer", "technical_lead"]),
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if not roles:
         raise ReviewAssignmentError("Reviewer does not have a review capability")
     cohort_assignment = await session.get(

@@ -677,8 +677,7 @@ async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> Dashb
             )
             .join(
                 InternshipCohortAssignment,
-                InternshipCohortAssignment.id
-                == InternshipStudentAssignment.cohort_assignment_id,
+                InternshipCohortAssignment.id == InternshipStudentAssignment.cohort_assignment_id,
             )
             .join(
                 InternshipAssignmentTemplate,
@@ -1188,9 +1187,7 @@ async def resubmit(
     cohort_track = await session.get(
         CohortTrack, cohort_assignment.cohort_track_id if cohort_assignment else None
     )
-    cohort = await session.get(
-        InternshipCohort, cohort_track.cohort_id if cohort_track else None
-    )
+    cohort = await session.get(InternshipCohort, cohort_track.cohort_id if cohort_track else None)
     policy = (template.resubmission_policy if template else {}) or (
         cohort.resubmission_policy if cohort else {}
     )
@@ -1732,9 +1729,7 @@ async def receive_upload_stream(
         else:
             digest, size = await LocalInternshipStorage(
                 settings.internship_local_storage_path
-            ).put_stream(
-                upload.storage_key, chunks
-            )
+            ).put_stream(upload.storage_key, chunks)
     except SupabaseStorageError as exc:
         raise StorageFailure("Upload storage is temporarily unavailable") from exc
     if size != upload.size_bytes or (upload.sha256 and digest != upload.sha256):

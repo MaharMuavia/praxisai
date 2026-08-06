@@ -29,9 +29,7 @@ class LocalInternshipStorage:
     def read(self, storage_key: str) -> bytes:
         return self._path(storage_key).read_bytes()
 
-    async def put_stream(
-        self, storage_key: str, chunks: AsyncIterator[bytes]
-    ) -> tuple[str, int]:
+    async def put_stream(self, storage_key: str, chunks: AsyncIterator[bytes]) -> tuple[str, int]:
         target = self._path(storage_key)
         target.parent.mkdir(parents=True, exist_ok=True)
         digest = hashlib.sha256()

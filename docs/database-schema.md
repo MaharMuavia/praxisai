@@ -8,12 +8,13 @@ Canonical sources:
 
 - Models: `apps/api/app/domain/models.py`
 - Migrations: `apps/api/alembic/versions/`
-- Current migration head: `c8f1a2d4e609`
+- Current migration head: `e2f3a4b5c6d7`
 - Schema drift check: `npm run db:check`
 
-All application tables use UUID primary keys. Mutable entities also carry creation and update
-timestamps. Money is stored as integer minor units plus an ISO 4217 currency code. JSON columns
-hold typed snapshots or provider-neutral metadata, never secrets.
+The current metadata inventory contains 100 application tables. All application tables use UUID
+primary keys. Mutable entities also carry creation and update timestamps. Money is stored as
+integer minor units plus an ISO 4217 currency code. JSON columns hold typed snapshots or
+provider-neutral metadata, never secrets.
 
 ## Identity, organizations, and policy
 
@@ -38,6 +39,13 @@ hold typed snapshots or provider-neutral metadata, never secrets.
 Tenant isolation is enforced by FastAPI authorization-aware services using the active membership.
 The browser never receives a database credential and never queries these tables directly.
 
+## Public intake and privacy lifecycle
+
+| Table                         | Purpose and principal relationships                                      |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| `public_intake_submissions`   | Privacy-limited company lead intake, qualification, and retention state. |
+| `public_intake_idempotencies` | Replay-safe request keys bound to normalized intake payload hashes.      |
+
 ## Learning and career readiness
 
 | Table                         | Purpose and principal relationships                                          |
@@ -49,6 +57,37 @@ The browser never receives a database credential and never queries these tables 
 
 Modules must be completed in sequence. Learning evidence is explicitly different from an
 employer-verified credential.
+
+## Internship learning and project execution
+
+| Table                             | Purpose and principal relationships                                                |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `internship_programs`             | Version-policy, application-window, and completion-policy root.                    |
+| `internship_tracks`               | Stable internship track identities.                                               |
+| `internship_track_versions`       | Publishable track outcomes, prerequisites, workload, and learning-path bindings.   |
+| `internship_cohorts`              | Capacity-, date-, and policy-bounded program cohorts.                              |
+| `internship_cohort_tracks`        | Track versions offered within a cohort, including reviewer and instructor scope.   |
+| `university_email_domains`        | Reviewed university-domain eligibility evidence.                                  |
+| `allowed_student_emails`          | Cohort-specific invitation and eligibility exceptions.                            |
+| `internship_applications`         | Versioned, consent-bound applications and human decisions.                        |
+| `internship_cohort_enrollments`   | Student enrollment, progress, completion, and certificate eligibility state.      |
+| `internship_phases`               | Ordered cohort-track execution phases.                                            |
+| `internship_weeks`                | Date-bounded phase weeks and completion requirements.                             |
+| `internship_units`                | Versioned learning units, release rules, resources, and exercises.                |
+| `internship_unit_completions`     | Evidence-backed unit completion per enrollment.                                   |
+| `internship_assignment_templates` | Versioned assignment scope, evidence requirements, rubric, and policy.            |
+| `internship_cohort_assignments`   | Released assignment templates with cohort deadlines and reviewer pools.           |
+| `internship_student_assignments`  | Per-student assignment state and the current-submission pointer.                  |
+| `internship_uploads`              | Quarantined assignment artifact metadata and scan state.                          |
+| `internship_submissions`          | Immutable submission attempts, artifact snapshots, hashes, and replay protection. |
+| `internship_reviews`              | Human rubric decisions, conflicts, evidence, and idempotency state.               |
+| `internship_certificates`         | Internship completion workflow state pending canonical credential integration.    |
+
+Only one `DRAFT` submission may exist per student assignment; PostgreSQL and SQLite enforce that
+invariant with the `uq_internship_submissions_one_active_draft` partial unique index. The
+`internship_student_assignments.current_submission_id` foreign key is created after both assignment
+and submission tables so metadata and migrations remain sortable without weakening referential
+integrity.
 
 ## Employer opportunities and student proposals
 

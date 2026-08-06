@@ -25,13 +25,16 @@ def test_weighted_score_requires_the_exact_rubric() -> None:
         {"id": "quality", "max_score": 10, "weight": 60},
         {"id": "evidence", "max_score": 10, "weight": 40},
     ]
-    assert weighted_score(
-        [
-            {"criterion_id": "quality", "score": 8},
-            {"criterion_id": "evidence", "score": 10},
-        ],
-        rubric,
-    ) == 88
+    assert (
+        weighted_score(
+            [
+                {"criterion_id": "quality", "score": 8},
+                {"criterion_id": "evidence", "score": 10},
+            ],
+            rubric,
+        )
+        == 88
+    )
     with pytest.raises(RubricValidationError, match="duplicate"):
         weighted_score(
             [
