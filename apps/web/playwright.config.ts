@@ -9,5 +9,15 @@ export default defineConfig({
     reuseExistingServer: false,
     gracefulShutdown: { signal: "SIGINT", timeout: 5000 },
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(process.env.PLAYWRIGHT_USE_SYSTEM_CHROME === "true"
+          ? { channel: "chrome" }
+          : {}),
+      },
+    },
+  ],
 });

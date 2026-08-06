@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.12.13-slim-trixie AS runtime
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /uvx /bin/
 

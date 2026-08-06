@@ -38,34 +38,41 @@ export function EmployerTalentWorkspace({ page }: { page: PageKind }) {
   const [isDemoPreview, setIsDemoPreview] = useState(false);
   const [proposalQuery, setProposalQuery] = useState("");
 
-  async function load() {
-    const result = await withDemoFallback(
-      Promise.all([
-        praxisFetch<EmployerOpportunity[]>(
-          apiBase,
-          "/talent/employers/me/opportunities",
-        ),
-        praxisFetch<{ items: Project[] }>(apiBase, "/projects"),
-      ]),
-      [
-        demoWorkspaceSnapshot.employerOpportunities,
-        { items: demoWorkspaceSnapshot.projects },
-      ] as [EmployerOpportunity[], { items: Project[] }],
-    );
-    const [nextOpportunities, projectList] = result.data;
-    setOpportunities(nextOpportunities);
-    setProjects(projectList.items);
-    setIsDemoPreview(result.isDemo);
-  }
-
   useEffect(() => {
-    void load().catch((reason: unknown) =>
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Unable to load the employer hiring workspace",
-      ),
-    );
+    let cancelled = false;
+    async function load() {
+      try {
+        const result = await withDemoFallback(
+          Promise.all([
+            praxisFetch<EmployerOpportunity[]>(
+              apiBase,
+              "/talent/employers/me/opportunities",
+            ),
+            praxisFetch<{ items: Project[] }>(apiBase, "/projects"),
+          ]),
+          [
+            demoWorkspaceSnapshot.employerOpportunities,
+            { items: demoWorkspaceSnapshot.projects },
+          ] as [EmployerOpportunity[], { items: Project[] }],
+        );
+        if (cancelled) return;
+        const [nextOpportunities, projectList] = result.data;
+        setOpportunities(nextOpportunities);
+        setProjects(projectList.items);
+        setIsDemoPreview(result.isDemo);
+      } catch (reason: unknown) {
+        if (cancelled) return;
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Unable to load the employer hiring workspace",
+        );
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function decide(proposal: Proposal, decision: "ACCEPTED" | "REJECTED") {

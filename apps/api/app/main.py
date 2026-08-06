@@ -35,6 +35,7 @@ from app.api import (
 from app.config import get_settings
 from app.db import SessionFactory
 from app.domain.schemas import ErrorDetail, ErrorResponse
+from app.security.headers import apply_api_security_headers
 
 settings = get_settings()
 logger = structlog.get_logger()
@@ -86,8 +87,7 @@ async def security_and_correlation(
                 )
     response = await call_next(request)
     response.headers["X-Correlation-ID"] = str(request.state.correlation_id)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    apply_api_security_headers(response, production=settings.app_env == "production")
     return response
 
 

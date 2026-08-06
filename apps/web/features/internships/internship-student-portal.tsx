@@ -125,7 +125,10 @@ export function InternshipStudentPortal({
         <DashboardView dashboard={dashboard.data} />
       ) : null}
       {view === "application" ? (
-        <ApplicationView application={application.data} />
+        <ApplicationView
+          key={`${application.data?.id ?? "new"}:${application.data?.version ?? 0}`}
+          application={application.data}
+        />
       ) : null}
       {view === "learn" ? (
         <section className="internship-section">
@@ -317,45 +320,25 @@ function ApplicationView({
   };
 }) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({
-    primary_track_id: "",
-    secondary_track_id: "",
-    education_status: "",
-    university_id: "",
-    degree_program: "",
-    semester_status: "",
-    country: "",
-    timezone: "UTC",
-    weekly_availability_hours: "",
-    technical_background: "",
-    motivation: "",
-    portfolio_url: "",
-    github_url: "",
-    linkedin_url: "",
-    accessibility_requirements: "",
-  });
+  const [form, setForm] = useState(() => ({
+    primary_track_id: application?.primary_track_id ?? "",
+    secondary_track_id: application?.secondary_track_id ?? "",
+    education_status: application?.education_status ?? "",
+    university_id: application?.university_id ?? "",
+    degree_program: application?.degree_program ?? "",
+    semester_status: application?.semester_status ?? "",
+    country: application?.country ?? "",
+    timezone: application?.timezone ?? "UTC",
+    weekly_availability_hours:
+      application?.weekly_availability_hours?.toString() ?? "",
+    technical_background: application?.technical_background ?? "",
+    motivation: application?.motivation ?? "",
+    portfolio_url: application?.portfolio_url ?? "",
+    github_url: application?.github_url ?? "",
+    linkedin_url: application?.linkedin_url ?? "",
+    accessibility_requirements: application?.accessibility_requirements ?? "",
+  }));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  useEffect(() => {
-    if (!application) return;
-    setForm({
-      primary_track_id: application.primary_track_id ?? "",
-      secondary_track_id: application.secondary_track_id ?? "",
-      education_status: application.education_status,
-      university_id: application.university_id ?? "",
-      degree_program: application.degree_program,
-      semester_status: application.semester_status,
-      country: application.country,
-      timezone: application.timezone,
-      weekly_availability_hours:
-        application.weekly_availability_hours?.toString() ?? "",
-      technical_background: application.technical_background,
-      motivation: application.motivation,
-      portfolio_url: application.portfolio_url ?? "",
-      github_url: application.github_url ?? "",
-      linkedin_url: application.linkedin_url ?? "",
-      accessibility_requirements: application.accessibility_requirements ?? "",
-    });
-  }, [application]);
   const editable = application
     ? ["DRAFT", "ELIGIBILITY_REVIEW"].includes(application.status)
     : false;

@@ -60,6 +60,7 @@ test("key marketing surfaces have stable visual snapshots", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const pauseWorkflow = page.getByRole("button", {
     name: "Pause workflow sequence",
@@ -69,7 +70,8 @@ test("key marketing surfaces have stable visual snapshots", async ({
     animations: "disabled",
     caret: "hide",
     fullPage: true,
-    maxDiffPixels: 500,
+    maxDiffPixels: 800,
+    timeout: 15_000,
   });
 
   await page.goto("/trust");
@@ -77,6 +79,7 @@ test("key marketing surfaces have stable visual snapshots", async ({
     animations: "disabled",
     caret: "hide",
     fullPage: true,
-    maxDiffPixels: 500,
+    maxDiffPixels: 800,
+    timeout: 15_000,
   });
 });

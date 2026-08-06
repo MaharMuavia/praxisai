@@ -37,7 +37,14 @@ export default function VerifyPage() {
   }
 
   useEffect(() => {
-    if (initialSlug) void verify(initialSlug);
+    if (!initialSlug) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) void verify(initialSlug);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [initialSlug]);
 
   return (

@@ -1,0 +1,7 @@
+# Repository-wide ownership. GitHub applies the last matching rule.
+* @MaharMuavia
+
+/apps/api/ @MaharMuavia
+/apps/web/ @MaharMuavia
+/infra/terraform/ @MaharMuavia
+/.github/ @MaharMuavia

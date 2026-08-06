@@ -1,0 +1,29 @@
+name: Security contact request
+description: Request a private channel without publishing vulnerability details.
+title: "[Security]: Private report requested"
+labels: ["security", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not publish exploit details, credentials, personal data, or private URLs. Prefer GitHub private vulnerability reporting.
+  - type: input
+    id: component
+    attributes:
+      label: Affected component
+      placeholder: Web, API, authentication, agent runtime, infrastructure, dependency
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Potential impact
+      options: [Unknown, Low, Medium, High, Critical]
+    validations:
+      required: true
+  - type: checkboxes
+    id: disclosure
+    attributes:
+      label: Disclosure confirmation
+      options:
+        - label: I have not included sensitive vulnerability details in this public issue.
+          required: true

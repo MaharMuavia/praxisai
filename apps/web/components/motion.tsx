@@ -16,8 +16,13 @@ function useInView() {
     const node = ref.current;
     if (!node) return;
     if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
+      let cancelled = false;
+      queueMicrotask(() => {
+        if (!cancelled) setVisible(true);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     const observer = new IntersectionObserver(
       ([entry]) => {

@@ -7,6 +7,7 @@ const child = spawn(process.execPath, [nextBin, "dev"], {
   stdio: "inherit",
   detached: process.platform !== "win32",
   windowsHide: true,
+  env: { ...process.env, PLAYWRIGHT_TEST: "true" },
 });
 
 let stopping = false;

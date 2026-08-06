@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a reproducible PraxisAI defect without sensitive data.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include secrets, personal data, or private customer records.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or deployed revision
+      placeholder: Commit SHA, image digest, or Cloud Run revision
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options: [Local, Test, Staging, Production, Demo]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Give minimal ordered steps and sanitized inputs.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and evidence
+      description: Include sanitized logs, screenshots, or correlation IDs.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Identify affected roles, tenants, data, money, or workflow states.
+    validations:
+      required: true

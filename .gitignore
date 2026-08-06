@@ -7,6 +7,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.terraform/
 .coverage
 htmlcov/
 node_modules/
@@ -15,6 +16,7 @@ dist/
 playwright-report/
 test-results/
 .playwright-cli/
+output/
 tmp/
 .local/
 *.pyc

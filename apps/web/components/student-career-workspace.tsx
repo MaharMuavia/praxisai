@@ -55,34 +55,41 @@ export function StudentCareerWorkspace({ page }: { page: PageKind }) {
     string | null
   >(null);
 
-  async function load() {
-    const result = await withDemoFallback(
-      Promise.all([
-        praxisFetch<LearningPath[]>(apiBase, "/learning/paths"),
-        praxisFetch<Opportunity[]>(apiBase, "/talent/opportunities"),
-        praxisFetch<Proposal[]>(apiBase, "/talent/students/me/proposals"),
-      ]),
-      [
-        demoWorkspaceSnapshot.learningPaths,
-        demoWorkspaceSnapshot.opportunities,
-        demoWorkspaceSnapshot.proposals,
-      ] as [LearningPath[], Opportunity[], Proposal[]],
-    );
-    const [nextPaths, nextOpportunities, nextProposals] = result.data;
-    setPaths(nextPaths);
-    setOpportunities(nextOpportunities);
-    setProposals(nextProposals);
-    setIsDemoPreview(result.isDemo);
-  }
-
   useEffect(() => {
-    void load().catch((reason: unknown) =>
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Unable to load the student career workspace",
-      ),
-    );
+    let cancelled = false;
+    async function load() {
+      try {
+        const result = await withDemoFallback(
+          Promise.all([
+            praxisFetch<LearningPath[]>(apiBase, "/learning/paths"),
+            praxisFetch<Opportunity[]>(apiBase, "/talent/opportunities"),
+            praxisFetch<Proposal[]>(apiBase, "/talent/students/me/proposals"),
+          ]),
+          [
+            demoWorkspaceSnapshot.learningPaths,
+            demoWorkspaceSnapshot.opportunities,
+            demoWorkspaceSnapshot.proposals,
+          ] as [LearningPath[], Opportunity[], Proposal[]],
+        );
+        if (cancelled) return;
+        const [nextPaths, nextOpportunities, nextProposals] = result.data;
+        setPaths(nextPaths);
+        setOpportunities(nextOpportunities);
+        setProposals(nextProposals);
+        setIsDemoPreview(result.isDemo);
+      } catch (reason: unknown) {
+        if (cancelled) return;
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Unable to load the student career workspace",
+        );
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const selectedOpportunity = opportunities?.find(
