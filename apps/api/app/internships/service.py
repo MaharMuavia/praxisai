@@ -1,6 +1,7 @@
 import hashlib
 import json
 import uuid
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -39,6 +40,8 @@ from app.internships.policies import (
     is_application_complete,
     normalize_email,
 )
+from app.internships.reviews.scoring import RubricValidationError
+from app.internships.reviews.scoring import weighted_score as score_rubric
 from app.internships.schemas import (
     ApplicationDecisionRequest,
     ApplicationUpdate,
@@ -52,9 +55,11 @@ from app.internships.schemas import (
     ProgramDetail,
     ProgramSummary,
     PublicCertificateView,
+    ResubmissionRequest,
     ReviewFinalizeRequest,
     ReviewQueueItem,
     SignupRequest,
+    StartApplicationRequest,
     SubmissionDraftRequest,
     SubmissionView,
     TimelineItem,
@@ -70,6 +75,7 @@ from app.internships.storage import (
     SupabaseInternshipStorage,
     SupabaseStorageError,
 )
+from app.internships.uploads.scanning import DemoScanner, DisabledProductionScanner
 
 
 class InternshipError(ValueError):
@@ -313,6 +319,71 @@ async def get_application(session: AsyncSession, principal: SessionPrincipal) ->
     return _application_view(application, is_demo=bool(program and program.is_demo))
 
 
+async def start_application(
+    session: AsyncSession,
+    *,
+    principal: SessionPrincipal,
+    body: StartApplicationRequest,
+    correlation_id: uuid.UUID,
+) -> ApplicationView:
+    user = await session.get(User, principal.user_id)
+    cohort = await session.get(InternshipCohort, body.cohort_id)
+    program = await session.get(InternshipProgram, body.program_id)
+    if user is None or cohort is None or program is None or cohort.program_id != program.id:
+        raise NotFound("Program or cohort not found")
+    if program.status not in {"APPLICATIONS_OPEN", "ACTIVE"} or cohort.status not in {
+        "APPLICATIONS_OPEN",
+        "ACTIVE",
+    }:
+        raise InvalidState("Applications are not open for this cohort")
+    eligibility = await evaluate_email_eligibility(
+        session, email=user.email, program=program, cohort=cohort
+    )
+    if not eligibility.eligible:
+        raise Forbidden("This email is not eligible for the selected cohort")
+    active_statuses = {"DRAFT", "ELIGIBILITY_REVIEW", "SUBMITTED", "WAITLISTED", "ACCEPTED"}
+    existing = await session.scalar(
+        select(InternshipApplication)
+        .where(
+            InternshipApplication.applicant_user_id == principal.user_id,
+            InternshipApplication.cohort_id == cohort.id,
+            InternshipApplication.status.in_(active_statuses),
+        )
+        .with_for_update()
+    )
+    if existing is not None:
+        raise Conflict("An active application already exists for this cohort")
+    application = InternshipApplication(
+        applicant_user_id=principal.user_id,
+        program_id=program.id,
+        cohort_id=cohort.id,
+        status="ELIGIBILITY_REVIEW" if eligibility.requires_review else "DRAFT",
+        university_id=eligibility.university_id,
+        email_verification_evidence={
+            "provider": "existing_authenticated_session",
+            "verified": True,
+            "normalized_email": normalize_email(user.email),
+            "eligibility_reason": eligibility.reason,
+            "requires_review": eligibility.requires_review,
+        },
+        consent_snapshot={"terms_version": body.consent_version},
+        correlation_id=correlation_id,
+    )
+    session.add(application)
+    await session.flush()
+    _audit(
+        session,
+        principal=principal,
+        action="internship.application_started",
+        resource_type="internship_application",
+        resource_id=application.id,
+        correlation_id=correlation_id,
+        payload={"eligibility_reason": eligibility.reason},
+    )
+    await session.commit()
+    return _application_view(application, is_demo=program.is_demo)
+
+
 async def update_application(
     session: AsyncSession,
     *,
@@ -413,19 +484,37 @@ async def decide_application(
     if body.decision == "ACCEPTED":
         if assigned_track_version_id is None:
             raise ValidationFailure("Acceptance requires an assigned track version")
+        cohort = await session.scalar(
+            select(InternshipCohort)
+            .where(InternshipCohort.id == application.cohort_id)
+            .with_for_update()
+        )
+        if cohort is None:
+            raise NotFound("Cohort not found")
         cohort_track = await session.scalar(
-            select(CohortTrack).where(
+            select(CohortTrack)
+            .where(
                 CohortTrack.cohort_id == application.cohort_id,
                 CohortTrack.track_version_id == assigned_track_version_id,
             )
+            .with_for_update()
         )
         if cohort_track is None:
             raise ValidationFailure("Assigned track is not available in this cohort")
+        active_statuses = ["INVITED", "ENROLLED", "ACTIVE", "COMPLETED"]
+        cohort_count = await session.scalar(
+            select(func.count(CohortEnrollment.id)).where(
+                CohortEnrollment.cohort_id == cohort.id,
+                CohortEnrollment.status.in_(active_statuses),
+            )
+        )
+        if (cohort_count or 0) >= cohort.capacity:
+            raise Conflict("Cohort capacity is full")
         assigned_count = await session.scalar(
             select(func.count(CohortEnrollment.id)).where(
                 CohortEnrollment.cohort_id == application.cohort_id,
                 CohortEnrollment.track_version_id == assigned_track_version_id,
-                CohortEnrollment.status.not_in(["WITHDRAWN", "TERMINATED"]),
+                CohortEnrollment.status.in_(active_statuses),
             )
         )
         if assigned_count and assigned_count >= cohort_track.capacity:
@@ -528,9 +617,31 @@ async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> Dashb
     )
     required = (unit_total or 0) + (assignment_total or 0)
     done = (completed_units or 0) + (passed_assignments or 0)
+    application = await session.scalar(
+        select(InternshipApplication)
+        .where(InternshipApplication.applicant_user_id == principal.user_id)
+        .order_by(InternshipApplication.created_at.desc())
+    )
+    application_state = {
+        "DRAFT": "IN_PROGRESS",
+        "ELIGIBILITY_REVIEW": "IN_PROGRESS",
+        "SUBMITTED": "AWAITING_DECISION",
+        "WAITLISTED": "WAITLISTED",
+        "ACCEPTED": "COMPLETE",
+        "REJECTED": "REJECTED",
+    }.get(application.status if application else "", "NOT_STARTED")
+    admission_state = (
+        "COMPLETE"
+        if application and application.status == "ACCEPTED"
+        else "REJECTED"
+        if application and application.status == "REJECTED"
+        else "AWAITING_DECISION"
+        if application and application.status in {"SUBMITTED", "WAITLISTED"}
+        else "NOT_STARTED"
+    )
     timeline = [
-        TimelineItem(label="Application", state="COMPLETE"),
-        TimelineItem(label="Admission", state="COMPLETE"),
+        TimelineItem(label="Application", state=application_state),
+        TimelineItem(label="Admission", state=admission_state),
     ]
     if cohort:
         phases = (
@@ -541,10 +652,56 @@ async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> Dashb
                 .order_by(InternshipPhase.ordinal)
             )
         ).scalars()
+        now = now_utc()
         timeline.extend(
-            TimelineItem(label=phase.name, state="CURRENT" if phase.ordinal == 1 else "UPCOMING")
+            TimelineItem(
+                label=phase.name,
+                state=(
+                    "CURRENT"
+                    if phase.starts_at <= now <= phase.ends_at
+                    else "UPCOMING"
+                    if now < phase.starts_at
+                    else "COMPLETE"
+                ),
+                starts_at=phase.starts_at,
+                ends_at=phase.ends_at,
+            )
             for phase in phases
         )
+    assignment_rows = (
+        await session.execute(
+            select(
+                InternshipStudentAssignment,
+                InternshipCohortAssignment,
+                InternshipAssignmentTemplate,
+            )
+            .join(
+                InternshipCohortAssignment,
+                InternshipCohortAssignment.id == InternshipStudentAssignment.cohort_assignment_id,
+            )
+            .join(
+                InternshipAssignmentTemplate,
+                InternshipAssignmentTemplate.id == InternshipCohortAssignment.template_id,
+            )
+            .where(InternshipStudentAssignment.student_user_id == principal.user_id)
+        )
+    ).all()
+    timeline.extend(
+        TimelineItem(
+            label=f"Assignment: {template.title}",
+            state=assignment.state,
+            starts_at=cohort_assignment.release_at,
+            ends_at=assignment.due_at or cohort_assignment.deadline,
+        )
+        for assignment, cohort_assignment, template in assignment_rows
+    )
+    timeline.append(TimelineItem(label="Completion", state=enrollment.certificate_eligibility))
+    certificate = await session.scalar(
+        select(InternshipCertificate).where(InternshipCertificate.enrollment_id == enrollment.id)
+    )
+    timeline.append(
+        TimelineItem(label="Credential", state=certificate.state if certificate else "NOT_ISSUED")
+    )
     return DashboardView(
         enrollment_id=enrollment.id,
         program_name=program.name if program else None,
@@ -864,6 +1021,7 @@ def _submission_hash(submission: InternshipSubmission) -> str:
         "links": submission.links,
         "text_fields": submission.text_fields,
         "artifact_upload_ids": sorted(submission.artifact_upload_ids),
+        "artifact_snapshot": submission.artifact_snapshot,
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -879,6 +1037,7 @@ async def finalize_submission(
     confirm: bool,
     idempotency_key: str,
     correlation_id: uuid.UUID,
+    settings: Settings,
 ) -> SubmissionView:
     submission = await session.scalar(
         select(InternshipSubmission)
@@ -909,15 +1068,71 @@ async def finalize_submission(
     )
     if template is None or cohort_assignment is None:
         raise NotFound("Assignment template not found")
-    provided = set(submission.links) | set(submission.text_fields)
-    provided.update(submission.artifact_upload_ids)
-    missing = [
-        item.get("type", "artifact")
-        for item in template.required_artifact_types
-        if item.get("required", True) and item.get("type") not in provided
-    ]
+    upload_ids = list(dict.fromkeys(submission.artifact_upload_ids))
+    uploads = list(
+        (
+            await session.execute(
+                select(InternshipUpload).where(
+                    InternshipUpload.upload_id.in_(upload_ids),
+                    InternshipUpload.owner_user_id == principal.user_id,
+                    InternshipUpload.student_assignment_id == assignment.id,
+                )
+            )
+        ).scalars()
+    )
+    uploads_by_id = {upload.upload_id: upload for upload in uploads}
+    if len(uploads_by_id) != len(upload_ids):
+        raise ValidationFailure("Submission references an unknown or unrelated upload")
+    maximum_package_size = 250 * 1024 * 1024
+    if sum(upload.size_bytes for upload in uploads) > maximum_package_size:
+        raise ValidationFailure("Submission package exceeds the aggregate size limit")
+    for upload in uploads:
+        if upload.state != "CLEAN" or now_utc() >= upload.expires_at:
+            raise ValidationFailure("Every referenced upload must be clean and unexpired")
+        try:
+            if settings.storage_provider == "supabase":
+                stored = await SupabaseInternshipStorage(settings).read(upload.storage_key)
+            else:
+                stored = LocalInternshipStorage(settings.internship_local_storage_path).read(
+                    upload.storage_key
+                )
+        except (SupabaseStorageError, OSError) as exc:
+            raise StorageFailure("Referenced upload is not available in storage") from exc
+        if hashlib.sha256(stored).hexdigest() != upload.sha256:
+            raise ValidationFailure("Referenced upload hash no longer matches storage")
+    artifact_types = {upload.artifact_type for upload in uploads}
+    allowed_types = {
+        str(item.get("type")) for item in template.required_artifact_types if item.get("type")
+    }
+    if any(upload.artifact_type not in allowed_types for upload in uploads):
+        raise ValidationFailure(
+            "Submission contains an artifact type not allowed by the assignment"
+        )
+    missing = []
+    for item in template.required_artifact_types:
+        artifact_type = str(item.get("type", "artifact"))
+        if not item.get("required", True):
+            continue
+        supplied = (
+            artifact_type in artifact_types
+            or artifact_type in submission.links
+            or artifact_type in submission.text_fields
+        )
+        if not supplied:
+            missing.append(artifact_type)
     if missing:
         raise ValidationFailure("Missing required artifacts: " + ", ".join(missing))
+    submission.artifact_snapshot = [
+        {
+            "upload_id": upload.upload_id,
+            "artifact_type": upload.artifact_type,
+            "filename": upload.filename,
+            "size_bytes": upload.size_bytes,
+            "content_type": upload.content_type,
+            "sha256": upload.sha256,
+        }
+        for upload in sorted(uploads, key=lambda row: row.upload_id)
+    ]
     submission.state = "FINALIZED"
     submission.canonical_hash = _submission_hash(submission)
     submission.rubric_version = template.version
@@ -929,6 +1144,16 @@ async def finalize_submission(
     assignment.state = "UNDER_REVIEW"
     assignment.submitted_at = submission.submitted_at
     assignment.attempt_count += 1
+    for upload in uploads:
+        upload.state = "ATTACHED"
+    session.add(
+        InternshipReview(
+            student_assignment_id=assignment.id,
+            submission_id=submission.id,
+            reviewer_id=None,
+            status="UNASSIGNED",
+        )
+    )
     _audit(
         session,
         principal=principal,
@@ -947,16 +1172,43 @@ async def resubmit(
     *,
     principal: SessionPrincipal,
     assignment_id: uuid.UUID,
+    body: ResubmissionRequest,
     correlation_id: uuid.UUID,
 ) -> SubmissionView:
     assignment = await get_assignment(session, principal=principal, assignment_id=assignment_id)
     if assignment.state != "CHANGES_REQUESTED":
         raise InvalidState("Resubmission is available only after changes are requested")
-    if assignment.attempt_count >= 3:
+    cohort_assignment = await session.get(
+        InternshipCohortAssignment, assignment.cohort_assignment_id
+    )
+    template = await session.get(
+        InternshipAssignmentTemplate, cohort_assignment.template_id if cohort_assignment else None
+    )
+    cohort_track = await session.get(
+        CohortTrack, cohort_assignment.cohort_track_id if cohort_assignment else None
+    )
+    cohort = await session.get(InternshipCohort, cohort_track.cohort_id if cohort_track else None)
+    policy = (template.resubmission_policy if template else {}) or (
+        cohort.resubmission_policy if cohort else {}
+    )
+    max_attempts = policy.get("max_attempts")
+    if not isinstance(max_attempts, int) or max_attempts < 1:
+        raise InvalidState("Resubmission policy is not configured")
+    if assignment.attempt_count >= max_attempts:
         raise InvalidState("Maximum submission attempts reached")
+    if assignment.due_at and now_utc() > assignment.due_at:
+        raise InvalidState("Resubmission deadline has passed")
     previous = await session.get(InternshipSubmission, assignment.current_submission_id)
     if previous is None:
         raise NotFound("Previous submission not found")
+    competing_draft = await session.scalar(
+        select(InternshipSubmission).where(
+            InternshipSubmission.student_assignment_id == assignment.id,
+            InternshipSubmission.state == "DRAFT",
+        )
+    )
+    if competing_draft is not None:
+        raise Conflict("A resubmission draft already exists")
     max_version = await session.scalar(
         select(func.max(InternshipSubmission.version)).where(
             InternshipSubmission.student_assignment_id == assignment.id
@@ -968,6 +1220,7 @@ async def resubmit(
         state="DRAFT",
         version=(max_version or 0) + 1,
         previous_submission_id=previous.id,
+        change_summary=body.change_summary,
         correlation_id=correlation_id,
     )
     session.add(submission)
@@ -1027,12 +1280,52 @@ async def certificate_eligibility(
     reason = "Complete all required learning units and pass every assignment"
     if enrollment.certificate_eligibility == "ELIGIBLE":
         reason = "All deterministic completion gates passed; coordinator approval is required"
+    elif enrollment.certificate_eligibility == "APPROVED":
+        reason = "Completion was approved by a coordinator; credential issuance is available"
+    elif enrollment.certificate_eligibility == "REJECTED":
+        reason = "Completion was rejected; the student may follow the appeal path"
     return CertificateEligibilityView(
         enrollment_id=enrollment.id,
         state=certificate.state if certificate else enrollment.certificate_eligibility,
         reason=reason,
         certificate_id=certificate.id if certificate else None,
         public_slug=certificate.public_slug if certificate else None,
+    )
+
+
+async def decide_completion(
+    session: AsyncSession,
+    *,
+    enrollment_id: uuid.UUID,
+    principal: SessionPrincipal,
+    decision: str,
+    reason: str,
+    correlation_id: uuid.UUID,
+) -> CertificateEligibilityView:
+    enrollment = await session.scalar(
+        select(CohortEnrollment).where(CohortEnrollment.id == enrollment_id).with_for_update()
+    )
+    if enrollment is None:
+        raise NotFound("Enrollment not found")
+    if decision == "APPROVED" and enrollment.certificate_eligibility != "ELIGIBLE":
+        raise InvalidState("Completion approval requires deterministic eligibility")
+    if decision == "REJECTED" and not reason.strip():
+        raise ValidationFailure("Completion rejection requires a reason")
+    enrollment.certificate_eligibility = decision
+    enrollment.version += 1
+    _audit(
+        session,
+        principal=principal,
+        action="internship.completion_decided",
+        resource_type="internship_cohort_enrollment",
+        resource_id=enrollment.id,
+        correlation_id=correlation_id,
+        payload={"decision": decision},
+    )
+    await session.commit()
+    return await certificate_eligibility(
+        session,
+        SessionPrincipal(principal.user_id, principal.organization_id, "student"),
     )
 
 
@@ -1065,7 +1358,20 @@ async def list_operations_applications(
     return output
 
 
-async def review_queue(session: AsyncSession, *, limit: int, offset: int) -> list[ReviewQueueItem]:
+async def review_queue(
+    session: AsyncSession,
+    *,
+    limit: int,
+    offset: int,
+    principal: SessionPrincipal | None = None,
+    review_id: uuid.UUID | None = None,
+) -> list[ReviewQueueItem]:
+    assigned_only = principal is not None and principal.role in {"reviewer", "technical_lead"}
+    filters = (
+        [InternshipReview.reviewer_id == principal.user_id] if assigned_only and principal else []
+    )
+    if review_id is not None:
+        filters.append(InternshipReview.id == review_id)
     rows = (
         await session.execute(
             select(
@@ -1089,6 +1395,7 @@ async def review_queue(session: AsyncSession, *, limit: int, offset: int) -> lis
                 InternshipAssignmentTemplate,
                 InternshipAssignmentTemplate.id == InternshipCohortAssignment.template_id,
             )
+            .where(*filters)
             .order_by(InternshipReview.created_at)
             .limit(limit)
             .offset(offset)
@@ -1109,26 +1416,10 @@ async def review_queue(session: AsyncSession, *, limit: int, offset: int) -> lis
 
 
 def weighted_score(scores: list[dict[str, Any]], rubric: list[dict[str, Any]]) -> int:
-    criteria = {str(item.get("id")): item for item in rubric}
-    if not criteria:
-        raise ValidationFailure("Assignment rubric is empty")
-    total = 0.0
-    weight_total = 0.0
-    for score in scores:
-        criterion_id = str(score.get("criterion_id", ""))
-        criterion = criteria.get(criterion_id)
-        if criterion is None:
-            raise ValidationFailure("Review contains an unknown rubric criterion")
-        maximum = float(criterion.get("max_score", 0))
-        weight = float(criterion.get("weight", 0))
-        value = float(score.get("score", -1))
-        if maximum <= 0 or weight <= 0 or value < 0 or value > maximum:
-            raise ValidationFailure("Rubric score is outside the allowed range")
-        total += value / maximum * weight
-        weight_total += weight
-    if abs(weight_total - 100) > 0.01:
-        raise ValidationFailure("Rubric weights must total 100")
-    return round(total)
+    try:
+        return score_rubric(scores, rubric)
+    except RubricValidationError as exc:
+        raise ValidationFailure(str(exc)) from exc
 
 
 async def _refresh_certificate_eligibility(
@@ -1191,12 +1482,18 @@ async def finalize_review(
     principal: SessionPrincipal,
     body: ReviewFinalizeRequest,
     correlation_id: uuid.UUID,
+    idempotency_key: str | None = None,
 ) -> ReviewQueueItem:
     review = await session.scalar(
         select(InternshipReview).where(InternshipReview.id == review_id).with_for_update()
     )
     if review is None:
         raise NotFound("Review not found")
+    if idempotency_key and review.idempotency_key == idempotency_key:
+        rows = await review_queue(session, review_id=review.id, limit=1, offset=0)
+        if not rows:
+            raise NotFound("Review not found")
+        return rows[0]
     if review.reviewer_id != principal.user_id:
         raise Forbidden("Review is not assigned to this reviewer")
     if review.status == "FINALIZED":
@@ -1223,10 +1520,11 @@ async def finalize_review(
     review.private_notes = body.private_notes
     review.conflict_declared = False
     review.decision = body.decision
+    review.idempotency_key = idempotency_key
     review.finalized_at = now_utc()
-    assignment.final_result = (
-        "PASS" if body.decision == "PASS" and total >= template.pass_score else "FAIL"
-    )
+    if body.decision == "PASS" and total < template.pass_score:
+        raise ValidationFailure("PASS requires a score at or above the assignment threshold")
+    assignment.final_result = body.decision if body.decision in {"PASS", "FAIL"} else None
     assignment.state = {
         "PASS": "PASSED",
         "CHANGES_REQUESTED": "CHANGES_REQUESTED",
@@ -1243,11 +1541,10 @@ async def finalize_review(
         payload={"decision": body.decision, "weighted_total": total},
     )
     await session.commit()
-    row = await review_queue(session, limit=1, offset=0)
-    match = next((item for item in row if item.review_id == review.id), None)
-    if match is None:
+    rows = await review_queue(session, review_id=review.id, limit=1, offset=0)
+    if not rows:
         raise NotFound("Review not found after finalization")
-    return match
+    return rows[0]
 
 
 async def issue_certificate(
@@ -1269,8 +1566,8 @@ async def issue_certificate(
     )
     if existing and existing.idempotency_key == idempotency_key:
         return existing
-    if enrollment.certificate_eligibility != "ELIGIBLE":
-        raise InvalidState("Enrollment is not eligible for a certificate")
+    if enrollment.certificate_eligibility != "APPROVED":
+        raise InvalidState("Completion requires human approval before certificate issuance")
     if existing is not None:
         raise Conflict("Certificate already exists")
     student = await session.get(User, enrollment.student_user_id)
@@ -1330,7 +1627,7 @@ def _upload_limits(artifact_type: str, filename: str) -> tuple[int, set[str]]:
     if artifact_type in {"pdf", "technical_report", "readme"}:
         return 25 * 1024 * 1024, {"pdf", "md", "txt"}
     if artifact_type in {"screenshot", "screenshots", "architecture_diagram"}:
-        return 10 * 1024 * 1024, {"png", "jpg", "jpeg", "webp", "svg"}
+        return 10 * 1024 * 1024, {"png", "jpg", "jpeg", "webp"}
     if artifact_type in {"notebook", "ipynb"}:
         return 20 * 1024 * 1024, {"ipynb", "json"}
     return 50 * 1024 * 1024, {extension} if extension else set()
@@ -1349,6 +1646,10 @@ async def initiate_upload(
     if assignment.state in {"LOCKED", "PASSED", "FAILED", "WITHDRAWN"}:
         raise InvalidState("Assignment is not accepting uploads")
     safe_filename = body.filename.replace("\\", "/").rsplit("/", 1)[-1]
+    if safe_filename in {"", ".", ".."} or safe_filename.count(".") > 1:
+        raise ValidationFailure("Unsafe filename")
+    if safe_filename.casefold().endswith((".html", ".htm", ".exe", ".dll", ".js", ".svg")):
+        raise ValidationFailure("Executable or active content is not allowed")
     maximum, extensions = _upload_limits(body.artifact_type, safe_filename)
     extension = safe_filename.rsplit(".", 1)[-1].casefold() if "." in safe_filename else ""
     if body.size_bytes > maximum or not extension or extension not in extensions:
@@ -1388,6 +1689,26 @@ async def receive_upload_content(
     content: bytes,
     settings: Settings,
 ) -> UploadView:
+    async def chunks() -> AsyncIterator[bytes]:
+        yield content
+
+    return await receive_upload_stream(
+        session,
+        principal=principal,
+        upload_id=upload_id,
+        chunks=chunks(),
+        settings=settings,
+    )
+
+
+async def receive_upload_stream(
+    session: AsyncSession,
+    *,
+    principal: SessionPrincipal,
+    upload_id: str,
+    chunks: AsyncIterator[bytes],
+    settings: Settings,
+) -> UploadView:
     upload = await session.scalar(
         select(InternshipUpload).where(
             InternshipUpload.upload_id == upload_id,
@@ -1400,19 +1721,23 @@ async def receive_upload_content(
         upload.state = "EXPIRED"
         await session.commit()
         raise InvalidState("Upload is expired or already completed")
-    if len(content) != upload.size_bytes:
-        raise ValidationFailure("Uploaded size does not match initiation metadata")
     try:
         if settings.storage_provider == "supabase":
-            await SupabaseInternshipStorage(settings).put(
-                upload.storage_key, content, upload.content_type
+            digest, size = await SupabaseInternshipStorage(settings).put_stream(
+                upload.storage_key, chunks, upload.content_type, upload.size_bytes
             )
         else:
-            LocalInternshipStorage(settings.internship_local_storage_path).put(
-                upload.storage_key, content
-            )
+            digest, size = await LocalInternshipStorage(
+                settings.internship_local_storage_path
+            ).put_stream(upload.storage_key, chunks)
     except SupabaseStorageError as exc:
         raise StorageFailure("Upload storage is temporarily unavailable") from exc
+    if size != upload.size_bytes or (upload.sha256 and digest != upload.sha256):
+        upload.state = "REJECTED"
+        upload.scan_message = "Uploaded size or SHA-256 does not match initiation metadata"
+        await session.commit()
+        raise ValidationFailure(upload.scan_message)
+    upload.sha256 = digest
     upload.state = "UPLOADED"
     await session.commit()
     return UploadView(
@@ -1447,6 +1772,25 @@ async def complete_upload(
         upload.state = "EXPIRED"
         await session.commit()
         raise InvalidState("Upload is expired")
+    if settings.app_env in {"staging", "production"}:
+        if upload.sha256 != body.sha256.casefold():
+            upload.state = "REJECTED"
+            upload.scan_message = "SHA-256 mismatch"
+            await session.commit()
+            raise ValidationFailure("Upload hash does not match")
+        upload.state = "QUARANTINED"
+        upload.scan_message = (
+            "Awaiting the production malware scanner; upload cannot be attached yet."
+        )
+        await session.commit()
+        return UploadView(
+            upload_id=upload.upload_id,
+            artifact_type=upload.artifact_type,
+            filename=upload.filename,
+            state=upload.state,
+            expires_at=upload.expires_at,
+            upload_url=f"/api/v1/internships/uploads/{upload.upload_id}/content",
+        )
     try:
         if settings.storage_provider == "supabase":
             content = await SupabaseInternshipStorage(settings).read(upload.storage_key)
@@ -1462,11 +1806,20 @@ async def complete_upload(
         upload.scan_message = "SHA-256 mismatch"
         await session.commit()
         raise ValidationFailure("Upload hash does not match")
-    upload.sha256 = actual_hash
-    upload.state = "CLEAN"
-    upload.scan_message = (
-        "Demo/local scan policy accepted the bounded file; production scanning is required."
+    scanner = (
+        DemoScanner()
+        if settings.app_env in {"local", "test", "demo"}
+        else DisabledProductionScanner()
     )
+    result = scanner.scan(
+        content, declared_content_type=upload.content_type, filename=upload.filename
+    )
+    upload.sha256 = actual_hash
+    upload.state = result.state
+    upload.scan_message = result.message
+    if result.state == "REJECTED":
+        await session.commit()
+        raise ValidationFailure(result.message)
     await session.commit()
     return UploadView(
         upload_id=upload.upload_id,

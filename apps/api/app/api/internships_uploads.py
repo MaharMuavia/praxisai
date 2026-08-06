@@ -11,7 +11,7 @@ from app.internships.service import (
     InternshipError,
     complete_upload,
     initiate_upload,
-    receive_upload_content,
+    receive_upload_stream,
 )
 
 router = APIRouter(prefix="/internships/uploads", tags=["internship uploads"])
@@ -60,11 +60,11 @@ async def upload_content(
             status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Upload exceeds the package limit"
         )
     try:
-        return await receive_upload_content(
+        return await receive_upload_stream(
             session,
             principal=principal,
             upload_id=upload_id,
-            content=await request.body(),
+            chunks=request.stream(),
             settings=settings,
         )
     except InternshipError as exc:

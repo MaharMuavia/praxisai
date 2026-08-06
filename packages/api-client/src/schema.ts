@@ -295,6 +295,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/internships/me/application/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Application Route */
+        post: operations["start_application_route_api_v1_internships_me_application_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/internships/me/application/submit": {
         parameters: {
             query?: never;
@@ -1006,6 +1023,23 @@ export interface paths {
         put?: never;
         /** Application Decision */
         post: operations["application_decision_api_v1_ops_internships_applications__application_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/internships/enrollments/{enrollment_id}/completion-decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Completion Decision Route */
+        post: operations["completion_decision_route_api_v1_ops_internships_enrollments__enrollment_id__completion_decision_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2350,6 +2384,16 @@ export interface components {
              * Format: uuid
              */
             recipient_user_id: string;
+        };
+        /** CompletionDecisionRequest */
+        CompletionDecisionRequest: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "APPROVED" | "REJECTED";
+            /** Reason */
+            reason: string;
         };
         /** CredentialIssueRequest */
         CredentialIssueRequest: {
@@ -3965,6 +4009,11 @@ export interface components {
             /** Value */
             value: number;
         };
+        /** ResubmissionRequest */
+        ResubmissionRequest: {
+            /** Change Summary */
+            change_summary: string;
+        };
         /** ReviewAssignRequest */
         ReviewAssignRequest: {
             /**
@@ -4238,6 +4287,21 @@ export interface components {
             /** Weights Version */
             weights_version: string;
         };
+        /** StartApplicationRequest */
+        StartApplicationRequest: {
+            /**
+             * Cohort Id
+             * Format: uuid
+             */
+            cohort_id: string;
+            /** Consent Version */
+            consent_version: string;
+            /**
+             * Program Id
+             * Format: uuid
+             */
+            program_id: string;
+        };
         /** StudentApplicationCreate */
         StudentApplicationCreate: {
             /** Accessibility Needs */
@@ -4393,10 +4457,16 @@ export interface components {
         };
         /** SubmissionView */
         SubmissionView: {
+            /** Artifact Snapshot */
+            artifact_snapshot: {
+                [key: string]: unknown;
+            }[];
             /** Artifact Upload Ids */
             artifact_upload_ids: string[];
             /** Canonical Hash */
             canonical_hash: string | null;
+            /** Change Summary */
+            change_summary: string | null;
             /** Deadline Status */
             deadline_status: string | null;
             /**
@@ -5344,6 +5414,41 @@ export interface operations {
             };
         };
     };
+    start_application_route_api_v1_internships_me_application_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartApplicationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_application_route_api_v1_internships_me_application_submit_post: {
         parameters: {
             query?: never;
@@ -5456,7 +5561,11 @@ export interface operations {
                 praxis_session?: string | null;
             };
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResubmissionRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -6860,6 +6969,43 @@ export interface operations {
             };
         };
     };
+    completion_decision_route_api_v1_ops_internships_enrollments__enrollment_id__completion_decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                enrollment_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompletionDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     issue_certificate_route_api_v1_ops_internships_enrollments__enrollment_id__issue_certificate_post: {
         parameters: {
             query?: never;
@@ -6975,7 +7121,9 @@ export interface operations {
     finalize_review_route_api_v1_ops_internships_reviews__review_id__finalize_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 review_id: string;
             };

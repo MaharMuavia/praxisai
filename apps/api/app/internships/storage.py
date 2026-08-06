@@ -1,4 +1,5 @@
 import hashlib
+from collections.abc import AsyncIterator
 from pathlib import Path
 from urllib.parse import quote
 
@@ -27,6 +28,18 @@ class LocalInternshipStorage:
 
     def read(self, storage_key: str) -> bytes:
         return self._path(storage_key).read_bytes()
+
+    async def put_stream(self, storage_key: str, chunks: AsyncIterator[bytes]) -> tuple[str, int]:
+        target = self._path(storage_key)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        digest = hashlib.sha256()
+        size = 0
+        with target.open("wb") as stream:
+            async for chunk in chunks:
+                digest.update(chunk)
+                size += len(chunk)
+                stream.write(chunk)
+        return digest.hexdigest(), size
 
 
 class SupabaseStorageError(RuntimeError):
@@ -74,7 +87,7 @@ class SupabaseInternshipStorage:
         method: str,
         url: str,
         *,
-        content: bytes | None = None,
+        content: bytes | AsyncIterator[bytes] | None = None,
         headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         if self._client is not None:
@@ -98,6 +111,31 @@ class SupabaseInternshipStorage:
             headers={**self._headers(content_type), "x-upsert": "false"},
         )
         return hashlib.sha256(content).hexdigest()
+
+    async def put_stream(
+        self, storage_key: str, chunks: AsyncIterator[bytes], content_type: str, size: int
+    ) -> tuple[str, int]:
+        digest = hashlib.sha256()
+        count = 0
+
+        async def counted() -> AsyncIterator[bytes]:
+            nonlocal count
+            async for chunk in chunks:
+                digest.update(chunk)
+                count += len(chunk)
+                yield chunk
+
+        await self._request(
+            "POST",
+            self._object_url(storage_key),
+            content=counted(),
+            headers={
+                **self._headers(content_type),
+                "x-upsert": "false",
+                "Content-Length": str(size),
+            },
+        )
+        return digest.hexdigest(), count
 
     async def read(self, storage_key: str) -> bytes:
         response = await self._request(

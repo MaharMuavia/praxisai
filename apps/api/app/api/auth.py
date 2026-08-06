@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import func, select
 
+from app.auth.capabilities import INTERNSHIP_CAPABILITIES
 from app.auth.dependencies import DbSession, Principal
 from app.auth.service import (
     FirebaseIdentityProvider,
@@ -81,6 +82,9 @@ CAPABILITIES: dict[str, list[str]] = {
         "internships:view_analytics",
     ],
 }
+
+for _role, _capabilities in INTERNSHIP_CAPABILITIES.items():
+    CAPABILITIES[_role] = sorted(set(CAPABILITIES.get(_role, [])) | set(_capabilities))
 
 
 async def _set_session(
