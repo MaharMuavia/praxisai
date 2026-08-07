@@ -200,6 +200,7 @@ async def completion_decision_route(
     principal: CompletionPrincipal,
     session: DbSession,
     request: Request,
+    idempotency_key: IdempotencyKey,
 ) -> object:
     try:
         return await decide_completion(
@@ -208,6 +209,8 @@ async def completion_decision_route(
             principal=principal,
             decision=body.decision,
             reason=body.reason,
+            expected_version=body.expected_version,
+            idempotency_key=idempotency_key,
             correlation_id=request.state.correlation_id,
         )
     except InternshipError as exc:

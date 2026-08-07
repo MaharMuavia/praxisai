@@ -284,8 +284,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Application */
-        get: operations["application_api_v1_internships_me_application_get"];
+        /** Legacy Application */
+        get: operations["legacy_application_api_v1_internships_me_application_get"];
         /** Update Application Route */
         put: operations["update_application_route_api_v1_internships_me_application_put"];
         post?: never;
@@ -323,6 +323,59 @@ export interface paths {
         put?: never;
         /** Submit Application Route */
         post: operations["submit_application_route_api_v1_internships_me_application_submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Applications */
+        get: operations["applications_api_v1_internships_me_applications_get"];
+        put?: never;
+        /** Create Application */
+        post: operations["create_application_api_v1_internships_me_applications_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/applications/{application_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Application By Id */
+        get: operations["application_by_id_api_v1_internships_me_applications__application_id__get"];
+        /** Update Application By Id */
+        put: operations["update_application_by_id_api_v1_internships_me_applications__application_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/internships/me/applications/{application_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Application By Id */
+        post: operations["submit_application_by_id_api_v1_internships_me_applications__application_id__submit_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1984,6 +2037,34 @@ export interface components {
         ApplicationSubmitRequest: {
             /** Consent Version */
             consent_version: string;
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** ApplicationSummary */
+        ApplicationSummary: {
+            /**
+             * Cohort Id
+             * Format: uuid
+             */
+            cohort_id: string;
+            /** Decision At */
+            decision_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Demo */
+            is_demo: boolean;
+            /**
+             * Program Id
+             * Format: uuid
+             */
+            program_id: string;
+            /** Status */
+            status: string;
+            /** Submitted At */
+            submitted_at: string | null;
             /** Version */
             version: number;
         };
@@ -2006,6 +2087,8 @@ export interface components {
              * @default
              */
             education_status: string;
+            /** Expected Version */
+            expected_version: number;
             /** Github Url */
             github_url?: string | null;
             /** Linkedin Url */
@@ -2038,8 +2121,6 @@ export interface components {
             timezone: string;
             /** University Id */
             university_id?: string | null;
-            /** Version */
-            version: number;
             /** Weekly Availability Hours */
             weekly_availability_hours?: number | null;
         };
@@ -2392,6 +2473,8 @@ export interface components {
              * @enum {string}
              */
             decision: "APPROVED" | "REJECTED";
+            /** Expected Version */
+            expected_version: number;
             /** Reason */
             reason: string;
         };
@@ -4455,6 +4538,21 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** SubmissionUpdateRequest */
+        SubmissionUpdateRequest: {
+            /** Artifact Upload Ids */
+            artifact_upload_ids?: string[];
+            /** Expected Version */
+            expected_version: number;
+            /** Links */
+            links?: {
+                [key: string]: string;
+            };
+            /** Text Fields */
+            text_fields?: {
+                [key: string]: string;
+            };
+        };
         /** SubmissionView */
         SubmissionView: {
             /** Artifact Snapshot */
@@ -5352,7 +5450,7 @@ export interface operations {
             };
         };
     };
-    application_api_v1_internships_me_application_get: {
+    legacy_application_api_v1_internships_me_application_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -5490,9 +5588,186 @@ export interface operations {
             };
         };
     };
-    assignments_api_v1_internships_me_assignments_get: {
+    applications_api_v1_internships_me_applications_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_application_api_v1_internships_me_applications_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartApplicationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    application_by_id_api_v1_internships_me_applications__application_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_application_by_id_api_v1_internships_me_applications__application_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_application_by_id_api_v1_internships_me_applications__application_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                application_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationSubmitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    assignments_api_v1_internships_me_assignments_get: {
+        parameters: {
+            query?: {
+                enrollment_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: {
@@ -5523,7 +5798,9 @@ export interface operations {
     };
     assignment_api_v1_internships_me_assignments__assignment_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                enrollment_id?: string | null;
+            };
             header?: never;
             path: {
                 assignment_id: string;
@@ -5593,7 +5870,9 @@ export interface operations {
     };
     start_assignment_route_api_v1_internships_me_assignments__assignment_id__start_post: {
         parameters: {
-            query?: never;
+            query?: {
+                enrollment_id?: string | null;
+            };
             header?: never;
             path: {
                 assignment_id: string;
@@ -5626,7 +5905,9 @@ export interface operations {
     };
     submission_draft_api_v1_internships_me_assignments__assignment_id__submission_drafts_post: {
         parameters: {
-            query?: never;
+            query?: {
+                enrollment_id?: string | null;
+            };
             header?: never;
             path: {
                 assignment_id: string;
@@ -5663,7 +5944,9 @@ export interface operations {
     };
     certificate_route_api_v1_internships_me_certificate_eligibility_get: {
         parameters: {
-            query?: never;
+            query?: {
+                enrollment_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: {
@@ -5694,7 +5977,9 @@ export interface operations {
     };
     curriculum_route_api_v1_internships_me_curriculum_get: {
         parameters: {
-            query?: never;
+            query?: {
+                enrollment_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: {
@@ -5725,7 +6010,9 @@ export interface operations {
     };
     complete_unit_route_api_v1_internships_me_curriculum_units__unit_id__complete_post: {
         parameters: {
-            query?: never;
+            query?: {
+                enrollment_id?: string | null;
+            };
             header?: never;
             path: {
                 unit_id: string;
@@ -5762,7 +6049,9 @@ export interface operations {
     };
     dashboard_route_api_v1_internships_me_dashboard_get: {
         parameters: {
-            query?: never;
+            query?: {
+                enrollment_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: {
@@ -5868,7 +6157,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubmissionDraftRequest"];
+                "application/json": components["schemas"]["SubmissionUpdateRequest"];
             };
         };
         responses: {
@@ -6976,7 +7265,9 @@ export interface operations {
     completion_decision_route_api_v1_ops_internships_enrollments__enrollment_id__completion_decision_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 enrollment_id: string;
             };

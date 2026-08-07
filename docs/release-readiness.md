@@ -4,18 +4,21 @@ This document records release gates for `release/xprize-2026`. A gate is only
 `passed` when it has been executed against the current working tree. External
 systems and evidence are not inferred from source code.
 
-## Passed locally
+## Passed locally on the current working tree
 
-- npm dependency audit at high severity: no known vulnerabilities.
+- npm dependency audit at high severity: 0 vulnerabilities.
 - Python dependency audit: no known vulnerabilities.
-- Full Git-history secret scan: 28 commits scanned, no leaks found.
-- API test suite: 79 tests passed.
+- API test suite: 85 tests passed.
 - Web unit suite: 46 tests passed.
-- Playwright functional and reviewed visual suite: 79 tests passed using local
-  system Chrome because the pinned Chromium CDN download was unavailable.
-- Strict TypeScript, strict mypy, ESLint, Ruff, formatting, OpenAPI drift,
-  Alembic upgrade/check, Terraform formatting/init/validation, API image build,
-  and web image build.
+- Strict TypeScript, strict mypy, ESLint, Ruff, formatting, and API client build.
+- Application resources are now addressed by application ID plus authenticated
+  applicant ID, with explicit frontend selection for multiple applications.
+- Internship queries now resolve an explicit enrollment context and constrain
+  curriculum, assignments, and progress to the selected cohort track.
+- Completion decisions now require idempotency, expected version, row locking,
+  decision validation, a rejection reason, and target-student audit data.
+- Production upload completion now quarantines objects and emits a
+  `MalwareScanRequested` outbox event; the worker has a bounded ClamAV path.
 
 ## Failed
 
@@ -26,6 +29,9 @@ systems and evidence are not inferred from source code.
 
 ## Blocked
 
+- Terraform checks: blocked because Terraform is not installed locally.
+- Web production build: blocked because Firebase public build variables are not
+  available in this workspace.
 - Public license: an owner-approved license has not been selected.
 - Release PR, merge, tag, and repository metadata: blocked while security CI is
   known to fail and while the requested implementation phases remain incomplete.
@@ -37,7 +43,8 @@ systems and evidence are not inferred from source code.
 
 ## Unverified or incomplete
 
-- A PostgreSQL integration test for the complete client-to-paid-student lifecycle.
+- PostgreSQL migration upgrade/check and a PostgreSQL integration test for the
+  complete client-to-paid-student lifecycle.
 - The shared typed Gemini runtime, expanded persisted run schema, typed action
   registry, 30-case evaluation harness, and real-Gemini staging smoke test.
 - Judge-flow feature flags and route ownership refactor requested in phases 1-4.

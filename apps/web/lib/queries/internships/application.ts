@@ -26,9 +26,29 @@ export type InternshipApplication = {
   is_demo: boolean;
 };
 
-export const applicationQuery = () =>
+export type InternshipApplicationSummary = Pick<
+  InternshipApplication,
+  "id" | "status" | "version" | "submitted_at" | "is_demo"
+> & {
+  program_id: string;
+  cohort_id: string;
+  decision_at: string | null;
+};
+
+export const applicationsQuery = () =>
   queryOptions({
     queryKey: internshipKeys.application(),
     queryFn: () =>
-      internshipFetch<InternshipApplication>("/internships/me/application"),
+      internshipFetch<InternshipApplicationSummary[]>(
+        "/internships/me/applications",
+      ),
+  });
+
+export const applicationQuery = (applicationId: string) =>
+  queryOptions({
+    queryKey: [...internshipKeys.application(), applicationId],
+    queryFn: () =>
+      internshipFetch<InternshipApplication>(
+        `/internships/me/applications/${applicationId}`,
+      ),
   });

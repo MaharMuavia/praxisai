@@ -69,7 +69,7 @@ class StartApplicationRequest(BaseModel):
 
 
 class ApplicationUpdate(BaseModel):
-    version: int = Field(ge=1)
+    expected_version: int = Field(ge=1)
     primary_track_id: uuid.UUID | None = None
     secondary_track_id: uuid.UUID | None = None
     education_status: str = Field(default="", max_length=80)
@@ -112,8 +112,19 @@ class ApplicationView(InternshipSchema):
     is_demo: bool
 
 
+class ApplicationSummary(InternshipSchema):
+    id: uuid.UUID
+    program_id: uuid.UUID
+    cohort_id: uuid.UUID
+    status: str
+    version: int
+    submitted_at: datetime | None
+    decision_at: datetime | None
+    is_demo: bool
+
+
 class ApplicationSubmitRequest(BaseModel):
-    version: int = Field(ge=1)
+    expected_version: int = Field(ge=1)
     consent_version: str = Field(min_length=1, max_length=30)
 
 
@@ -213,6 +224,10 @@ class SubmissionDraftRequest(BaseModel):
     links: dict[str, HttpUrl] = Field(default_factory=dict)
     text_fields: dict[str, str] = Field(default_factory=dict)
     artifact_upload_ids: list[str] = Field(default_factory=list, max_length=30)
+
+
+class SubmissionUpdateRequest(SubmissionDraftRequest):
+    expected_version: int = Field(ge=1)
 
 
 class UploadInitiateRequest(BaseModel):
@@ -324,6 +339,7 @@ class ReviewQueueItem(InternshipSchema):
 class CompletionDecisionRequest(BaseModel):
     decision: Literal["APPROVED", "REJECTED"]
     reason: str = Field(min_length=10, max_length=2_000)
+    expected_version: int = Field(ge=1)
 
 
 class IssueCertificateRequest(BaseModel):

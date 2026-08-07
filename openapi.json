@@ -239,17 +239,84 @@
             "title": "Consent Version",
             "type": "string"
           },
-          "version": {
+          "expected_version": {
             "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version",
+          "consent_version"
+        ],
+        "title": "ApplicationSubmitRequest",
+        "type": "object"
+      },
+      "ApplicationSummary": {
+        "properties": {
+          "cohort_id": {
+            "format": "uuid",
+            "title": "Cohort Id",
+            "type": "string"
+          },
+          "decision_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_demo": {
+            "title": "Is Demo",
+            "type": "boolean"
+          },
+          "program_id": {
+            "format": "uuid",
+            "title": "Program Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "version": {
             "title": "Version",
             "type": "integer"
           }
         },
         "required": [
+          "id",
+          "program_id",
+          "cohort_id",
+          "status",
           "version",
-          "consent_version"
+          "submitted_at",
+          "decision_at",
+          "is_demo"
         ],
-        "title": "ApplicationSubmitRequest",
+        "title": "ApplicationSummary",
         "type": "object"
       },
       "ApplicationUpdate": {
@@ -284,6 +351,11 @@
             "maxLength": 80,
             "title": "Education Status",
             "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
           },
           "github_url": {
             "anyOf": [
@@ -387,11 +459,6 @@
             ],
             "title": "University Id"
           },
-          "version": {
-            "minimum": 1.0,
-            "title": "Version",
-            "type": "integer"
-          },
           "weekly_availability_hours": {
             "anyOf": [
               {
@@ -407,7 +474,7 @@
           }
         },
         "required": [
-          "version"
+          "expected_version"
         ],
         "title": "ApplicationUpdate",
         "type": "object"
@@ -1291,6 +1358,11 @@
             "title": "Decision",
             "type": "string"
           },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
           "reason": {
             "maxLength": 2000,
             "minLength": 10,
@@ -1300,7 +1372,8 @@
         },
         "required": [
           "decision",
-          "reason"
+          "reason",
+          "expected_version"
         ],
         "title": "CompletionDecisionRequest",
         "type": "object"
@@ -6494,6 +6567,45 @@
         "title": "SubmissionDraftRequest",
         "type": "object"
       },
+      "SubmissionUpdateRequest": {
+        "properties": {
+          "artifact_upload_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Artifact Upload Ids",
+            "type": "array"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "links": {
+            "additionalProperties": {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Links",
+            "type": "object"
+          },
+          "text_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Text Fields",
+            "type": "object"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "SubmissionUpdateRequest",
+        "type": "object"
+      },
       "SubmissionView": {
         "properties": {
           "artifact_snapshot": {
@@ -8340,7 +8452,7 @@
     },
     "/api/v1/internships/me/application": {
       "get": {
-        "operationId": "application_api_v1_internships_me_application_get",
+        "operationId": "legacy_application_api_v1_internships_me_application_get",
         "parameters": [
           {
             "in": "cookie",
@@ -8381,7 +8493,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Application",
+        "summary": "Legacy Application",
         "tags": [
           "internships student"
         ]
@@ -8578,10 +8690,348 @@
         ]
       }
     },
+    "/api/v1/internships/me/applications": {
+      "get": {
+        "operationId": "applications_api_v1_internships_me_applications_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApplicationSummary"
+                  },
+                  "title": "Response Applications Api V1 Internships Me Applications Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Applications",
+        "tags": [
+          "internships student"
+        ]
+      },
+      "post": {
+        "operationId": "create_application_api_v1_internships_me_applications_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartApplicationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Application",
+        "tags": [
+          "internships student"
+        ]
+      }
+    },
+    "/api/v1/internships/me/applications/{application_id}": {
+      "get": {
+        "operationId": "application_by_id_api_v1_internships_me_applications__application_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Application By Id",
+        "tags": [
+          "internships student"
+        ]
+      },
+      "put": {
+        "operationId": "update_application_by_id_api_v1_internships_me_applications__application_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Application By Id",
+        "tags": [
+          "internships student"
+        ]
+      }
+    },
+    "/api/v1/internships/me/applications/{application_id}/submit": {
+      "post": {
+        "operationId": "submit_application_by_id_api_v1_internships_me_applications__application_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "application_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Application Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Application By Id",
+        "tags": [
+          "internships student"
+        ]
+      }
+    },
     "/api/v1/internships/me/assignments": {
       "get": {
         "operationId": "assignments_api_v1_internships_me_assignments_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "enrollment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrollment Id"
+            }
+          },
           {
             "in": "cookie",
             "name": "praxis_session",
@@ -8643,6 +9093,23 @@
               "format": "uuid",
               "title": "Assignment Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "enrollment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrollment Id"
             }
           },
           {
@@ -8774,6 +9241,23 @@
             }
           },
           {
+            "in": "query",
+            "name": "enrollment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrollment Id"
+            }
+          },
+          {
             "in": "cookie",
             "name": "praxis_session",
             "required": false,
@@ -8830,6 +9314,23 @@
               "format": "uuid",
               "title": "Assignment Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "enrollment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrollment Id"
             }
           },
           {
@@ -8892,6 +9393,23 @@
         "operationId": "certificate_route_api_v1_internships_me_certificate_eligibility_get",
         "parameters": [
           {
+            "in": "query",
+            "name": "enrollment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrollment Id"
+            }
+          },
+          {
             "in": "cookie",
             "name": "praxis_session",
             "required": false,
@@ -8940,6 +9458,23 @@
       "get": {
         "operationId": "curriculum_route_api_v1_internships_me_curriculum_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "enrollment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrollment Id"
+            }
+          },
           {
             "in": "cookie",
             "name": "praxis_session",
@@ -8997,6 +9532,23 @@
               "format": "uuid",
               "title": "Unit Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "enrollment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrollment Id"
             }
           },
           {
@@ -9058,6 +9610,23 @@
       "get": {
         "operationId": "dashboard_route_api_v1_internships_me_dashboard_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "enrollment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Enrollment Id"
+            }
+          },
           {
             "in": "cookie",
             "name": "praxis_session",
@@ -9248,7 +9817,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SubmissionDraftRequest"
+                "$ref": "#/components/schemas/SubmissionUpdateRequest"
               }
             }
           },
@@ -11367,6 +11936,22 @@
               "format": "uuid",
               "title": "Enrollment Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {

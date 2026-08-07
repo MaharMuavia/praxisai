@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     cloud_storage_bucket: str | None = None
     internship_local_storage_path: Path = Path(".local/internship-uploads")
+    upload_scanner_provider: Literal["disabled", "clamav"] = "disabled"
+    clamav_host: str | None = None
+    clamav_port: int = Field(default=3310, ge=1, le=65535)
+    scan_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
 
     payment_provider: Literal["manual_external"] = "manual_external"
     email_provider: Literal["disabled", "smtp", "sendgrid"] = "disabled"
@@ -119,6 +123,10 @@ class Settings(BaseSettings):
             violations.append("missing OpenTelemetry exporter")
         if self.storage_provider != "supabase":
             violations.append("STORAGE_PROVIDER=supabase")
+        if self.upload_scanner_provider != "clamav":
+            violations.append("UPLOAD_SCANNER_PROVIDER=clamav")
+        if not self.clamav_host:
+            violations.append("missing ClamAV host")
         if self.storage_provider == "supabase":
             if not self.supabase_url:
                 violations.append("missing Supabase URL")

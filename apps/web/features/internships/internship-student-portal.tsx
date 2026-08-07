@@ -14,7 +14,10 @@ import { assignmentsQuery } from "@/lib/queries/internships/assignments";
 import { curriculumQuery } from "@/lib/queries/internships/curriculum";
 import { dashboardQuery } from "@/lib/queries/internships/dashboard";
 import { feedbackQuery } from "@/lib/queries/internships/reviews";
-import { applicationQuery } from "@/lib/queries/internships/application";
+import {
+  applicationQuery,
+  applicationsQuery,
+} from "@/lib/queries/internships/application";
 import { saveInternshipDraft } from "@/lib/queries/internships/submissions";
 
 type PortalView =
@@ -34,9 +37,21 @@ export function InternshipStudentPortal({
 }) {
   const queryClient = useQueryClient();
   const dashboard = useQuery(dashboardQuery());
-  const application = useQuery({
-    ...applicationQuery(),
+  const applicationList = useQuery({
+    ...applicationsQuery(),
     enabled: view === "application",
+  });
+  const [selectedApplicationId, setSelectedApplicationId] = useState<
+    string | null
+  >(null);
+  const activeApplicationId =
+    selectedApplicationId ??
+    (applicationList.data?.length === 1
+      ? (applicationList.data[0]?.id ?? null)
+      : null);
+  const application = useQuery({
+    ...applicationQuery(activeApplicationId ?? ""),
+    enabled: view === "application" && Boolean(activeApplicationId),
   });
   const curriculum = useQuery({
     ...curriculumQuery(),
@@ -72,6 +87,7 @@ export function InternshipStudentPortal({
 
   const error = [
     dashboard,
+    applicationList,
     application,
     curriculum,
     assignments,
@@ -125,10 +141,19 @@ export function InternshipStudentPortal({
         <DashboardView dashboard={dashboard.data} />
       ) : null}
       {view === "application" ? (
-        <ApplicationView
-          key={`${application.data?.id ?? "new"}:${application.data?.version ?? 0}`}
-          application={application.data}
-        />
+        applicationList.data &&
+        applicationList.data.length > 1 &&
+        !activeApplicationId ? (
+          <ApplicationSelection
+            applications={applicationList.data}
+            onSelect={setSelectedApplicationId}
+          />
+        ) : (
+          <ApplicationView
+            key={`${application.data?.id ?? "new"}:${application.data?.version ?? 0}`}
+            application={application.data}
+          />
+        )
       ) : null}
       {view === "learn" ? (
         <section className="internship-section">
@@ -293,6 +318,44 @@ function DashboardView({ dashboard }: { dashboard?: Dashboard }) {
   );
 }
 
+function ApplicationSelection({
+  applications,
+  onSelect,
+}: {
+  applications: {
+    id: string;
+    cohort_id: string;
+    status: string;
+    version: number;
+    is_demo: boolean;
+  }[];
+  onSelect: (applicationId: string) => void;
+}) {
+  return (
+    <section
+      className="internship-section"
+      aria-labelledby="application-selection"
+    >
+      <Card>
+        <span className="marketing-eyebrow">Application records</span>
+        <h2 id="application-selection">Select an application</h2>
+        <p>Choose the cohort application you want to view or edit.</p>
+        <div className="internship-actions">
+          {applications.map((item) => (
+            <Button
+              key={item.id}
+              onClick={() => onSelect(item.id)}
+              variant="secondary"
+            >
+              {item.cohort_id} · {item.status.replaceAll("_", " ")}
+            </Button>
+          ))}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
 function ApplicationView({
   application,
 }: {
@@ -376,10 +439,10 @@ function ApplicationView({
   }, [dirty]);
   const save = useMutation({
     mutationFn: () =>
-      internshipFetch(`/internships/me/application`, {
+      internshipFetch(`/internships/me/applications/${application?.id}`, {
         method: "PUT",
         body: JSON.stringify({
-          version: application?.version,
+          expected_version: application?.version,
           ...form,
           primary_track_id: form.primary_track_id || null,
           secondary_track_id: form.secondary_track_id || null,
@@ -403,14 +466,17 @@ function ApplicationView({
   });
   const submit = useMutation({
     mutationFn: () =>
-      internshipFetch(`/internships/me/application/submit`, {
-        method: "POST",
-        headers: { "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({
-          version: application?.version,
-          consent_version: "internship-application-v1",
-        }),
-      }),
+      internshipFetch(
+        `/internships/me/applications/${application?.id}/submit`,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": crypto.randomUUID() },
+          body: JSON.stringify({
+            expected_version: application?.version,
+            consent_version: "internship-application-v1",
+          }),
+        },
+      ),
     onSuccess: async () => {
       setErrorMessage(null);
       await queryClient.invalidateQueries({

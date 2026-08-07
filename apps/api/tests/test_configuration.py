@@ -44,6 +44,8 @@ def test_production_accepts_only_explicit_secure_provider_configuration() -> Non
             "postgresql+asyncpg://postgres.ref:secret@pooler.example.test:5432/postgres"
         ),
         database_pool_mode="transaction",
+        upload_scanner_provider="clamav",
+        clamav_host="clamav.internal",
     )
 
     assert settings.app_env == "production"

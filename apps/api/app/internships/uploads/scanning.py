@@ -1,3 +1,5 @@
+import socket
+import struct
 from collections.abc import Callable
 from dataclasses import dataclass
 from io import BytesIO
@@ -83,6 +85,30 @@ class ClamAVScanner:
         del declared_content_type, filename
         clean, message = self._scan_bytes(content)
         return ScanResult("CLEAN" if clean else "REJECTED", message)
+
+
+def scan_with_clamav(
+    content: bytes,
+    *,
+    host: str,
+    port: int,
+    timeout_seconds: float,
+) -> tuple[bool, str]:
+    """Scan bytes through ClamAV's bounded INSTREAM protocol."""
+    with socket.create_connection((host, port), timeout=timeout_seconds) as connection:
+        connection.settimeout(timeout_seconds)
+        connection.sendall(b"zINSTREAM\0")
+        for offset in range(0, len(content), 1024 * 1024):
+            chunk = content[offset : offset + 1024 * 1024]
+            connection.sendall(struct.pack(">I", len(chunk)))
+            connection.sendall(chunk)
+        connection.sendall(struct.pack(">I", 0))
+        response = connection.recv(4096).decode("utf-8", errors="replace").strip()
+    if response.endswith("FOUND") or "FOUND" in response:
+        return False, response
+    if not response.endswith("OK"):
+        raise RuntimeError(f"ClamAV returned an unexpected response: {response[:300]}")
+    return True, response
 
 
 class DisabledProductionScanner:

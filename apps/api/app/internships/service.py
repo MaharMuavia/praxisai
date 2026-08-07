@@ -32,8 +32,13 @@ from app.domain.models import (
     InternshipWeek,
     Organization,
     OrganizationMembership,
+    OutboxEvent,
     StudentProfile,
     User,
+)
+from app.internships.enrollments.context import (
+    EnrollmentContext,
+    resolve_enrollment_context,
 )
 from app.internships.policies import (
     evaluate_email_eligibility,
@@ -44,6 +49,7 @@ from app.internships.reviews.scoring import RubricValidationError
 from app.internships.reviews.scoring import weighted_score as score_rubric
 from app.internships.schemas import (
     ApplicationDecisionRequest,
+    ApplicationSummary,
     ApplicationUpdate,
     ApplicationView,
     AssignmentView,
@@ -61,6 +67,7 @@ from app.internships.schemas import (
     SignupRequest,
     StartApplicationRequest,
     SubmissionDraftRequest,
+    SubmissionUpdateRequest,
     SubmissionView,
     TimelineItem,
     TrackSummary,
@@ -307,11 +314,51 @@ async def signup(
     return "CREATED", application.id, principal
 
 
-async def get_application(session: AsyncSession, principal: SessionPrincipal) -> ApplicationView:
+def _application_summary(
+    application: InternshipApplication,
+    *,
+    is_demo: bool,
+) -> ApplicationSummary:
+    return ApplicationSummary(
+        id=application.id,
+        program_id=application.program_id,
+        cohort_id=application.cohort_id,
+        status=application.status,
+        version=application.version,
+        submitted_at=application.submitted_at,
+        decision_at=application.decision_at,
+        is_demo=is_demo,
+    )
+
+
+async def list_applications(
+    session: AsyncSession, principal: SessionPrincipal
+) -> list[ApplicationSummary]:
+    rows = (
+        await session.execute(
+            select(InternshipApplication)
+            .where(InternshipApplication.applicant_user_id == principal.user_id)
+            .order_by(InternshipApplication.created_at.desc())
+        )
+    ).scalars()
+    output: list[ApplicationSummary] = []
+    for application in rows:
+        program = await session.get(InternshipProgram, application.program_id)
+        output.append(_application_summary(application, is_demo=bool(program and program.is_demo)))
+    return output
+
+
+async def get_application(
+    session: AsyncSession,
+    *,
+    principal: SessionPrincipal,
+    application_id: uuid.UUID,
+) -> ApplicationView:
     application = await session.scalar(
-        select(InternshipApplication)
-        .where(InternshipApplication.applicant_user_id == principal.user_id)
-        .order_by(InternshipApplication.created_at.desc())
+        select(InternshipApplication).where(
+            InternshipApplication.id == application_id,
+            InternshipApplication.applicant_user_id == principal.user_id,
+        )
     )
     if application is None:
         raise NotFound("Internship application not found")
@@ -341,13 +388,11 @@ async def start_application(
     )
     if not eligibility.eligible:
         raise Forbidden("This email is not eligible for the selected cohort")
-    active_statuses = {"DRAFT", "ELIGIBILITY_REVIEW", "SUBMITTED", "WAITLISTED", "ACCEPTED"}
     existing = await session.scalar(
         select(InternshipApplication)
         .where(
             InternshipApplication.applicant_user_id == principal.user_id,
             InternshipApplication.cohort_id == cohort.id,
-            InternshipApplication.status.in_(active_statuses),
         )
         .with_for_update()
     )
@@ -388,21 +433,25 @@ async def update_application(
     session: AsyncSession,
     *,
     principal: SessionPrincipal,
+    application_id: uuid.UUID,
     body: ApplicationUpdate,
     correlation_id: uuid.UUID,
 ) -> ApplicationView:
     application = await session.scalar(
         select(InternshipApplication)
-        .where(InternshipApplication.applicant_user_id == principal.user_id)
+        .where(
+            InternshipApplication.id == application_id,
+            InternshipApplication.applicant_user_id == principal.user_id,
+        )
         .with_for_update()
     )
     if application is None:
         raise NotFound("Internship application not found")
+    if application.version != body.expected_version:
+        raise Conflict("Application changed; reload before saving")
     if application.status not in {"DRAFT", "ELIGIBILITY_REVIEW"}:
         raise InvalidState("Submitted applications require an explicit correction request")
-    if application.version != body.version:
-        raise Conflict("Application changed; reload before saving")
-    for field, value in body.model_dump(exclude={"version"}).items():
+    for field, value in body.model_dump(exclude={"expected_version"}).items():
         setattr(application, field, str(value) if field.endswith("_url") and value else value)
     application.version += 1
     _audit(
@@ -422,14 +471,18 @@ async def submit_application(
     session: AsyncSession,
     *,
     principal: SessionPrincipal,
-    version: int,
+    application_id: uuid.UUID,
+    expected_version: int,
     consent_version: str,
     idempotency_key: str,
     correlation_id: uuid.UUID,
 ) -> ApplicationView:
     application = await session.scalar(
         select(InternshipApplication)
-        .where(InternshipApplication.applicant_user_id == principal.user_id)
+        .where(
+            InternshipApplication.id == application_id,
+            InternshipApplication.applicant_user_id == principal.user_id,
+        )
         .with_for_update()
     )
     if application is None:
@@ -439,7 +492,15 @@ async def submit_application(
         return _application_view(application, is_demo=bool(program and program.is_demo))
     if application.status not in {"DRAFT", "ELIGIBILITY_REVIEW"}:
         raise InvalidState("Application has already been submitted")
-    if application.version != version:
+    conflicting_key = await session.scalar(
+        select(InternshipApplication.id).where(
+            InternshipApplication.submit_idempotency_key == idempotency_key,
+            InternshipApplication.id != application_id,
+        )
+    )
+    if conflicting_key is not None:
+        raise Conflict("Idempotency-Key was already used for another application")
+    if application.version != expected_version:
         raise Conflict("Application changed; reload before submitting")
     if not is_application_complete(application):
         raise ValidationFailure("Application is incomplete")
@@ -555,24 +616,43 @@ async def decide_application(
     return _application_view(application, is_demo=bool(program and program.is_demo))
 
 
-async def _enrollment(session: AsyncSession, principal: SessionPrincipal) -> CohortEnrollment:
-    enrollment = await session.scalar(
-        select(CohortEnrollment)
-        .where(
-            CohortEnrollment.student_user_id == principal.user_id,
-            CohortEnrollment.status.not_in(["WITHDRAWN", "TERMINATED"]),
+async def _enrollment_context(
+    session: AsyncSession,
+    principal: SessionPrincipal,
+    enrollment_id: uuid.UUID | None = None,
+) -> EnrollmentContext:
+    try:
+        return await resolve_enrollment_context(
+            session, principal=principal, enrollment_id=enrollment_id
         )
-        .order_by(CohortEnrollment.created_at.desc())
-    )
+    except LookupError as exc:
+        raise NotFound(str(exc)) from exc
+    except ValueError as exc:
+        raise Conflict(str(exc)) from exc
+
+
+async def _enrollment(
+    session: AsyncSession,
+    principal: SessionPrincipal,
+    enrollment_id: uuid.UUID | None = None,
+) -> CohortEnrollment:
+    context = await _enrollment_context(session, principal, enrollment_id)
+    enrollment = await session.get(CohortEnrollment, context.enrollment_id)
     if enrollment is None:
         raise NotFound("Internship enrollment not found")
     return enrollment
 
 
-async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> DashboardView:
+async def dashboard(
+    session: AsyncSession,
+    principal: SessionPrincipal,
+    enrollment_id: uuid.UUID | None = None,
+) -> DashboardView:
     try:
-        enrollment = await _enrollment(session, principal)
+        enrollment = await _enrollment(session, principal, enrollment_id)
     except NotFound:
+        if enrollment_id is not None:
+            raise
         return DashboardView(
             enrollment_id=None,
             program_name=None,
@@ -592,12 +672,13 @@ async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> Dashb
     program = await session.get(InternshipProgram, cohort.program_id) if cohort else None
     version = await session.get(InternshipTrackVersion, enrollment.track_version_id)
     track = await session.get(InternshipTrack, version.track_id) if version else None
+    context = await _enrollment_context(session, principal, enrollment.id)
     unit_total = await session.scalar(
         select(func.count(InternshipUnit.id))
         .join(InternshipWeek, InternshipWeek.id == InternshipUnit.week_id)
         .join(InternshipPhase, InternshipPhase.id == InternshipWeek.phase_id)
         .join(CohortTrack, CohortTrack.id == InternshipPhase.cohort_track_id)
-        .where(CohortTrack.track_version_id == enrollment.track_version_id)
+        .where(CohortTrack.id == context.cohort_track_id)
     )
     completed_units = await session.scalar(
         select(func.count(InternshipUnitCompletion.id)).where(
@@ -606,20 +687,33 @@ async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> Dashb
     )
     assignment_total = await session.scalar(
         select(func.count(InternshipStudentAssignment.id)).where(
-            InternshipStudentAssignment.student_user_id == principal.user_id
+            InternshipStudentAssignment.student_user_id == principal.user_id,
+            InternshipStudentAssignment.cohort_assignment_id.in_(
+                select(InternshipCohortAssignment.id).where(
+                    InternshipCohortAssignment.cohort_track_id == context.cohort_track_id
+                )
+            ),
         )
     )
     passed_assignments = await session.scalar(
         select(func.count(InternshipStudentAssignment.id)).where(
             InternshipStudentAssignment.student_user_id == principal.user_id,
             InternshipStudentAssignment.final_result == "PASS",
+            InternshipStudentAssignment.cohort_assignment_id.in_(
+                select(InternshipCohortAssignment.id).where(
+                    InternshipCohortAssignment.cohort_track_id == context.cohort_track_id
+                )
+            ),
         )
     )
     required = (unit_total or 0) + (assignment_total or 0)
     done = (completed_units or 0) + (passed_assignments or 0)
     application = await session.scalar(
         select(InternshipApplication)
-        .where(InternshipApplication.applicant_user_id == principal.user_id)
+        .where(
+            InternshipApplication.applicant_user_id == principal.user_id,
+            InternshipApplication.cohort_id == context.cohort_id,
+        )
         .order_by(InternshipApplication.created_at.desc())
     )
     application_state = {
@@ -648,7 +742,7 @@ async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> Dashb
             await session.execute(
                 select(InternshipPhase)
                 .join(CohortTrack, CohortTrack.id == InternshipPhase.cohort_track_id)
-                .where(CohortTrack.track_version_id == enrollment.track_version_id)
+                .where(CohortTrack.id == context.cohort_track_id)
                 .order_by(InternshipPhase.ordinal)
             )
         ).scalars()
@@ -683,7 +777,10 @@ async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> Dashb
                 InternshipAssignmentTemplate,
                 InternshipAssignmentTemplate.id == InternshipCohortAssignment.template_id,
             )
-            .where(InternshipStudentAssignment.student_user_id == principal.user_id)
+            .where(
+                InternshipStudentAssignment.student_user_id == principal.user_id,
+                InternshipCohortAssignment.cohort_track_id == context.cohort_track_id,
+            )
         )
     ).all()
     timeline.extend(
@@ -719,8 +816,13 @@ async def dashboard(session: AsyncSession, principal: SessionPrincipal) -> Dashb
     )
 
 
-async def curriculum(session: AsyncSession, principal: SessionPrincipal) -> CurriculumView:
-    enrollment = await _enrollment(session, principal)
+async def curriculum(
+    session: AsyncSession,
+    principal: SessionPrincipal,
+    enrollment_id: uuid.UUID | None = None,
+) -> CurriculumView:
+    enrollment = await _enrollment(session, principal, enrollment_id)
+    context = await _enrollment_context(session, principal, enrollment.id)
     version = await session.get(InternshipTrackVersion, enrollment.track_version_id)
     if version is None:
         raise NotFound("Track version not found")
@@ -732,7 +834,7 @@ async def curriculum(session: AsyncSession, principal: SessionPrincipal) -> Curr
             select(InternshipWeek)
             .join(InternshipPhase, InternshipPhase.id == InternshipWeek.phase_id)
             .join(CohortTrack, CohortTrack.id == InternshipPhase.cohort_track_id)
-            .where(CohortTrack.track_version_id == version.id)
+            .where(CohortTrack.id == context.cohort_track_id)
             .order_by(InternshipWeek.week_number)
         )
     ).scalars()
@@ -796,10 +898,12 @@ async def complete_unit(
     *,
     principal: SessionPrincipal,
     unit_id: uuid.UUID,
+    enrollment_id: uuid.UUID | None = None,
     evidence: dict[str, Any],
     correlation_id: uuid.UUID,
 ) -> CurriculumView:
-    enrollment = await _enrollment(session, principal)
+    enrollment = await _enrollment(session, principal, enrollment_id)
+    context = await _enrollment_context(session, principal, enrollment.id)
     unit = await session.get(InternshipUnit, unit_id)
     if unit is None:
         raise NotFound("Learning unit not found")
@@ -808,7 +912,7 @@ async def complete_unit(
         raise NotFound("Learning week not found")
     phase = await session.get(InternshipPhase, week.phase_id) if week else None
     cohort_track = await session.get(CohortTrack, phase.cohort_track_id) if phase else None
-    if cohort_track is None or cohort_track.track_version_id != enrollment.track_version_id:
+    if cohort_track is None or cohort_track.id != context.cohort_track_id:
         raise NotFound("Learning unit not found")
     if now_utc() < (unit.release_at or week.starts_at):
         raise InvalidState("Learning unit is locked")
@@ -836,7 +940,7 @@ async def complete_unit(
             correlation_id=correlation_id,
         )
         await session.commit()
-    return await curriculum(session, principal)
+    return await curriculum(session, principal, enrollment.id)
 
 
 async def _assignment_view(
@@ -876,12 +980,22 @@ async def _assignment_view(
 
 
 async def list_assignments(
-    session: AsyncSession, principal: SessionPrincipal
+    session: AsyncSession,
+    principal: SessionPrincipal,
+    enrollment_id: uuid.UUID | None = None,
 ) -> list[AssignmentView]:
+    context = await _enrollment_context(session, principal, enrollment_id)
     rows = (
         await session.execute(
             select(InternshipStudentAssignment)
-            .where(InternshipStudentAssignment.student_user_id == principal.user_id)
+            .join(
+                InternshipCohortAssignment,
+                InternshipCohortAssignment.id == InternshipStudentAssignment.cohort_assignment_id,
+            )
+            .where(
+                InternshipStudentAssignment.student_user_id == principal.user_id,
+                InternshipCohortAssignment.cohort_track_id == context.cohort_track_id,
+            )
             .order_by(InternshipStudentAssignment.created_at)
         )
     ).scalars()
@@ -889,12 +1003,22 @@ async def list_assignments(
 
 
 async def get_assignment(
-    session: AsyncSession, *, principal: SessionPrincipal, assignment_id: uuid.UUID
+    session: AsyncSession,
+    *,
+    principal: SessionPrincipal,
+    assignment_id: uuid.UUID,
+    enrollment_id: uuid.UUID | None = None,
 ) -> InternshipStudentAssignment:
+    context = await _enrollment_context(session, principal, enrollment_id)
     assignment = await session.scalar(
         select(InternshipStudentAssignment).where(
             InternshipStudentAssignment.id == assignment_id,
             InternshipStudentAssignment.student_user_id == principal.user_id,
+            InternshipStudentAssignment.cohort_assignment_id.in_(
+                select(InternshipCohortAssignment.id).where(
+                    InternshipCohortAssignment.cohort_track_id == context.cohort_track_id
+                )
+            ),
         )
     )
     if assignment is None:
@@ -907,9 +1031,15 @@ async def start_assignment(
     *,
     principal: SessionPrincipal,
     assignment_id: uuid.UUID,
+    enrollment_id: uuid.UUID | None = None,
     correlation_id: uuid.UUID,
 ) -> AssignmentView:
-    assignment = await get_assignment(session, principal=principal, assignment_id=assignment_id)
+    assignment = await get_assignment(
+        session,
+        principal=principal,
+        assignment_id=assignment_id,
+        enrollment_id=enrollment_id,
+    )
     cohort_assignment = await session.get(
         InternshipCohortAssignment, assignment.cohort_assignment_id
     )
@@ -940,10 +1070,16 @@ async def create_submission_draft(
     *,
     principal: SessionPrincipal,
     assignment_id: uuid.UUID,
+    enrollment_id: uuid.UUID | None = None,
     body: SubmissionDraftRequest,
     correlation_id: uuid.UUID,
 ) -> SubmissionView:
-    assignment = await get_assignment(session, principal=principal, assignment_id=assignment_id)
+    assignment = await get_assignment(
+        session,
+        principal=principal,
+        assignment_id=assignment_id,
+        enrollment_id=enrollment_id,
+    )
     if assignment.state in {"LOCKED", "PASSED", "FAILED", "WITHDRAWN"}:
         raise InvalidState("Assignment is not accepting a draft")
     if assignment.current_submission_id:
@@ -981,21 +1117,26 @@ async def save_submission(
     *,
     principal: SessionPrincipal,
     submission_id: uuid.UUID,
-    body: SubmissionDraftRequest,
+    body: SubmissionUpdateRequest,
 ) -> SubmissionView:
     submission = await session.scalar(
-        select(InternshipSubmission).where(
+        select(InternshipSubmission)
+        .where(
             InternshipSubmission.id == submission_id,
             InternshipSubmission.student_user_id == principal.user_id,
         )
+        .with_for_update()
     )
     if submission is None:
         raise NotFound("Submission not found")
     if submission.state != "DRAFT":
         raise InvalidState("Finalized submissions are immutable")
+    if submission.version != body.expected_version:
+        raise Conflict("Submission changed; reload before saving")
     submission.links = {key: str(value) for key, value in body.links.items()}
     submission.text_fields = body.text_fields
     submission.artifact_upload_ids = body.artifact_upload_ids
+    submission.version += 1
     await session.commit()
     return SubmissionView.model_validate(submission)
 
@@ -1087,7 +1228,7 @@ async def finalize_submission(
     if sum(upload.size_bytes for upload in uploads) > maximum_package_size:
         raise ValidationFailure("Submission package exceeds the aggregate size limit")
     for upload in uploads:
-        if upload.state != "CLEAN" or now_utc() >= upload.expires_at:
+        if upload.state != "CLEAN" or upload.scanned_at is None or now_utc() >= upload.expires_at:
             raise ValidationFailure("Every referenced upload must be clean and unexpired")
         try:
             if settings.storage_provider == "supabase":
@@ -1262,10 +1403,12 @@ async def feedback(session: AsyncSession, principal: SessionPrincipal) -> list[F
 
 
 async def certificate_eligibility(
-    session: AsyncSession, principal: SessionPrincipal
+    session: AsyncSession,
+    principal: SessionPrincipal,
+    enrollment_id: uuid.UUID | None = None,
 ) -> CertificateEligibilityView:
     try:
-        enrollment = await _enrollment(session, principal)
+        enrollment = await _enrollment(session, principal, enrollment_id)
     except NotFound:
         return CertificateEligibilityView(
             enrollment_id=None,
@@ -1274,6 +1417,15 @@ async def certificate_eligibility(
             certificate_id=None,
             public_slug=None,
         )
+    return await certificate_eligibility_for_enrollment(session, enrollment.id)
+
+
+async def certificate_eligibility_for_enrollment(
+    session: AsyncSession, enrollment_id: uuid.UUID
+) -> CertificateEligibilityView:
+    enrollment = await session.get(CohortEnrollment, enrollment_id)
+    if enrollment is None:
+        raise NotFound("Enrollment not found")
     certificate = await session.scalar(
         select(InternshipCertificate).where(InternshipCertificate.enrollment_id == enrollment.id)
     )
@@ -1300,6 +1452,8 @@ async def decide_completion(
     principal: SessionPrincipal,
     decision: str,
     reason: str,
+    expected_version: int,
+    idempotency_key: str,
     correlation_id: uuid.UUID,
 ) -> CertificateEligibilityView:
     enrollment = await session.scalar(
@@ -1307,11 +1461,25 @@ async def decide_completion(
     )
     if enrollment is None:
         raise NotFound("Enrollment not found")
+    if enrollment.completion_decision_idempotency_key == idempotency_key:
+        return await certificate_eligibility_for_enrollment(session, enrollment.id)
+    conflicting_key = await session.scalar(
+        select(CohortEnrollment.id).where(
+            CohortEnrollment.completion_decision_idempotency_key == idempotency_key,
+            CohortEnrollment.id != enrollment.id,
+        )
+    )
+    if conflicting_key is not None:
+        raise Conflict("Idempotency-Key was already used for another enrollment")
+    if enrollment.version != expected_version:
+        raise Conflict("Enrollment changed; reload before deciding completion")
     if decision == "APPROVED" and enrollment.certificate_eligibility != "ELIGIBLE":
         raise InvalidState("Completion approval requires deterministic eligibility")
     if decision == "REJECTED" and not reason.strip():
         raise ValidationFailure("Completion rejection requires a reason")
     enrollment.certificate_eligibility = decision
+    enrollment.completion_decision_reason = reason.strip()
+    enrollment.completion_decision_idempotency_key = idempotency_key
     enrollment.version += 1
     _audit(
         session,
@@ -1320,13 +1488,10 @@ async def decide_completion(
         resource_type="internship_cohort_enrollment",
         resource_id=enrollment.id,
         correlation_id=correlation_id,
-        payload={"decision": decision},
+        payload={"decision": decision, "target_student_id": str(enrollment.student_user_id)},
     )
     await session.commit()
-    return await certificate_eligibility(
-        session,
-        SessionPrincipal(principal.user_id, principal.organization_id, "student"),
-    )
+    return await certificate_eligibility_for_enrollment(session, enrollment.id)
 
 
 async def list_operations_applications(
@@ -1782,6 +1947,18 @@ async def complete_upload(
         upload.scan_message = (
             "Awaiting the production malware scanner; upload cannot be attached yet."
         )
+        session.add(
+            OutboxEvent(
+                event_type="MalwareScanRequested",
+                aggregate_type="internship_upload",
+                aggregate_id=upload.id,
+                payload={
+                    "upload_id": upload.upload_id,
+                    "storage_key": upload.storage_key,
+                    "sha256": upload.sha256,
+                },
+            )
+        )
         await session.commit()
         return UploadView(
             upload_id=upload.upload_id,
@@ -1817,6 +1994,9 @@ async def complete_upload(
     upload.sha256 = actual_hash
     upload.state = result.state
     upload.scan_message = result.message
+    upload.scan_provider = "demo"
+    upload.scanned_at = now_utc()
+    upload.scan_evidence = {"message": result.message, "sha256": actual_hash}
     if result.state == "REJECTED":
         await session.commit()
         raise ValidationFailure(result.message)

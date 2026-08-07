@@ -1072,6 +1072,10 @@ class CohortEnrollment(EntityMixin, Base):
     progress_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     certificate_eligibility: Mapped[str] = mapped_column(String(30), default="NOT_ELIGIBLE")
     version: Mapped[int] = mapped_column(Integer, default=1)
+    completion_decision_idempotency_key: Mapped[str | None] = mapped_column(
+        String(128), unique=True
+    )
+    completion_decision_reason: Mapped[str | None] = mapped_column(Text)
 
 
 class InternshipPhase(EntityMixin, Base):
@@ -1220,6 +1224,9 @@ class InternshipUpload(EntityMixin, Base):
     state: Mapped[str] = mapped_column(String(30), default="INITIATED", index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     scan_message: Mapped[str | None] = mapped_column(String(500))
+    scan_provider: Mapped[str | None] = mapped_column(String(40))
+    scanned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    scan_evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
 class InternshipSubmission(EntityMixin, Base):

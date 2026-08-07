@@ -62,7 +62,7 @@ export function InternshipSubmissionEditor({
         {
           method: "PUT",
           body: JSON.stringify({
-            version: submission.data?.version ?? 1,
+            expected_version: submission.data?.version ?? 1,
             links: {
               github_url: currentForm.github_url,
               demo_url: currentForm.demo_url,
