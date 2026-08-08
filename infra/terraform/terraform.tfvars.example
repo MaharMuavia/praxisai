@@ -9,9 +9,14 @@ api_base_url = "https://replace-with-api-url/api/v1"
 cors_origins = ["https://replace-with-web-url"]
 email_from_address = "noreply@example.com"
 otel_exporter_otlp_endpoint = "https://replace-with-otlp-endpoint"
+supabase_storage_bucket = "internship-submissions"
+clamav_host = "replace-with-clamav-host"
+clamav_port = 3310
 
 # Supabase connection strings are provisioned into Secret Manager separately.
 # DATABASE_URL: transaction pooler, normally port 6543.
 # DATABASE_MIGRATION_URL: session/direct connection, normally port 5432.
 # database_url_secret_id = "praxisai-staging-database-url"
 # database_migration_url_secret_id = "praxisai-staging-database-migration-url"
+# supabase_url_secret_id = "praxisai-staging-supabase-url"
+# supabase_service_role_key_secret_id = "praxisai-staging-supabase-service-role-key"

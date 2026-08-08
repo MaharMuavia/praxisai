@@ -17,8 +17,9 @@ class CloudTasksPublisher:
     def __init__(self, settings: Settings, client: tasks_v2.CloudTasksClient | None = None) -> None:
         self._project = settings.google_cloud_project
         self._location = settings.google_cloud_location
-        self._queue = getattr(settings, "cloud_tasks_queue", None) or "praxisai-staging-jobs"
+        self._queue = settings.cloud_tasks_queue or "praxisai-staging-jobs"
         self._api_base_url = settings.api_base_url
+        self._service_account_email = settings.google_service_account_email
         self._client = client
 
     def _get_client(self) -> tasks_v2.CloudTasksClient:
@@ -33,6 +34,8 @@ class CloudTasksPublisher:
         if not self._project or not self._location:
             # When GCP is not configured, fall back gracefully for local execution
             return None
+        if not self._service_account_email:
+            raise RuntimeError("Cloud Tasks requires the API service account email")
 
         client = self._get_client()
         parent = client.queue_path(self._project, self._location, self._queue)
@@ -54,7 +57,7 @@ class CloudTasksPublisher:
                 "headers": {"Content-Type": "application/json"},
                 "body": body,
                 "oidc_token": {
-                    "service_account_email": f"praxisai-api@{self._project}.iam.gserviceaccount.com"
+                    "service_account_email": self._service_account_email,
                 },
             }
         }

@@ -77,7 +77,8 @@ Supabase Auth.
 
 - Stripe or any payment-processor key. PraxisAI currently records manually verified external
   funding and payout evidence.
-- Cloud Run configuration while deployment remains deferred.
+- Cloud Run runtime configuration is managed by `infra/terraform`; operator-managed
+  values belong in Google Secret Manager, not Terraform variables or Git.
 - Supabase browser keys for the current server-only PostgreSQL integration.
 - Live Google Cloud resources for the local demo.
 

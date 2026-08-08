@@ -1,7 +1,9 @@
 locals {
-  prefix                           = "praxisai-${var.environment}"
-  database_url_secret_id           = var.database_url_secret_id != "" ? var.database_url_secret_id : "${local.prefix}-database-url"
-  database_migration_url_secret_id = var.database_migration_url_secret_id != "" ? var.database_migration_url_secret_id : "${local.prefix}-database-migration-url"
+  prefix                              = "praxisai-${var.environment}"
+  database_url_secret_id              = var.database_url_secret_id != "" ? var.database_url_secret_id : "${local.prefix}-database-url"
+  database_migration_url_secret_id    = var.database_migration_url_secret_id != "" ? var.database_migration_url_secret_id : "${local.prefix}-database-migration-url"
+  supabase_url_secret_id              = var.supabase_url_secret_id != "" ? var.supabase_url_secret_id : "${local.prefix}-supabase-url"
+  supabase_service_role_key_secret_id = var.supabase_service_role_key_secret_id != "" ? var.supabase_service_role_key_secret_id : "${local.prefix}-supabase-service-role-key"
   required_services = [
     "run.googleapis.com",
     "secretmanager.googleapis.com",
@@ -63,6 +65,26 @@ resource "google_secret_manager_secret" "database_url" {
 
 resource "google_secret_manager_secret" "database_migration_url" {
   secret_id  = local.database_migration_url_secret_id
+  depends_on = [google_project_service.enabled_services]
+  replication {
+    auto {}
+  }
+}
+
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+resource "google_secret_manager_secret" "supabase_url" {
+  secret_id  = local.supabase_url_secret_id
+  depends_on = [google_project_service.enabled_services]
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret" "supabase_service_role_key" {
+  secret_id  = local.supabase_service_role_key_secret_id
   depends_on = [google_project_service.enabled_services]
   replication {
     auto {}
@@ -165,7 +187,15 @@ resource "google_cloud_run_v2_service" "api" {
   location            = var.region
   deletion_protection = var.environment == "production"
   ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
-  depends_on          = [google_project_service.enabled_services]
+  depends_on = [
+    google_project_service.enabled_services,
+    google_secret_manager_secret_iam_member.api_database,
+    google_secret_manager_secret_iam_member.api_database_migration,
+    google_secret_manager_secret_iam_member.api_supabase_url,
+    google_secret_manager_secret_iam_member.api_supabase_service_role_key,
+    google_secret_manager_secret_iam_member.api_session,
+    google_secret_manager_secret_iam_member.api_csrf,
+  ]
   template {
     service_account = google_service_account.api.email
     scaling {
@@ -177,29 +207,35 @@ resource "google_cloud_run_v2_service" "api" {
       ports { container_port = 8080 }
       dynamic "env" {
         for_each = {
-          APP_ENV                     = var.environment
-          DEMO_MODE                   = "false"
-          IDENTITY_PROVIDER           = "firebase"
-          FIREBASE_PROJECT_ID         = var.firebase_project_id
-          GEMINI_PROVIDER             = var.gemini_provider
-          GEMINI_MODEL                = var.gemini_model
-          GOOGLE_CLOUD_PROJECT        = var.project_id
-          GOOGLE_CLOUD_LOCATION       = var.region
-          COOKIE_SECURE               = "true"
-          CORS_ORIGINS                = jsonencode(var.cors_origins)
-          API_BASE_URL                = var.api_base_url
-          WEB_BASE_URL                = var.web_base_url
-          DATABASE_POOL_MODE          = var.database_pool_mode
-          CREDENTIAL_SIGNING_PROVIDER = "kms"
-          CREDENTIAL_KMS_KEY_NAME     = var.credential_kms_enabled ? google_kms_crypto_key.credentials[0].id : ""
-          CREDENTIAL_ISSUER           = var.credential_issuer
-          EMAIL_PROVIDER              = var.email_provider
-          EMAIL_FROM_ADDRESS          = var.email_from_address
-          OTEL_EXPORTER_OTLP_ENDPOINT = var.otel_exporter_otlp_endpoint
-          CLOUD_STORAGE_BUCKET        = google_storage_bucket.artifacts.name
-          CLOUD_TASKS_QUEUE           = google_cloud_tasks_queue.jobs.name
-          BIGQUERY_DATASET            = var.bigquery_enabled ? google_bigquery_dataset.analytics[0].dataset_id : ""
-          PAYMENT_PROVIDER            = "manual_external"
+          APP_ENV                      = var.environment
+          DEMO_MODE                    = "false"
+          IDENTITY_PROVIDER            = "firebase"
+          FIREBASE_PROJECT_ID          = var.firebase_project_id
+          GEMINI_PROVIDER              = var.gemini_provider
+          GEMINI_MODEL                 = var.gemini_model
+          GOOGLE_CLOUD_PROJECT         = var.project_id
+          GOOGLE_CLOUD_LOCATION        = var.region
+          GOOGLE_SERVICE_ACCOUNT_EMAIL = google_service_account.api.email
+          COOKIE_SECURE                = "true"
+          CORS_ORIGINS                 = jsonencode(var.cors_origins)
+          API_BASE_URL                 = var.api_base_url
+          WEB_BASE_URL                 = var.web_base_url
+          DATABASE_POOL_MODE           = var.database_pool_mode
+          CREDENTIAL_SIGNING_PROVIDER  = "kms"
+          CREDENTIAL_KMS_KEY_NAME      = var.credential_kms_enabled ? google_kms_crypto_key.credentials[0].id : ""
+          CREDENTIAL_ISSUER            = var.credential_issuer
+          EMAIL_PROVIDER               = var.email_provider
+          EMAIL_FROM_ADDRESS           = var.email_from_address
+          OTEL_EXPORTER_OTLP_ENDPOINT  = var.otel_exporter_otlp_endpoint
+          STORAGE_PROVIDER             = "supabase"
+          SUPABASE_STORAGE_BUCKET      = var.supabase_storage_bucket
+          UPLOAD_SCANNER_PROVIDER      = var.upload_scanner_provider
+          CLAMAV_HOST                  = var.clamav_host
+          CLAMAV_PORT                  = tostring(var.clamav_port)
+          CLOUD_STORAGE_BUCKET         = google_storage_bucket.artifacts.name
+          CLOUD_TASKS_QUEUE            = google_cloud_tasks_queue.jobs.name
+          BIGQUERY_DATASET             = var.bigquery_enabled ? google_bigquery_dataset.analytics[0].dataset_id : ""
+          PAYMENT_PROVIDER             = "manual_external"
         }
         content {
           name  = env.key
@@ -238,6 +274,24 @@ resource "google_cloud_run_v2_service" "api" {
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.database_migration_url.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "SUPABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.supabase_url.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "SUPABASE_SERVICE_ROLE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.supabase_service_role_key.secret_id
             version = "latest"
           }
         }
@@ -303,6 +357,18 @@ resource "google_secret_manager_secret_iam_member" "api_database_migration" {
   member    = "serviceAccount:${google_service_account.api.email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "api_supabase_url" {
+  secret_id = google_secret_manager_secret.supabase_url.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.api.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "api_supabase_service_role_key" {
+  secret_id = google_secret_manager_secret.supabase_service_role_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.api.email}"
+}
+
 resource "google_secret_manager_secret_iam_member" "api_session" {
   secret_id = google_secret_manager_secret.session_secret.id
   role      = "roles/secretmanager.secretAccessor"
@@ -333,6 +399,20 @@ resource "google_cloud_run_v2_service_iam_member" "api_web_invoker" {
   name     = google_cloud_run_v2_service.api.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.web.email}"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "api_tasks_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.api.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.api.email}"
+}
+
+resource "google_service_account_iam_member" "cloud_tasks_service_agent" {
+  service_account_id = google_service_account.api.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-cloudtasks.iam.gserviceaccount.com"
 }
 
 resource "google_cloud_run_v2_service_iam_member" "web_public_invoker" {

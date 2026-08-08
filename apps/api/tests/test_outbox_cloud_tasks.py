@@ -29,6 +29,8 @@ def test_cloud_tasks_enqueue_gcp_active():
     settings = Settings(
         google_cloud_project="praxisai-test-project",
         google_cloud_location="us-central1",
+        google_service_account_email="praxisai-test-api@praxisai-test-project.iam.gserviceaccount.com",
+        cloud_tasks_queue="praxisai-test-jobs",
         app_env="test",
     )
     mock_client = MagicMock()
@@ -50,6 +52,10 @@ def test_cloud_tasks_enqueue_gcp_active():
 
     assert task_name == mock_response.name
     mock_client.create_task.assert_called_once()
+    task = mock_client.create_task.call_args.kwargs["request"]["task"]
+    assert task["http_request"]["oidc_token"]["service_account_email"] == (
+        "praxisai-test-api@praxisai-test-project.iam.gserviceaccount.com"
+    )
 
 
 @pytest.mark.asyncio

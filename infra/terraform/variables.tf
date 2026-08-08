@@ -44,6 +44,41 @@ variable "database_migration_url_secret_id" {
   default     = ""
   description = "Secret Manager secret containing the Supabase session/direct URL for migrations."
 }
+variable "supabase_url_secret_id" {
+  type        = string
+  default     = ""
+  description = "Secret Manager secret containing the Supabase project URL."
+}
+variable "supabase_service_role_key_secret_id" {
+  type        = string
+  default     = ""
+  description = "Secret Manager secret containing the Supabase server-only service-role key."
+}
+variable "supabase_storage_bucket" {
+  type        = string
+  default     = "internship-submissions"
+  description = "Private Supabase Storage bucket used for uploaded artifacts."
+}
+variable "upload_scanner_provider" {
+  type    = string
+  default = "clamav"
+  validation {
+    condition     = contains(["disabled", "clamav"], var.upload_scanner_provider)
+    error_message = "upload_scanner_provider must be disabled or clamav."
+  }
+}
+variable "clamav_host" {
+  type        = string
+  description = "Reachable ClamAV service hostname for hosted upload scanning."
+}
+variable "clamav_port" {
+  type    = number
+  default = 3310
+  validation {
+    condition     = var.clamav_port >= 1 && var.clamav_port <= 65535
+    error_message = "clamav_port must be between 1 and 65535."
+  }
+}
 variable "database_pool_mode" {
   type    = string
   default = "transaction"

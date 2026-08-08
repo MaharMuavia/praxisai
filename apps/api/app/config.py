@@ -38,6 +38,8 @@ class Settings(BaseSettings):
 
     google_cloud_project: str | None = None
     google_cloud_location: str = "us-central1"
+    google_service_account_email: str | None = None
+    cloud_tasks_queue: str | None = None
     gemini_provider: Literal["disabled", "fixture", "gemini"] = "fixture"
     gemini_model: str = "gemini-2.5-flash"
     gemini_api_key: str | None = None

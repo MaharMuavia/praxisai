@@ -38,6 +38,16 @@ output "database_migration_secret_id" {
   value       = google_secret_manager_secret.database_migration_url.secret_id
 }
 
+output "supabase_url_secret_id" {
+  description = "Secret Manager secret ID for the Supabase project URL"
+  value       = google_secret_manager_secret.supabase_url.secret_id
+}
+
+output "supabase_service_role_key_secret_id" {
+  description = "Secret Manager secret ID for the Supabase service-role key"
+  value       = google_secret_manager_secret.supabase_service_role_key.secret_id
+}
+
 output "api_service_account" {
   description = "API Cloud Run service account"
   value       = google_service_account.api.email
