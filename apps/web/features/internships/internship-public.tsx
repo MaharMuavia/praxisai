@@ -230,7 +230,7 @@ export function StudentSignup() {
           }),
         },
       );
-      window.location.assign("/student/internship/application");
+      window.location.replace("/student/internship/application");
     } catch (reason) {
       setError(
         reason instanceof Error

@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import AsyncIterator
 
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -105,3 +106,16 @@ def test_local_upload_storage_hashes_bytes_and_blocks_path_traversal(tmp_path) -
     assert storage.read("student/upload/report.pdf") == b"demo"
     with pytest.raises(ValueError, match="escapes"):
         storage.put("../outside.txt", b"blocked")
+
+
+@pytest.mark.asyncio
+async def test_local_upload_storage_rejects_streams_over_declared_limit(tmp_path) -> None:
+    storage = LocalInternshipStorage(tmp_path)
+
+    async def chunks() -> AsyncIterator[bytes]:
+        yield b"1234"
+        yield b"56"
+
+    with pytest.raises(ValueError, match="byte limit"):
+        await storage.put_stream("oversized.bin", chunks(), max_bytes=5)
+    assert not (tmp_path / "oversized.bin").exists()

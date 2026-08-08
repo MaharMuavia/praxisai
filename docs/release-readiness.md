@@ -1,59 +1,68 @@
 # XPRIZE release readiness
 
-This document records release gates for `release/xprize-2026`. A gate is only
-`passed` when it has been executed against the current working tree. External
-systems and evidence are not inferred from source code.
+This is the release record for the current working tree on `release/xprize-2026`.
+It separates repository evidence from staging and production evidence. Source
+code, Terraform declarations, and unit tests do not prove that an external
+provider or hosted revision is working.
 
-## Passed locally on the current working tree
+## Current status — 2026-08-08
 
-- npm dependency audit at high severity: 0 vulnerabilities.
-- Python dependency audit: no known vulnerabilities.
-- API test suite: 85 tests passed.
-- Web unit suite: 46 tests passed.
-- Strict TypeScript, strict mypy, ESLint, Ruff, formatting, and API client build.
-- Application resources are now addressed by application ID plus authenticated
-  applicant ID, with explicit frontend selection for multiple applications.
-- Internship queries now resolve an explicit enrollment context and constrain
-  curriculum, assignments, and progress to the selected cohort track.
-- Completion decisions now require idempotency, expected version, row locking,
-  decision validation, a rejection reason, and target-student audit data.
-- Production upload completion now quarantines objects and emits a
-  `MalwareScanRequested` outbox event; the worker has a bounded ClamAV path.
+The branch is not release-ready. The release-blocking code paths below were
+hardened locally, but there is no staging or production evidence in this
+workspace. The broader CRM/admissions lifecycle, complete hosted outbox
+processing, real-provider smoke tests, and competition evidence remain
+incomplete or unverified.
 
-## Failed
+## Implemented and locally verified
 
-- Full Grype scans fail on high/critical findings in the official Python and
-  Node Debian 13 base images. Fixable JavaScript runtime findings were removed
-  with npm from the web runtime; its actionable-only scan passes. Vendor-unfixed
-  Debian and Python findings remain and have no approved exception.
+- Same-origin API proxy now strips client-supplied forwarding, service-auth,
+  and authorization headers; upstream `Set-Cookie` values are preserved
+  individually. Next 16 uses `proxy.ts` for the request boundary.
+- Project transition idempotency is tenant/resource scoped, hashes the
+  request payload, and tests replay, payload mismatch, cross-resource, and
+  cross-tenant cases. A migration adds the persisted contract fields.
+- Cloud Tasks payloads contain only event metadata and correlation identity;
+  the hosted task route verifies Cloud Tasks identity when configured and
+  currently dispatches only notification events.
+- Upload streaming enforces the declared byte limit before accepting an
+  oversized object and removes the partial local object on rejection.
+- Terraform validates with backend initialization disabled. API ingress is
+  compatible with the same-origin proxy, invocation remains IAM-restricted,
+  and the logging sink has an object-creator grant.
+- `npm audit --audit-level=high`: 0 vulnerabilities.
+- 87 API tests and 50 web tests passed.
+- Ruff format/check, strict mypy, TypeScript, ESLint, API-client generation,
+  and the hosted-semantics web build passed locally.
 
-## Blocked
+## Failed or blocked gates
 
-- Terraform checks: blocked because Terraform is not installed locally.
-- Web production build: blocked because Firebase public build variables are not
-  available in this workspace.
-- Public license: an owner-approved license has not been selected.
-- Release PR, merge, tag, and repository metadata: blocked while security CI is
-  known to fail and while the requested implementation phases remain incomplete.
-- Staging/production deployment, immutable registry digests, Cloud Run revisions,
-  real Gemini/KMS/email/telemetry smoke evidence, and production URL: no cloud
-  project credentials or approved environments are available in this workspace.
-- Arms-length customer, revenue, payout, consent, corporate-ID, and competition
-  evidence: must come from real authorized records and cannot be fabricated.
+- Default web build fails closed because the required Firebase public build
+  variables are not present. A staging-semantics build with non-secret
+  placeholders passed; that is not deployment evidence.
+- Playwright E2E could not start its 79 tests because the required Chromium
+  executable is not installed. No E2E assertion result is being claimed.
+- PostgreSQL connectivity and `db:check` are blocked by unavailable/unresolvable
+  Supabase configuration. No PostgreSQL migration upgrade or vertical-slice
+  integration run was completed. SQLite validation reaches a pre-existing
+  unsupported direct-constraint-alter migration and is not a substitute.
+- `pip-audit` is unverified because the environment could not reach PyPI; no
+  Python dependency-audit pass is claimed.
 
-## Unverified or incomplete
+## Not yet proven or not implemented
 
-- PostgreSQL migration upgrade/check and a PostgreSQL integration test for the
-  complete client-to-paid-student lifecycle.
-- The shared typed Gemini runtime, expanded persisted run schema, typed action
-  registry, 30-case evaluation harness, and real-Gemini staging smoke test.
-- Judge-flow feature flags and route ownership refactor requested in phases 1-4.
-- Production-backed versioned evidence metrics and privacy-safe submission exports.
-- Separate staging/production Terraform state, deployment promotion, rollback,
-  alerting, backup/restore drill, and protected production workflow.
-- XPRIZE submission narrative, approved media, consented customer evidence, and
-  exact deployed commit/image digest references.
+- Hosted Firebase auth, Vertex/Gemini, KMS signing, email, ClamAV, telemetry,
+  Cloud Tasks OIDC, Cloud Run routing, alerts, backups, rollback, and managed
+  database behavior.
+- Full outbox handler registry for malware, analytics, credential, and
+  notification workflows. The current task endpoint intentionally returns a
+  retryable error for unregistered event types.
+- CRM/lead intake, admissions/readiness, complete client-to-paid-student
+  vertical slice, shared typed agent runtime/action registry, 30-case AI
+  evaluation, and source-backed evidence-center exports.
+- Production customer, revenue, payout, consent, identity, or competition
+  evidence. These must come from authorized source systems.
+- Release PR, merge, tag, immutable image digests, approved license, and
+  production promotion.
 
-No release merge or production promotion is authorized while any failed gate
-above remains unresolved or lacks a documented, owner-approved, time-bounded
-exception.
+No release merge or production promotion is authorized while these gates are
+unresolved or lack an owner-approved, time-bounded exception.

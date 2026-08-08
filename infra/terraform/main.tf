@@ -186,7 +186,10 @@ resource "google_cloud_run_v2_service" "api" {
   name                = "${local.prefix}-api"
   location            = var.region
   deletion_protection = var.environment == "production"
-  ingress             = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+  # The browser reaches this service through the authenticated same-origin web
+  # proxy. Public ingress is required for Cloud Run's managed service-to-service
+  # path; invocation remains restricted to the web and Cloud Tasks identities.
+  ingress = "INGRESS_TRAFFIC_ALL"
   depends_on = [
     google_project_service.enabled_services,
     google_secret_manager_secret_iam_member.api_database,
@@ -453,6 +456,12 @@ resource "google_logging_project_sink" "api_errors" {
   destination            = "storage.googleapis.com/${google_storage_bucket.artifacts.name}"
   filter                 = "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${google_cloud_run_v2_service.api.name}\" AND severity>=ERROR"
   unique_writer_identity = true
+}
+
+resource "google_storage_bucket_iam_member" "api_error_sink_writer" {
+  bucket = google_storage_bucket.artifacts.name
+  role   = "roles/storage.objectCreator"
+  member = google_logging_project_sink.api_errors.writer_identity
 }
 
 resource "google_monitoring_alert_policy" "api_latency" {

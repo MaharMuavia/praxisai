@@ -69,7 +69,12 @@ from app.domain.schemas import (
     ScopeDraft,
     TransitionRequest,
 )
-from app.projects.service import TransitionError, project_intake_snapshot, transition_project
+from app.projects.service import (
+    TransitionError,
+    TransitionNotFound,
+    project_intake_snapshot,
+    transition_project,
+)
 from app.rate_limits.service import RateLimitExceeded, consume_rate_limit
 from app.staffing.service import CandidateInput, rank_candidates
 from app.work_management.service import ensure_acyclic_dependencies
@@ -202,6 +207,8 @@ async def transition(
             idempotency_key=key,
             correlation_id=request_correlation_id,
         )
+    except TransitionNotFound as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     except TransitionError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 

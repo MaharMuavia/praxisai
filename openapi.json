@@ -1127,6 +1127,31 @@
         "title": "ClientInvoiceView",
         "type": "object"
       },
+      "CloudTaskPayload": {
+        "properties": {
+          "correlation_id": {
+            "format": "uuid",
+            "title": "Correlation Id",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "outbox_event_id": {
+            "format": "uuid",
+            "title": "Outbox Event Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outbox_event_id",
+          "event_type",
+          "correlation_id"
+        ],
+        "title": "CloudTaskPayload",
+        "type": "object"
+      },
       "CohortSummary": {
         "properties": {
           "application_deadline": {
@@ -13114,6 +13139,51 @@
         "summary": "Risks",
         "tags": [
           "role workspaces"
+        ]
+      }
+    },
+    "/api/v1/ops/tasks/process-outbox": {
+      "post": {
+        "operationId": "process_outbox_task_api_v1_ops_tasks_process_outbox_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloudTaskPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Process Outbox Task Api V1 Ops Tasks Process Outbox Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Process Outbox Task",
+        "tags": [
+          "operations"
         ]
       }
     },

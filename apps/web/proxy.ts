@@ -49,7 +49,7 @@ function withCorrelationId(response: NextResponse, id: string): NextResponse {
   return response;
 }
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const id = correlationId(request);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("X-Correlation-ID", id);

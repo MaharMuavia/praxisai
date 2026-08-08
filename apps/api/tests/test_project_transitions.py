@@ -15,7 +15,7 @@ from app.domain.models import (
     StaffingRun,
     User,
 )
-from app.projects.service import TransitionError, transition_project
+from app.projects.service import TransitionError, TransitionNotFound, transition_project
 
 
 @pytest.mark.asyncio
@@ -77,7 +77,7 @@ async def test_funding_guard_and_idempotent_transition() -> None:
             project_id=project.id,
             principal=principal,
             target=ProjectState.STAFFING,
-            reason="Duplicate request",
+            reason="Verified demo funding",
             expected_version=1,
             idempotency_key="funding-confirmed-once",
             correlation_id=uuid.uuid4(),
@@ -153,6 +153,115 @@ async def test_staffing_review_requires_completed_matching_evidence() -> None:
             correlation_id=uuid.uuid4(),
         )
         assert reviewed.state == ProjectState.AWAITING_STAFFING_APPROVAL.value
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_transition_idempotency_is_scoped_and_authorized() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    async with factory() as session:
+        organization = Organization(name="Tenant A", slug="tenant-a", kind="platform")
+        other_organization = Organization(name="Tenant B", slug="tenant-b", kind="platform")
+        actor = User(email="actor@example.test", display_name="Actor")
+        other_actor = User(email="other@example.test", display_name="Other")
+        session.add_all([organization, other_organization, actor, other_actor])
+        await session.flush()
+        session.add_all(
+            [
+                OrganizationMembership(
+                    user_id=actor.id, organization_id=organization.id, role="coordinator"
+                ),
+                OrganizationMembership(
+                    user_id=other_actor.id,
+                    organization_id=other_organization.id,
+                    role="coordinator",
+                ),
+            ]
+        )
+        project = Project(
+            client_organization_id=organization.id,
+            created_by_id=actor.id,
+            title="Scoped transition",
+            description="Transition replay scope test.",
+            category="dashboard",
+            state=ProjectState.AWAITING_DEPOSIT.value,
+            required_deposit_minor=0,
+            funded_minor=0,
+        )
+        other_project = Project(
+            client_organization_id=other_organization.id,
+            created_by_id=other_actor.id,
+            title="Other transition",
+            description="Other resource.",
+            category="dashboard",
+            state=ProjectState.AWAITING_DEPOSIT.value,
+            required_deposit_minor=0,
+            funded_minor=0,
+        )
+        session.add_all([project, other_project])
+        await session.commit()
+
+        principal = SessionPrincipal(actor.id, organization.id, "coordinator")
+        other_principal = SessionPrincipal(other_actor.id, other_organization.id, "client_owner")
+        correlation_id = uuid.uuid4()
+        await transition_project(
+            session,
+            project_id=project.id,
+            principal=principal,
+            target=ProjectState.STAFFING,
+            reason="funding confirmed",
+            expected_version=1,
+            idempotency_key="scoped-transition-key",
+            correlation_id=correlation_id,
+        )
+        replay = await transition_project(
+            session,
+            project_id=project.id,
+            principal=principal,
+            target=ProjectState.STAFFING,
+            reason="funding confirmed",
+            expected_version=1,
+            idempotency_key="scoped-transition-key",
+            correlation_id=uuid.uuid4(),
+        )
+        assert replay.id == project.id
+
+        with pytest.raises(TransitionError, match="different transition"):
+            await transition_project(
+                session,
+                project_id=project.id,
+                principal=principal,
+                target=ProjectState.STAFFING,
+                reason="changed payload",
+                expected_version=1,
+                idempotency_key="scoped-transition-key",
+                correlation_id=uuid.uuid4(),
+            )
+        with pytest.raises(TransitionError, match="replay"):
+            await transition_project(
+                session,
+                project_id=other_project.id,
+                principal=other_principal,
+                target=ProjectState.STAFFING,
+                reason="funding confirmed",
+                expected_version=1,
+                idempotency_key="scoped-transition-key",
+                correlation_id=uuid.uuid4(),
+            )
+        with pytest.raises(TransitionNotFound, match="Project not found"):
+            await transition_project(
+                session,
+                project_id=project.id,
+                principal=other_principal,
+                target=ProjectState.STAFFING,
+                reason="funding confirmed",
+                expected_version=1,
+                idempotency_key="cross-tenant-key",
+                correlation_id=uuid.uuid4(),
+            )
     await engine.dispose()
 
 

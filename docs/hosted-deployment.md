@@ -11,7 +11,7 @@ Google Cloud dependencies.
 | --- | --- |
 | Supabase PostgreSQL URL handling | Implemented in API settings and Terraform secret references |
 | Browser-to-API same-origin routing | Implemented by the Next.js `/api/v1/[...path]` proxy |
-| Private API service-to-service authentication | Implemented in the proxy and Terraform IAM |
+| Private API service-to-service authentication | Implemented with same-origin web proxy, API `INGRESS_TRAFFIC_ALL`, and restricted Cloud Run invoker IAM; API is not granted `allUsers` invocation |
 | Firebase browser build configuration | Implemented as explicit web image build arguments |
 | Hosted runtime validation | Implemented in API settings and web build validation |
 | Terraform validation and container checks | CI configured; external execution must be verified in GitHub Actions |
@@ -57,3 +57,17 @@ variables.
 - **CI verified** means the GitHub Actions run passed the corresponding job.
 - **Externally deployed and smoke-tested** requires real Supabase, GCP, Firebase,
   KMS, email, telemetry, and Cloud Run evidence; it is not claimed here.
+
+## Cloud Run ingress and IAM boundary
+
+The API uses `INGRESS_TRAFFIC_ALL` because Cloud Run's managed service-to-service
+request path must be reachable without a Direct VPC egress design. This does not
+make the API public: Terraform grants `roles/run.invoker` only to the web service
+account and the Cloud Tasks/API task identity. The browser never receives the API
+URL and uses the web `/api/v1` proxy, which strips browser-supplied forwarding and
+service-authentication headers before adding the web service's OIDC identity.
+
+The API error log sink writes to the private artifact bucket through an explicit
+`roles/storage.objectCreator` grant for the sink writer identity. This is an IAM
+configuration boundary, not evidence that a hosted deployment or smoke test has
+completed.

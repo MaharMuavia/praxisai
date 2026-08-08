@@ -298,7 +298,7 @@ export function AppShell({
       setNotificationOpen(false);
       setMobileNavOpen(false);
       window.history.replaceState(null, "", "/login");
-      window.location.assign("/login");
+      window.location.replace("/login");
     } catch (reason: unknown) {
       setLogoutError(
         `${reason instanceof Error ? reason.message : "Unable to sign out"}. Support correlation ID: ${correlationId}`,

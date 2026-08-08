@@ -70,4 +70,37 @@ describe("same-origin API route", () => {
       detail: "API service unavailable",
     });
   });
+
+  it("forwards independent authentication cookies from the API", async () => {
+    vi.stubEnv("APP_ENV", "local");
+    vi.stubEnv("API_BASE_URL", "http://localhost:8000");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        const response = new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+        response.headers.append(
+          "Set-Cookie",
+          "praxis_session=session-token; Path=/; HttpOnly",
+        );
+        response.headers.append(
+          "Set-Cookie",
+          "praxis_csrf=csrf-token; Path=/; SameSite=Lax",
+        );
+        return response;
+      }),
+    );
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/v1/auth/session"),
+      { params: Promise.resolve({ path: ["auth", "session"] }) },
+    );
+
+    expect(response.headers.getSetCookie()).toEqual([
+      "praxis_session=session-token; Path=/; HttpOnly",
+      "praxis_csrf=csrf-token; Path=/; SameSite=Lax",
+    ]);
+  });
 });

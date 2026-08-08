@@ -169,6 +169,8 @@ export function PublicIntakeForm() {
     reset,
     formState: { errors },
   } = useForm<IntakeForm>({ defaultValues: defaults });
+  // React Hook Form's watch API is intentionally external to React Compiler.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const kind = watch("kind");
 
   const onInvalid = (formErrors: typeof errors) => {

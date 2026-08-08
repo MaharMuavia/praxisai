@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import Settings
 from app.domain.models import Base, OutboxEvent
-from app.outbox.cloud_tasks import CloudTasksPublisher
+from app.outbox.cloud_tasks import CloudTaskPayload, CloudTasksPublisher
 from app.outbox.service import process_one
 
 
@@ -20,7 +20,7 @@ def test_cloud_tasks_enqueue_local_fallback():
     result = publisher.enqueue_outbox_event(
         event_id=uuid.uuid4(),
         event_type="notification.created",
-        payload={"message": "hello"},
+        correlation_id=uuid.uuid4(),
     )
     assert result is None
 
@@ -44,17 +44,27 @@ def test_cloud_tasks_enqueue_gcp_active():
     )
 
     publisher = CloudTasksPublisher(settings, client=mock_client)
+    event_id = uuid.uuid4()
+    correlation_id = uuid.uuid4()
     task_name = publisher.enqueue_outbox_event(
-        event_id=uuid.uuid4(),
+        event_id=event_id,
         event_type="notification.created",
-        payload={"message": "hello"},
+        correlation_id=correlation_id,
     )
 
     assert task_name == mock_response.name
     mock_client.create_task.assert_called_once()
     task = mock_client.create_task.call_args.kwargs["request"]["task"]
+    envelope = CloudTaskPayload.model_validate_json(task["http_request"]["body"])
+    assert envelope.outbox_event_id == event_id
+    assert envelope.event_type == "notification.created"
+    assert envelope.correlation_id == correlation_id
+    assert "payload" not in envelope.model_dump()
     assert task["http_request"]["oidc_token"]["service_account_email"] == (
         "praxisai-test-api@praxisai-test-project.iam.gserviceaccount.com"
+    )
+    assert task["http_request"]["oidc_token"]["audience"] == (
+        "http://localhost:8000/api/v1/ops/tasks/process-outbox"
     )
 
 

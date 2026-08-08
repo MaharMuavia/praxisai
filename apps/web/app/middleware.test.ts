@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 
-import { middleware } from "../middleware";
+import { proxy } from "../proxy";
 
 function request(url: string, headers?: HeadersInit): NextRequest {
   return new NextRequest(`https://praxis.example${url}`, { headers });
 }
 
-describe("middleware", () => {
+describe("proxy", () => {
   it("redirects unauthenticated workspace requests and preserves the destination", () => {
-    const response = middleware(request("/student/projects?view=active"));
+    const response = proxy(request("/student/projects?view=active"));
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
@@ -21,7 +21,7 @@ describe("middleware", () => {
   });
 
   it("allows a session into the workspace and forwards the correlation ID", () => {
-    const response = middleware(
+    const response = proxy(
       request("/ops", {
         Cookie: "praxis_session=session-token",
         "X-Correlation-ID": "corr-123",
@@ -34,7 +34,7 @@ describe("middleware", () => {
   });
 
   it("allows public routes without a session", () => {
-    const response = middleware(request("/internships/example/apply"));
+    const response = proxy(request("/internships/example/apply"));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");

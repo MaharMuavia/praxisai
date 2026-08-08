@@ -29,17 +29,33 @@ class LocalInternshipStorage:
     def read(self, storage_key: str) -> bytes:
         return self._path(storage_key).read_bytes()
 
-    async def put_stream(self, storage_key: str, chunks: AsyncIterator[bytes]) -> tuple[str, int]:
+    async def put_stream(
+        self,
+        storage_key: str,
+        chunks: AsyncIterator[bytes],
+        max_bytes: int | None = None,
+    ) -> tuple[str, int]:
         target = self._path(storage_key)
         target.parent.mkdir(parents=True, exist_ok=True)
         digest = hashlib.sha256()
         size = 0
-        with target.open("wb") as stream:
-            async for chunk in chunks:
-                digest.update(chunk)
-                size += len(chunk)
-                stream.write(chunk)
+        try:
+            with target.open("wb") as stream:
+                async for chunk in chunks:
+                    if max_bytes is not None and size + len(chunk) > max_bytes:
+                        raise ValueError("Upload exceeds the declared byte limit")
+                    digest.update(chunk)
+                    size += len(chunk)
+                    stream.write(chunk)
+        except ValueError:
+            target.unlink(missing_ok=True)
+            raise
         return digest.hexdigest(), size
+
+    def delete(self, storage_key: str) -> None:
+        target = self._path(storage_key)
+        if target.exists():
+            target.unlink()
 
 
 class SupabaseStorageError(RuntimeError):
@@ -113,7 +129,12 @@ class SupabaseInternshipStorage:
         return hashlib.sha256(content).hexdigest()
 
     async def put_stream(
-        self, storage_key: str, chunks: AsyncIterator[bytes], content_type: str, size: int
+        self,
+        storage_key: str,
+        chunks: AsyncIterator[bytes],
+        content_type: str,
+        size: int,
+        max_bytes: int | None = None,
     ) -> tuple[str, int]:
         digest = hashlib.sha256()
         count = 0
@@ -121,6 +142,8 @@ class SupabaseInternshipStorage:
         async def counted() -> AsyncIterator[bytes]:
             nonlocal count
             async for chunk in chunks:
+                if max_bytes is not None and count + len(chunk) > max_bytes:
+                    raise ValueError("Upload exceeds the declared byte limit")
                 digest.update(chunk)
                 count += len(chunk)
                 yield chunk
@@ -136,6 +159,9 @@ class SupabaseInternshipStorage:
             },
         )
         return digest.hexdigest(), count
+
+    async def delete(self, storage_key: str) -> None:
+        await self._request("DELETE", self._object_url(storage_key), headers=self._headers())
 
     async def read(self, storage_key: str) -> bytes:
         response = await self._request(

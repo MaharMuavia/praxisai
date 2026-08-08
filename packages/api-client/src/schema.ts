@@ -1354,6 +1354,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/tasks/process-outbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Process Outbox Task */
+        post: operations["process_outbox_task_api_v1_ops_tasks_process_outbox_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/participants/me/earnings": {
         parameters: {
             query?: never;
@@ -2375,6 +2392,21 @@ export interface components {
             project_title: string;
             /** Status */
             status: string;
+        };
+        /** CloudTaskPayload */
+        CloudTaskPayload: {
+            /**
+             * Correlation Id
+             * Format: uuid
+             */
+            correlation_id: string;
+            /** Event Type */
+            event_type: string;
+            /**
+             * Outbox Event Id
+             * Format: uuid
+             */
+            outbox_event_id: string;
         };
         /** CohortSummary */
         CohortSummary: {
@@ -7836,6 +7868,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RiskQueueItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    process_outbox_task_api_v1_ops_tasks_process_outbox_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloudTaskPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Validation Error */

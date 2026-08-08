@@ -1,3 +1,5 @@
+import hashlib
+import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -124,6 +126,33 @@ class TransitionError(ValueError):
     pass
 
 
+class TransitionNotFound(TransitionError):
+    pass
+
+
+def _transition_request_hash(
+    *,
+    project_id: uuid.UUID,
+    organization_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    target: ProjectState,
+    reason: str,
+    expected_version: int,
+) -> str:
+    canonical = {
+        "operation": "project.transition",
+        "organization_id": str(organization_id),
+        "actor_id": str(actor_id),
+        "project_id": str(project_id),
+        "target_state": target.value,
+        "reason": reason,
+        "expected_version": expected_version,
+    }
+    return hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
 async def project_intake_snapshot(session: AsyncSession, project: Project) -> ProjectCreate:
     event = await session.scalar(
         select(AuditEvent)
@@ -161,24 +190,57 @@ async def transition_project(
     idempotency_key: str,
     correlation_id: uuid.UUID,
 ) -> Project:
-    existing = await session.scalar(
-        select(ProjectTransition).where(ProjectTransition.idempotency_key == idempotency_key)
-    )
-    if existing is not None:
-        idempotent_project = await session.get(Project, existing.project_id)
-        if idempotent_project is None:
-            raise TransitionError("Idempotent transition references a missing project")
-        return idempotent_project
-
     project = await session.scalar(
         select(Project).where(Project.id == project_id).with_for_update()
     )
     if project is None:
-        raise TransitionError("Project not found")
+        raise TransitionNotFound("Project not found")
     if principal.role in {Role.CLIENT_OWNER.value, Role.CLIENT_MEMBER.value} and (
         project.client_organization_id != principal.organization_id
     ):
-        raise TransitionError("Project is outside the active client organization")
+        raise TransitionNotFound("Project not found")
+    if principal.role not in {
+        Role.CLIENT_OWNER.value,
+        Role.CLIENT_MEMBER.value,
+        Role.COORDINATOR.value,
+        Role.PLATFORM_ADMIN.value,
+    }:
+        assignment = await session.scalar(
+            select(ProjectAssignment.id).where(
+                ProjectAssignment.project_id == project.id,
+                ProjectAssignment.user_id == principal.user_id,
+            )
+        )
+        if assignment is None:
+            raise TransitionNotFound("Project not found")
+    request_hash = _transition_request_hash(
+        project_id=project.id,
+        organization_id=principal.organization_id,
+        actor_id=principal.user_id,
+        target=target,
+        reason=reason,
+        expected_version=expected_version,
+    )
+    existing = await session.scalar(
+        select(ProjectTransition).where(ProjectTransition.idempotency_key == idempotency_key)
+    )
+    if existing is not None:
+        replay_rule = RULES.get(
+            (ProjectState(existing.previous_state), ProjectState(existing.new_state))
+        )
+        if replay_rule is None or Role(principal.role) not in replay_rule.roles:
+            raise TransitionError("Current role cannot replay this transition")
+        if (
+            existing.operation != "project.transition"
+            or existing.organization_id != principal.organization_id
+            or existing.actor_id != principal.user_id
+            or existing.project_id != project.id
+            or existing.new_state != target.value
+            or existing.request_hash != request_hash
+        ):
+            raise TransitionError("Idempotency key was already used for a different transition")
+        return project
+
     if project.version != expected_version:
         raise TransitionError("Project was changed by another request; refresh and retry")
 
@@ -448,11 +510,14 @@ async def transition_project(
     session.add(
         ProjectTransition(
             project_id=project.id,
+            organization_id=principal.organization_id,
             actor_id=principal.user_id,
+            operation="project.transition",
             previous_state=current.value,
             new_state=target.value,
             reason=reason,
             correlation_id=correlation_id,
+            request_hash=request_hash,
             idempotency_key=idempotency_key,
         )
     )

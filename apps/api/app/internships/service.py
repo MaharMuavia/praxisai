@@ -1889,12 +1889,30 @@ async def receive_upload_stream(
     try:
         if settings.storage_provider == "supabase":
             digest, size = await SupabaseInternshipStorage(settings).put_stream(
-                upload.storage_key, chunks, upload.content_type, upload.size_bytes
+                upload.storage_key,
+                chunks,
+                upload.content_type,
+                upload.size_bytes,
+                max_bytes=upload.size_bytes,
             )
         else:
             digest, size = await LocalInternshipStorage(
                 settings.internship_local_storage_path
-            ).put_stream(upload.storage_key, chunks)
+            ).put_stream(upload.storage_key, chunks, max_bytes=upload.size_bytes)
+    except ValueError as exc:
+        upload.state = "REJECTED"
+        upload.scan_message = "Uploaded stream exceeds the declared byte limit"
+        if settings.storage_provider == "supabase":
+            try:
+                await SupabaseInternshipStorage(settings).delete(upload.storage_key)
+            except SupabaseStorageError:
+                pass
+        else:
+            LocalInternshipStorage(settings.internship_local_storage_path).delete(
+                upload.storage_key
+            )
+        await session.commit()
+        raise ValidationFailure(upload.scan_message) from exc
     except SupabaseStorageError as exc:
         raise StorageFailure("Upload storage is temporarily unavailable") from exc
     if size != upload.size_bytes or (upload.sha256 and digest != upload.sha256):

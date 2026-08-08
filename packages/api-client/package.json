@@ -5,7 +5,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "generate": "openapi-typescript ../../openapi.json -o src/schema.ts",
     "build": "tsc -p tsconfig.json",
@@ -15,8 +17,8 @@
     "openapi-fetch": "0.14.0"
   },
   "devDependencies": {
-    "openapi-typescript": "7.9.1",
+    "js-yaml": "^4.3.1",
+    "openapi-typescript": "^7.13.0",
     "typescript": "5.9.2"
   }
 }
-

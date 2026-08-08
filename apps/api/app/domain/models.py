@@ -349,11 +349,16 @@ class QuoteLineItem(EntityMixin, Base):
 class ProjectTransition(EntityMixin, Base):
     __tablename__ = "project_transitions"
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"), index=True)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id"), index=True
+    )
     actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    operation: Mapped[str] = mapped_column(String(80), default="project.transition")
     previous_state: Mapped[str] = mapped_column(String(64))
     new_state: Mapped[str] = mapped_column(String(64))
     reason: Mapped[str] = mapped_column(Text)
     correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    request_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     idempotency_key: Mapped[str] = mapped_column(String(128), unique=True)
 
 
@@ -837,6 +842,7 @@ class OutboxEvent(EntityMixin, Base):
     event_type: Mapped[str] = mapped_column(String(80), index=True)
     aggregate_type: Mapped[str] = mapped_column(String(60))
     aggregate_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
+    correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, default=uuid.uuid4, index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(30), default="PENDING", index=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)

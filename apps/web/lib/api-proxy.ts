@@ -11,6 +11,18 @@ const HOP_BY_HOP_HEADERS = new Set([
   "upgrade",
 ]);
 
+const UNTRUSTED_ROUTING_HEADERS = new Set([
+  "forwarded",
+  "x-forwarded-for",
+  "x-forwarded-host",
+  "x-forwarded-proto",
+  "authorization",
+  "proxy-authorization",
+  "x-service-auth",
+  "x-service-token",
+  "x-internal-auth",
+]);
+
 const PRODUCTION_ENVIRONMENTS = new Set(["staging", "production"]);
 
 export function buildApiProxyTarget(
@@ -51,7 +63,11 @@ export function buildForwardHeaders(
 ): Headers {
   const headers = new Headers();
   requestHeaders.forEach((value, name) => {
-    if (!HOP_BY_HOP_HEADERS.has(name.toLowerCase())) {
+    const normalizedName = name.toLowerCase();
+    if (
+      !HOP_BY_HOP_HEADERS.has(normalizedName) &&
+      !UNTRUSTED_ROUTING_HEADERS.has(normalizedName)
+    ) {
       headers.set(name, value);
     }
   });
@@ -62,9 +78,16 @@ export function buildForwardHeaders(
 export function responseHeaders(source: Headers): Headers {
   const headers = new Headers();
   source.forEach((value, name) => {
-    if (!HOP_BY_HOP_HEADERS.has(name.toLowerCase())) {
+    const normalizedName = name.toLowerCase();
+    if (
+      !HOP_BY_HOP_HEADERS.has(normalizedName) &&
+      normalizedName !== "set-cookie"
+    ) {
       headers.set(name, value);
     }
   });
+  for (const cookie of source.getSetCookie?.() ?? []) {
+    headers.append("set-cookie", cookie);
+  }
   return headers;
 }

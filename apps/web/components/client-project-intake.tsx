@@ -109,6 +109,8 @@ export function ClientProjectIntake() {
   }, [reset]);
 
   useEffect(() => {
+    // React Hook Form's subscription API is intentionally external to React Compiler.
+    // eslint-disable-next-line react-hooks/incompatible-library
     const subscription = watch((value) => {
       window.localStorage.setItem(draftKey, JSON.stringify(value));
     });
