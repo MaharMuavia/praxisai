@@ -8,6 +8,13 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+crash.*.log
 .coverage
 htmlcov/
 node_modules/
@@ -22,4 +29,5 @@ tmp/
 *.pyc
 *.tsbuildinfo
 *.log
+gha-creds-*.json
 .DS_Store

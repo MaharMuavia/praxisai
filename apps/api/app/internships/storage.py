@@ -105,15 +105,19 @@ class SupabaseInternshipStorage:
         *,
         content: bytes | AsyncIterator[bytes] | None = None,
         headers: dict[str, str] | None = None,
+        allowed_statuses: frozenset[int] = frozenset(),
     ) -> httpx.Response:
-        if self._client is not None:
-            response = await self._client.request(
-                method, url, content=content, headers=headers, timeout=self._timeout
-            )
-        else:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                response = await client.request(method, url, content=content, headers=headers)
-        if response.is_error:
+        try:
+            if self._client is not None:
+                response = await self._client.request(
+                    method, url, content=content, headers=headers, timeout=self._timeout
+                )
+            else:
+                async with httpx.AsyncClient(timeout=self._timeout) as client:
+                    response = await client.request(method, url, content=content, headers=headers)
+        except httpx.HTTPError as exc:
+            raise SupabaseStorageError("Supabase Storage is temporarily unavailable") from exc
+        if response.is_error and response.status_code not in allowed_statuses:
             raise SupabaseStorageError(
                 f"Supabase Storage request failed with HTTP {response.status_code}"
             )
@@ -161,7 +165,12 @@ class SupabaseInternshipStorage:
         return digest.hexdigest(), count
 
     async def delete(self, storage_key: str) -> None:
-        await self._request("DELETE", self._object_url(storage_key), headers=self._headers())
+        await self._request(
+            "DELETE",
+            self._object_url(storage_key),
+            headers=self._headers(),
+            allowed_statuses=frozenset({404}),
+        )
 
     async def read(self, storage_key: str) -> bytes:
         response = await self._request(

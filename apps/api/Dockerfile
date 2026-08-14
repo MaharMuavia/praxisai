@@ -1,9 +1,10 @@
-FROM python:3.12.13-slim-trixie AS runtime
+FROM python:3.13.14-alpine3.24 AS runtime
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /uvx /bin/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    UV_PYTHON_DOWNLOADS=never \
     PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app

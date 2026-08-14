@@ -1,7 +1,7 @@
 # MVP assumptions and risks
 
 - The pilot uses country-neutral USD demo policy. Taxes, rate cards, provider fees, regions, appeal windows, and cohort thresholds are versioned settings.
-- Firebase, Gemini, Cloud Storage, Cloud Tasks, BigQuery, and KMS require operator-owned credentials and onboarding. No fallback claims provider work occurred.
+- Supabase Auth/Storage, Gemini, Google Cloud runtime/storage/scheduling, KMS, and the private ClamAV endpoint require operator-owned credentials and onboarding. No fallback claims provider work occurred.
 - Payment processing is outside this build. Funding records are operator-approved evidence of external settlement and never initiate a transfer.
 - Local artifact URLs represent external evidence; untrusted student code is not executed inside the API process.
 - Labor classification, worker protections, tax, payment availability, credential wording, privacy terms, and retention require jurisdiction-specific legal review.

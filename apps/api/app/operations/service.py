@@ -164,7 +164,7 @@ async def recover_dead_letter(
     return event
 
 
-async def integration_health(
+async def integration_inventory(
     session: AsyncSession, *, settings: Settings
 ) -> list[IntegrationStatus]:
     sync_rows = list(
@@ -177,12 +177,22 @@ async def integration_health(
     latest = {row.provider: row for row in reversed(sync_rows)}
     configured = [
         IntegrationStatus(
+            provider="database",
+            mode=settings.database_pool_mode,
+            configured=bool(settings.database_url),
+            live_side_effects_enabled=True,
+        ),
+        IntegrationStatus(
             provider="identity",
             mode=settings.identity_provider,
             configured=(
-                settings.identity_provider == "local" or bool(settings.firebase_project_id)
+                settings.identity_provider == "local"
+                or bool(
+                    settings.supabase_url
+                    and (settings.supabase_publishable_key or settings.supabase_anon_key)
+                )
             ),
-            live_side_effects_enabled=settings.identity_provider == "firebase",
+            live_side_effects_enabled=settings.identity_provider == "supabase",
         ),
         IntegrationStatus(
             provider="ai",
@@ -192,6 +202,31 @@ async def integration_health(
                 or bool(settings.google_cloud_project or settings.gemini_api_key)
             ),
             live_side_effects_enabled=settings.gemini_provider == "gemini",
+        ),
+        IntegrationStatus(
+            provider="object_storage",
+            mode=settings.storage_provider,
+            configured=(
+                settings.storage_provider == "local"
+                or (
+                    settings.storage_provider == "supabase"
+                    and bool(
+                        settings.supabase_url
+                        and settings.supabase_service_role_key
+                        and settings.supabase_storage_bucket
+                    )
+                )
+                or (settings.storage_provider == "gcs" and bool(settings.cloud_storage_bucket))
+            ),
+            live_side_effects_enabled=settings.storage_provider in {"supabase", "gcs"},
+        ),
+        IntegrationStatus(
+            provider="malware_scanner",
+            mode=settings.upload_scanner_provider,
+            configured=(
+                settings.upload_scanner_provider == "disabled" or bool(settings.clamav_host)
+            ),
+            live_side_effects_enabled=settings.upload_scanner_provider == "clamav",
         ),
         IntegrationStatus(
             provider="payments",

@@ -1,3 +1,4 @@
+import re
 import uuid
 from typing import Annotated
 
@@ -28,19 +29,35 @@ from app.domain.models import (
     CredentialRevocation,
 )
 from app.domain.schemas import CredentialIssueRequest, CredentialRevokeRequest, PublicCredential
-from app.rate_limits.service import RateLimitExceeded, consume_rate_limit
+from app.rate_limits.service import (
+    RateLimitExceeded,
+    consume_rate_limit,
+    opaque_rate_limit_key,
+)
 
 router = APIRouter(tags=["credentials"])
 
+PUBLIC_CREDENTIAL_RESOURCE_LIMIT = 60
+PUBLIC_CREDENTIAL_GLOBAL_LIMIT = 3_000
+PUBLIC_CREDENTIAL_WINDOW_SECONDS = 60
 
-async def _consume_public_limit(session: DbSession, request: Request) -> None:
-    client_host = request.client.host if request.client else "unknown"
+
+async def _consume_public_limit(session: DbSession, public_slug: str) -> None:
     try:
         await consume_rate_limit(
             session,
-            raw_key=f"credential:{client_host}",
-            limit=60,
-            window_seconds=60,
+            raw_key=opaque_rate_limit_key(
+                namespace="credential:public:resource",
+                identifier=public_slug,
+            ),
+            limit=PUBLIC_CREDENTIAL_RESOURCE_LIMIT,
+            window_seconds=PUBLIC_CREDENTIAL_WINDOW_SECONDS,
+        )
+        await consume_rate_limit(
+            session,
+            raw_key="credential:public:global",
+            limit=PUBLIC_CREDENTIAL_GLOBAL_LIMIT,
+            window_seconds=PUBLIC_CREDENTIAL_WINDOW_SECONDS,
         )
     except RateLimitExceeded as exc:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, str(exc)) from exc
@@ -55,14 +72,46 @@ async def _revocation_for(
     return revocation
 
 
-def _signer(settings: Settings) -> SigningProvider:
+KMS_KEY_VERSION_PATTERN = re.compile(
+    r"^(projects/[^/]+/locations/[^/]+/keyRings/[^/]+/cryptoKeys/[^/]+)/"
+    r"cryptoKeyVersions/[^/]+$"
+)
+
+
+def kms_verification_key_name(configured_key: str, recorded_key: str) -> str:
+    configured_match = KMS_KEY_VERSION_PATTERN.fullmatch(configured_key)
+    recorded_match = KMS_KEY_VERSION_PATTERN.fullmatch(recorded_key)
+    if (
+        configured_match is None
+        or recorded_match is None
+        or configured_match.group(1) != recorded_match.group(1)
+    ):
+        raise RuntimeError("Credential signing key version is not allowed")
+    return recorded_key
+
+
+def _signer(settings: Settings, *, recorded_key: str | None = None) -> SigningProvider:
     if settings.credential_signing_provider == "demo":
         if not (settings.is_local_or_test or settings.demo_mode):
             raise RuntimeError("Demo signing is prohibited in this environment")
-        return DemoSigningProvider(settings.credential_demo_private_key_path)
+        signer = DemoSigningProvider(settings.credential_demo_private_key_path)
+        if recorded_key is not None and recorded_key != signer.key_identifier:
+            raise RuntimeError("Credential signing key version is not allowed")
+        return signer
     if not settings.credential_kms_key_name:
         raise RuntimeError("CREDENTIAL_KMS_KEY_NAME is required")
-    return KmsSigningProvider(settings.credential_kms_key_name)
+    key_name = (
+        kms_verification_key_name(settings.credential_kms_key_name, recorded_key)
+        if recorded_key is not None
+        else settings.credential_kms_key_name
+    )
+    return KmsSigningProvider(key_name)
+
+
+def _credential_signer(settings: Settings, credential: Credential) -> SigningProvider:
+    if credential.canonical_payload.get("key_identifier") != credential.key_identifier:
+        raise RuntimeError("Credential signing key metadata is inconsistent")
+    return _signer(settings, recorded_key=credential.key_identifier)
 
 
 @router.post("/ops/projects/{project_id}/credentials", status_code=201)
@@ -101,11 +150,10 @@ async def issue_credential(
 @router.get("/public/credentials/{public_slug}", response_model=PublicCredential)
 async def public_credential(
     public_slug: str,
-    request: Request,
     session: DbSession,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> PublicCredential:
-    await _consume_public_limit(session, request)
+    await _consume_public_limit(session, public_slug)
     credential = await session.scalar(
         select(Credential).where(Credential.public_slug == public_slug)
     )
@@ -113,7 +161,7 @@ async def public_credential(
         return PublicCredential(status="NOT_FOUND", signature_valid=False, credential=None)
     try:
         signature_valid = verify_signed_credential(
-            _signer(settings),
+            _credential_signer(settings, credential),
             credential.canonical_payload,
             credential.payload_hash,
             credential.signature,
@@ -137,11 +185,10 @@ async def public_credential(
 @router.get("/public/credentials/{public_slug}/qr.png")
 async def credential_qr(
     public_slug: str,
-    request: Request,
     session: DbSession,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
-    await _consume_public_limit(session, request)
+    await _consume_public_limit(session, public_slug)
     credential = await session.scalar(
         select(Credential).where(Credential.public_slug == public_slug)
     )
@@ -178,7 +225,7 @@ async def credential_pdf(
     effective_status = "REVOKED" if revocation else "VALID"
     try:
         signature_valid = verify_signed_credential(
-            _signer(settings),
+            _credential_signer(settings, credential),
             credential.canonical_payload,
             credential.payload_hash,
             credential.signature,

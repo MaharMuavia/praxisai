@@ -21,7 +21,10 @@ async def current_principal(
     if praxis_session is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required")
     try:
-        principal = SessionCodec(settings.session_secret).decode(praxis_session)
+        principal = SessionCodec(
+            settings.session_secret,
+            settings.session_secret_fallback,
+        ).decode(praxis_session)
         await validate_membership(session, principal)
         request.state.principal = principal
         return principal

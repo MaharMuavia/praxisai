@@ -25,6 +25,38 @@ const UNTRUSTED_ROUTING_HEADERS = new Set([
 
 const PRODUCTION_ENVIRONMENTS = new Set(["staging", "production"]);
 
+const DEFAULT_API_PROXY_TIMEOUT_MS = 120_000;
+const MIN_API_PROXY_TIMEOUT_MS = 1_000;
+const MAX_API_PROXY_TIMEOUT_MS = 300_000;
+const INTEGER_PATTERN = /^\d+$/;
+
+export function resolveApiProxyTimeoutMs(
+  configuredValue: string | undefined,
+): number {
+  if (configuredValue === undefined) {
+    return DEFAULT_API_PROXY_TIMEOUT_MS;
+  }
+
+  const normalizedValue = configuredValue.trim();
+  if (!INTEGER_PATTERN.test(normalizedValue)) {
+    throw new Error(
+      `API_PROXY_TIMEOUT_MS must be an integer between ${MIN_API_PROXY_TIMEOUT_MS} and ${MAX_API_PROXY_TIMEOUT_MS} milliseconds`,
+    );
+  }
+
+  const timeoutMs = Number(normalizedValue);
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < MIN_API_PROXY_TIMEOUT_MS ||
+    timeoutMs > MAX_API_PROXY_TIMEOUT_MS
+  ) {
+    throw new Error(
+      `API_PROXY_TIMEOUT_MS must be an integer between ${MIN_API_PROXY_TIMEOUT_MS} and ${MAX_API_PROXY_TIMEOUT_MS} milliseconds`,
+    );
+  }
+  return timeoutMs;
+}
+
 export function buildApiProxyTarget(
   configuredApiBase: string,
   pathSegments: readonly string[],

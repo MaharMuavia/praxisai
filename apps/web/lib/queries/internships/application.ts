@@ -3,6 +3,7 @@ import { internshipFetch, internshipKeys } from "./shared";
 
 export type InternshipApplication = {
   id: string;
+  program_id: string;
   cohort_id: string;
   status: string;
   version: number;

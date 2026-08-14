@@ -712,6 +712,62 @@ select {
   gap: 16px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.internship-submission-form .form-field {
+  display: grid;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 7px;
+}
+.internship-submission-form .form-field-wide {
+  grid-column: 1 / -1;
+}
+.internship-submission-form input,
+.internship-submission-form textarea {
+  background: var(--paper-bright);
+  border: 1px solid #aeb9b6;
+  border-radius: 9px;
+  color: var(--ink);
+  padding: 11px;
+  width: 100%;
+}
+.internship-upload-field {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin: 0;
+  padding: 16px;
+}
+.internship-upload-field legend {
+  padding: 0 5px;
+}
+.internship-upload-controls,
+.internship-actions,
+.internship-upload-statuses li {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+.internship-upload-controls input {
+  flex: 1;
+}
+.internship-upload-statuses {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+.internship-upload-statuses li span:last-child,
+.internship-muted {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.internship-actions {
+  border-top: 1px solid var(--line);
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 20px;
+}
 .intake-review {
   background: #eef5f4;
   border-left: 4px solid var(--success);
@@ -1963,7 +2019,8 @@ select {
   gap: 6px;
 }
 .internship-evidence-form textarea,
-.internship-auth-form input {
+.internship-auth-form input,
+.internship-auth-form select {
   border: 1px solid #aeb9b6;
   border-radius: 9px;
   padding: 11px;

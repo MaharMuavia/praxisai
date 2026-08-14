@@ -41,6 +41,13 @@ URLs are private and short-lived; storage bucket paths are never exposed.
 
 Local/demo environments use database metadata and local/temporary storage.
 Staging and production use Supabase PostgreSQL plus a private Supabase Storage
-bucket when `STORAGE_PROVIDER=supabase`; the API service-role key is server-only.
-Malware scanning/quarantine and lifecycle deletion jobs remain operator work,
-and live Supabase connectivity is not treated as verified by local tests alone.
+bucket when `STORAGE_PROVIDER=supabase`; the API and worker service-role key is
+server-only. The scheduled worker validates file signatures and archive safety,
+scans quarantined objects with ClamAV, deletes rejected or terminally failed
+objects, and deletes abandoned uploads before marking them `EXPIRED`. It also
+anonymizes rejected or withdrawn applications when the configured retention
+window elapses.
+
+Longer-lived submission, reviewer, certificate, and audit schedules still
+require a jurisdiction-approved operator policy. Live Supabase, Scheduler, and
+ClamAV behavior is not treated as verified by local tests alone.

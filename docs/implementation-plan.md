@@ -6,7 +6,7 @@ This plan follows the Phase 0 audit and preserves the existing modular monolith.
 
 | Requirement | Reuse | Modify | New or split |
 | --- | --- | --- | --- |
-| Identity and memberships | `auth/dependencies.py`, `auth/service.py`, `api/auth.py`, `User`, `OrganizationMembership` | Capability checks and Firebase lifecycle | Authentication-sensitive audit events and rate-limit coverage |
+| Identity and memberships | `auth/dependencies.py`, `auth/service.py`, `api/auth.py`, `User`, `OrganizationMembership` | Capability checks and Supabase Auth lifecycle | Authentication-sensitive audit events and rate-limit coverage |
 | Project delivery | `projects/service.py`, `api/projects.py`, project models/schemas | Add client acceptance, funding policy, release/completion guards | Route-level loaders and feature modules |
 | Scope and pricing | `ProjectScopeVersion`, `AcceptanceCriterion`, `Quote`, `domain/pricing.py`, scope routes | Add project-category boundaries and quote approval/acceptance terms | Versioned service-category configuration |
 | Staffing | `staffing/service.py`, `talent/service.py`, `StaffingRun`, `StaffingCandidate`, offers | Add evidence-linked scoring, conflict checks, final squad approval | Explainable matching contract and review UI |
@@ -15,9 +15,9 @@ This plan follows the Phase 0 audit and preserves the existing modular monolith.
 | Funding and payout | billing service/routes, invoice/payment/ledger/payout models | Add configured funding policy and verified settlement states | Provider adapter only where tested |
 | Credentials | credentials lifecycle/service/routes, consent and credential models | Require complete evidence and human approval | Production KMS smoke test |
 | AI proposals | `agents/provider.py`, `AgentRun`, `AgentRunEvent`, `PromptVersion` | Common run contract, versioned schemas, risk class, cost/latency | Shared runtime, action registry, approval executor |
-| Reliability | outbox services, Cloud Tasks adapter, rate-limit service, provider sync | Add agent action retries and stale-result guards | Alert recipients and metric definitions |
+| Reliability | outbox services, scheduled worker, rate-limit service, provider sync | Add agent action retries and stale-result guards | Alert recipients and metric definitions |
 | Frontend | existing `AppShell`, workspaces, demo boundary, API client types | Same-origin API adapter, capability-driven navigation, live/error states | Split route modules and internal primitives |
-| Infrastructure | Terraform Cloud Run, SQL, Storage, Tasks, IAM, Identity Platform, KMS | Add complete env injection, Vertex IAM, routing, monitoring recipients | Deployment validation and smoke-test scripts |
+| Infrastructure | Terraform Cloud Run services/job, Scheduler, Artifact Registry, Secret Manager, IAM, and KMS with Supabase-managed PostgreSQL/Auth/Storage | Add complete env injection, Vertex IAM, routing, monitoring recipients | Deployment validation and smoke-test scripts |
 
 ## Phase 0: audit and truthfulness
 
@@ -28,13 +28,13 @@ Completed by this document set:
 - unsupported claims and risk register;
 - reuse/modify/new migration plan.
 
-Exit criteria: documentation accurately describes the current repository and does not claim real deployment, customers, revenue, Gemini, Firebase, or payment success without evidence.
+Exit criteria: documentation accurately describes the current repository and does not claim real deployment, customers, revenue, Gemini, Supabase Auth, or payment success without evidence.
 
 ## Phase 1: competition-critical production repair
 
 ### 1. Environment contract
 
-Extend the typed settings contract with explicit `local`, `test`, `demo`, `staging`, and `production` semantics. Require production/staging values for identity, Gemini, Google Cloud, secure cookies, CORS, public URLs, KMS, payment/manual-settlement, email, and telemetry. Reject localhost URLs, demo identity, fixture AI, demo signing, and unsafe fallback outside `demo`.
+Extend the typed settings contract with explicit `local`, `test`, `demo`, `staging`, and `production` semantics. Require production/staging values for identity, Gemini, Google Cloud, secure cookies, CORS, public URLs, KMS, and payment/manual-settlement. Reject non-HTTPS hosted provider URLs, localhost URLs, demo identity, fixture AI, demo signing, and unsafe fallback outside `demo`.
 
 Acceptance tests must cover startup rejection, safe error messages, and no fictional records in staging/production data paths.
 
@@ -42,9 +42,9 @@ Acceptance tests must cover startup rejection, safe error messages, and no ficti
 
 Introduce one typed browser API adapter that uses relative `/api/v1` in deployed web builds and a documented local override only for local development. Add a build/startup check that fails if a public bundle points at localhost. Configure Cloud Run routing so `/api/*` reaches the API service.
 
-### 3. Firebase and Vertex AI
+### 3. Supabase Auth and Vertex AI
 
-Complete the Firebase adapter and deployment configuration for verification, reset, revocation, disabled users, organization membership, secure cookies, CSRF, rate limits, and audit events.
+Complete and validate the Supabase Auth adapter and deployment configuration for verification, reset, revocation, disabled users, organization membership, secure cookies, CSRF, rate limits, and audit events.
 
 Complete Vertex AI service-account access with the minimum IAM permission. Add a real structured Gemini smoke test that validates schema, persists an agent run and audit metadata, redacts errors, and verifies timeout behavior. The smoke test requires operator-owned credentials and must be reported as unverified when unavailable.
 
@@ -93,7 +93,7 @@ Phase 2 exit criteria: one end-to-end test covers lead -> approved project -> fu
 
 Create a shared agent runtime around the existing provider protocol. Add typed agent definitions, prompt versions, input/output hashes, context references, action classes, tool authorization, approval requirements, idempotency, concurrency/version checks, retries, stale-result rejection, and run timeline persistence.
 
-The action executor uses existing domain services and outbox/Cloud Tasks boundaries. AI never gets a raw database session, unrestricted HTTP client, credential, payment action, or authority to bypass a policy.
+The action executor uses existing domain services and transactional outbox boundaries. AI never gets a raw database session, unrestricted HTTP client, credential, payment action, or authority to bypass a policy.
 
 Add contract tests for every agent schema, action authorization tests, redacted failure tests, replay/idempotency tests, and human override/recovery tests.
 
@@ -127,5 +127,5 @@ terraform fmt -check
 terraform validate
 ```
 
-No deployment, Gemini, Firebase, email, payment, or cloud capability is considered complete until it has been exercised in the target environment and its evidence is retained.
+No deployment, Gemini, Supabase Auth, email, payment, or cloud capability is considered complete until it has been exercised in the target environment and its evidence is retained.
 

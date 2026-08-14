@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildApiProxyTarget,
   buildForwardHeaders,
+  resolveApiProxyTimeoutMs,
   responseHeaders,
 } from "./api-proxy";
 
@@ -29,6 +30,19 @@ describe("api proxy", () => {
     );
 
     expect(target.toString()).toBe("http://localhost:8000/api/v1/health");
+  });
+
+  it("uses a long default proxy timeout and validates configured bounds", () => {
+    expect(resolveApiProxyTimeoutMs(undefined)).toBe(120_000);
+    expect(resolveApiProxyTimeoutMs(" 180000 ")).toBe(180_000);
+    expect(resolveApiProxyTimeoutMs("1000")).toBe(1_000);
+    expect(resolveApiProxyTimeoutMs("300000")).toBe(300_000);
+
+    for (const invalidValue of ["", "999", "300001", "1.5", "1e5"]) {
+      expect(() => resolveApiProxyTimeoutMs(invalidValue)).toThrow(
+        "API_PROXY_TIMEOUT_MS must be an integer between 1000 and 300000 milliseconds",
+      );
+    }
   });
 
   it("preserves supported request headers and removes spoofable routing headers", () => {

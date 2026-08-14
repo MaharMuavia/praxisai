@@ -62,10 +62,6 @@ test("key marketing surfaces have stable visual snapshots", async ({
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  const pauseWorkflow = page.getByRole("button", {
-    name: "Pause workflow sequence",
-  });
-  if (await pauseWorkflow.isVisible()) await pauseWorkflow.click();
   await expect(page).toHaveScreenshot("marketing-home.png", {
     animations: "disabled",
     caret: "hide",

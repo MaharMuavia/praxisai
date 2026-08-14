@@ -427,7 +427,7 @@ def _redact_submission(submission: PublicIntakeSubmission, now: datetime) -> Non
     submission.withdrawal_requested_at = submission.withdrawal_requested_at or now
 
 
-async def anonymize_expired_submissions(session: AsyncSession, *, now: datetime) -> int:
+async def anonymize_expired_submissions(session: AsyncSession, *, now: datetime, limit: int) -> int:
     rows = list(
         (
             await session.scalars(
@@ -437,6 +437,8 @@ async def anonymize_expired_submissions(session: AsyncSession, *, now: datetime)
                     PublicIntakeSubmission.anonymized_at.is_(None),
                     PublicIntakeSubmission.deleted_at.is_(None),
                 )
+                .order_by(PublicIntakeSubmission.retention_expires_at)
+                .limit(limit)
                 .with_for_update(skip_locked=True)
             )
         ).all()

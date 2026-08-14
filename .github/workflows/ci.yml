@@ -67,6 +67,7 @@ jobs:
           enable-cache: true
       - run: uv sync --project apps/api --frozen
       - run: uv run --project apps/api alembic -c apps/api/alembic.ini upgrade head
+      - run: uv run --project apps/api python scripts/verify_fresh_postgres.py
       - run: uv run --project apps/api alembic -c apps/api/alembic.ini check
       - run: uv run --directory apps/api --project . pytest tests
 
@@ -98,6 +99,10 @@ jobs:
   build:
     name: Production builds
     runs-on: ubuntu-latest
+    env:
+      BUILDX_METADATA_PROVENANCE: max
+      NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -107,33 +112,173 @@ jobs:
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_version: 1.9.8
+      - name: Configure attested image builder
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          version: v0.34.1
+          driver-opts: network=host
+          buildkitd-config-inline: |
+            [registry."localhost:5000"]
+              http = true
       - run: npm ci
+      - run: terraform -chdir=infra/bootstrap fmt -check
+      - run: terraform -chdir=infra/bootstrap init -backend=false -input=false
+      - run: terraform -chdir=infra/bootstrap validate
       - run: terraform -chdir=infra/terraform fmt -check
       - run: terraform -chdir=infra/terraform init -backend=false -input=false
       - run: terraform -chdir=infra/terraform validate
       - run: npm run build
+      - name: Initialize container evidence
+        shell: bash
+        run: mkdir -p "${RUNNER_TEMP}/ci-evidence"
+      - name: Start local registry for attested CI images
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --name praxisai-ci-registry \
+            --publish 127.0.0.1:5000:5000 \
+            registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:5000/v2/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs praxisai-ci-registry
+          exit 1
       - name: Build API image with provenance and SBOM
-        run: >-
-          docker build --provenance=mode=max --sbom=true
-          -f apps/api/Dockerfile -t praxisai-api-ci apps/api
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx build --push --pull --provenance=mode=max --sbom=true \
+            --metadata-file "${RUNNER_TEMP}/ci-evidence/api-build-metadata.json" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            -f apps/api/Dockerfile \
+            -t "localhost:5000/praxisai-api-ci:${GITHUB_SHA}" \
+            apps/api
       - name: Build web image with provenance and SBOM
-        run: >-
-          docker build --provenance=mode=max --sbom=true
-          -f apps/web/Dockerfile -t praxisai-web-ci
-          --build-arg NEXT_PUBLIC_APP_ENV=test
-          --build-arg NEXT_PUBLIC_DEMO_MODE=true .
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx build --push --pull --provenance=mode=max --sbom=true \
+            --metadata-file "${RUNNER_TEMP}/ci-evidence/web-build-metadata.json" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            -f apps/web/Dockerfile \
+            -t "localhost:5000/praxisai-web-ci:${GITHUB_SHA}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL=https://test.supabase.co \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=test-publishable-key \
+            --build-arg NEXT_PUBLIC_APP_ENV=test \
+            --build-arg NEXT_PUBLIC_DEMO_MODE=true \
+            .
+      - name: Capture exact image digests and attestations
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_dir="${RUNNER_TEMP}/ci-evidence"
+          digest_pattern='^sha256:[0-9a-f]{64}$'
+          api_digest="$(jq -er --arg pattern "${digest_pattern}" \
+            '."containerimage.digest" | select(test($pattern))' \
+            "${evidence_dir}/api-build-metadata.json")"
+          web_digest="$(jq -er --arg pattern "${digest_pattern}" \
+            '."containerimage.digest" | select(test($pattern))' \
+            "${evidence_dir}/web-build-metadata.json")"
+          api_image="localhost:5000/praxisai-api-ci@${api_digest}"
+          web_image="localhost:5000/praxisai-web-ci@${web_digest}"
+          printf 'API_CI_IMAGE=%s\n' "${api_image}" >>"${GITHUB_ENV}"
+          printf 'WEB_CI_IMAGE=%s\n' "${web_image}" >>"${GITHUB_ENV}"
+          printf 'api_image=%s\nweb_image=%s\n' "${api_image}" "${web_image}" \
+            >"${evidence_dir}/image-digests.txt"
+
+          docker buildx imagetools inspect --raw "${api_image}" \
+            >"${evidence_dir}/api-manifest.json"
+          docker buildx imagetools inspect --format '{{ json .Provenance }}' "${api_image}" \
+            >"${evidence_dir}/api-provenance.json"
+          docker buildx imagetools inspect --format '{{ json .SBOM }}' "${api_image}" \
+            >"${evidence_dir}/api-sbom.spdx.json"
+          docker buildx imagetools inspect --raw "${web_image}" \
+            >"${evidence_dir}/web-manifest.json"
+          docker buildx imagetools inspect --format '{{ json .Provenance }}' "${web_image}" \
+            >"${evidence_dir}/web-provenance.json"
+          docker buildx imagetools inspect --format '{{ json .SBOM }}' "${web_image}" \
+            >"${evidence_dir}/web-sbom.spdx.json"
+
+          for attestation in \
+            "${evidence_dir}/api-provenance.json" \
+            "${evidence_dir}/api-sbom.spdx.json" \
+            "${evidence_dir}/web-provenance.json" \
+            "${evidence_dir}/web-sbom.spdx.json"; do
+            jq -e 'type == "object" and length > 0' "${attestation}" >/dev/null
+          done
+      - name: Load exact images for vulnerability scans
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "${API_CI_IMAGE}"
+          docker pull "${WEB_CI_IMAGE}"
       - name: Scan API image
+        id: scan-api
+        continue-on-error: true
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
-          image: praxisai-api-ci
+          image: docker:${{ env.API_CI_IMAGE }}
           fail-build: true
           severity-cutoff: high
+          by-cve: true
+          config: .grype.yaml
+          grype-version: 0.116.1
+          output-format: json
+          output-file: ${{ runner.temp }}/ci-evidence/api-grype.json
       - name: Scan web image
+        id: scan-web
+        continue-on-error: true
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
-          image: praxisai-web-ci
+          image: docker:${{ env.WEB_CI_IMAGE }}
           fail-build: true
           severity-cutoff: high
+          by-cve: true
+          config: .grype.yaml
+          grype-version: 0.116.1
+          output-format: json
+          output-file: ${{ runner.temp }}/ci-evidence/web-grype.json
+      - name: Checksum container evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_dir="${RUNNER_TEMP}/ci-evidence"
+          mkdir -p "${evidence_dir}"
+          find "${evidence_dir}" -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' \
+            | sort -z \
+            | while IFS= read -r -d '' evidence_file; do
+                sha256sum "${evidence_dir}/${evidence_file}"
+              done >"${evidence_dir}/SHA256SUMS"
+      - name: Upload container evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ci-container-evidence-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci-evidence
+          if-no-files-found: error
+          retention-days: 30
+      - name: Stop local registry
+        if: always()
+        shell: bash
+        run: docker rm --force praxisai-ci-registry || true
+      - name: Enforce both image scan gates
+        if: always()
+        shell: bash
+        env:
+          API_SCAN_OUTCOME: ${{ steps.scan-api.outcome }}
+          WEB_SCAN_OUTCOME: ${{ steps.scan-web.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "${API_SCAN_OUTCOME}" != "success" || "${WEB_SCAN_OUTCOME}" != "success" ]]; then
+            echo "One or more exact-digest vulnerability scans did not pass." >&2
+            exit 1
+          fi
 
   e2e:
     name: Playwright functional and visual tests

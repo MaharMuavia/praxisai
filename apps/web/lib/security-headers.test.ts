@@ -3,24 +3,25 @@ import { publicSecurityHeaders } from "./security-headers";
 
 function asMap(environment: string) {
   return new Map(
-    publicSecurityHeaders(environment, "production").map(({ key, value }) => [
-      key,
-      value,
-    ]),
+    publicSecurityHeaders(
+      environment,
+      "production",
+      "https://project-ref.supabase.co",
+    ).map(({ key, value }) => [key, value]),
   );
 }
 
 describe("public security headers", () => {
-  it("allows only the required Firebase, Google, and application resources", () => {
+  it("allows only the required Supabase and application resources", () => {
     const headers = asMap("staging");
     const csp = headers.get("Content-Security-Policy") ?? "";
 
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
-    expect(csp).toContain("https://*.googleapis.com");
-    expect(csp).toContain("https://securetoken.googleapis.com");
-    expect(csp).toContain("https://identitytoolkit.googleapis.com");
-    expect(csp).toContain("https://accounts.google.com");
+    expect(csp).toContain("https://project-ref.supabase.co");
+    expect(csp).toContain("wss://project-ref.supabase.co");
+    expect(csp).not.toContain("https://*.supabase.co");
+    expect(csp).not.toContain("firebase");
     expect(csp).not.toContain("'unsafe-eval'");
     expect(headers.get("X-Frame-Options")).toBe("DENY");
     expect(headers.has("Strict-Transport-Security")).toBe(false);

@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
+from app.internships.limits import MAX_CONFIGURABLE_UPLOAD_BYTES
+
 
 class InternshipSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -51,7 +53,7 @@ class CohortSummary(InternshipSchema):
 
 
 class SignupRequest(BaseModel):
-    id_token: str = Field(min_length=20, max_length=16_000)
+    access_token: str = Field(min_length=20, max_length=16_000)
     cohort_id: uuid.UUID
     consent_version: str = Field(min_length=1, max_length=30)
 
@@ -235,7 +237,14 @@ class UploadInitiateRequest(BaseModel):
     artifact_type: str = Field(min_length=2, max_length=50)
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=3, max_length=120)
-    size_bytes: int = Field(gt=0, le=250 * 1024 * 1024)
+    size_bytes: int = Field(
+        gt=0,
+        le=MAX_CONFIGURABLE_UPLOAD_BYTES,
+        description=(
+            "Declared upload size. The active deployment and artifact type may enforce a "
+            "lower limit."
+        ),
+    )
     sha256: str | None = Field(default=None, pattern=r"^[a-fA-F0-9]{64}$")
 
 
@@ -246,6 +255,7 @@ class UploadView(InternshipSchema):
     state: str
     expires_at: datetime
     upload_url: str
+    scan_message: str | None = Field(default=None, max_length=500)
 
 
 class UploadCompleteRequest(BaseModel):

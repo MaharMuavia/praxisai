@@ -1,42 +1,112 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, StatusBadge } from "@/components/ui";
-import { internshipFetch } from "@/lib/queries/internships/shared";
+import {
+  assignmentQuery,
+  type InternshipAssignment,
+} from "@/lib/queries/internships/assignments";
 import {
   finalizeInternshipSubmission,
+  getInternshipSubmission,
   type SubmissionDraft,
+  updateInternshipSubmission,
 } from "@/lib/queries/internships/submissions";
+import {
+  getInternshipUpload,
+  type InternshipUpload,
+  internshipUploadKey,
+  uploadInternshipArtifact,
+} from "@/lib/queries/internships/uploads";
 
-type SubmissionForm = {
-  github_url: string;
-  demo_url: string;
-  readme: string;
-  reflection: string;
-  architecture_diagram: string;
-  test_report: string;
+type ArtifactRequirement =
+  InternshipAssignment["required_artifact_types"][number];
+type ArtifactKind = "link" | "text" | "file";
+
+const linkArtifactTypes = new Set(["github_url", "demo_url"]);
+const textArtifactTypes = new Set([
+  "readme",
+  "reflection",
+  "architecture_diagram",
+  "test_report",
+  "technical_report",
+  "evaluation_plan",
+]);
+const friendlyLabels: Readonly<Record<string, string>> = {
+  github_url: "GitHub repository URL",
+  demo_url: "Live demo URL",
+  readme: "README / setup notes",
+  reflection: "Reflection and trade-offs",
+  architecture_diagram: "Architecture diagram link or notes",
+  test_report: "Test report and known limitations",
+  technical_report: "Technical report",
+  evaluation_plan: "Evaluation plan",
 };
+const pendingUploadStates = new Set(["INITIATED", "UPLOADED", "QUARANTINED"]);
+const rejectedUploadStates = new Set([
+  "REJECTED",
+  "REJECTED_CLEANUP_PENDING",
+  "EXPIRED",
+  "EXPIRED_CLEANUP_PENDING",
+]);
 
-const emptyForm: SubmissionForm = {
-  github_url: "",
-  demo_url: "",
-  readme: "",
-  reflection: "",
-  architecture_diagram: "",
-  test_report: "",
-};
+function artifactKind(type: string): ArtifactKind {
+  if (linkArtifactTypes.has(type)) return "link";
+  if (textArtifactTypes.has(type)) return "text";
+  return "file";
+}
 
-function toForm(submission: SubmissionDraft): SubmissionForm {
-  return {
-    ...emptyForm,
-    github_url: submission.links.github_url ?? "",
-    demo_url: submission.links.demo_url ?? "",
-    readme: submission.text_fields.readme ?? "",
-    reflection: submission.text_fields.reflection ?? "",
-    architecture_diagram: submission.text_fields.architecture_diagram ?? "",
-    test_report: submission.text_fields.test_report ?? "",
-  };
+function artifactLabel(type: string): string {
+  return friendlyLabels[type] ?? type.replaceAll("_", " ");
+}
+
+function requirementLabel(requirement: ArtifactRequirement): string {
+  return `${artifactLabel(requirement.type)}${requirement.required ? " (required)" : " (optional)"}`;
+}
+
+function toEditableValues(submission: SubmissionDraft): Record<string, string> {
+  return { ...submission.links, ...submission.text_fields };
+}
+
+function splitEditableValues(
+  requirements: ArtifactRequirement[],
+  values: Record<string, string>,
+): Pick<SubmissionDraft, "links" | "text_fields"> {
+  const links: Record<string, string> = {};
+  const textFields: Record<string, string> = {};
+  for (const requirement of requirements) {
+    const value = values[requirement.type]?.trim() ?? "";
+    if (artifactKind(requirement.type) === "link") {
+      if (value) links[requirement.type] = value;
+    } else if (artifactKind(requirement.type) === "text") {
+      if (value) textFields[requirement.type] = value;
+    }
+  }
+  return { links, text_fields: textFields };
+}
+
+function uploadTone(state: string): "neutral" | "success" | "warning" {
+  if (state === "CLEAN") return "success";
+  if (rejectedUploadStates.has(state)) return "warning";
+  return "neutral";
+}
+
+function uploadStatusMessage(upload: InternshipUpload): string {
+  if (upload.state === "CLEAN")
+    return `${upload.filename} is clean and ready to attach.`;
+  if (upload.state === "QUARANTINED") {
+    return `${upload.filename} is quarantined while malware scanning completes.`;
+  }
+  if (rejectedUploadStates.has(upload.state)) {
+    return `${upload.filename} was rejected. Select a safe replacement file and retry.`;
+  }
+  return `${upload.filename}: ${upload.state.replaceAll("_", " ").toLowerCase()}.`;
 }
 
 export function InternshipSubmissionEditor({
@@ -45,56 +115,167 @@ export function InternshipSubmissionEditor({
   submissionId: string;
 }) {
   const queryClient = useQueryClient();
+  const submissionKey = useMemo(
+    () => ["internship", "submission", submissionId] as const,
+    [submissionId],
+  );
   const submission = useQuery({
-    queryKey: ["internship", "submission", submissionId],
-    queryFn: () =>
-      internshipFetch<SubmissionDraft>(
-        `/internships/me/submissions/${submissionId}`,
-      ),
+    queryKey: submissionKey,
+    queryFn: () => getInternshipSubmission(submissionId),
   });
-  const [form, setForm] = useState<SubmissionForm | null>(null);
-  const currentForm =
-    form ?? (submission.data ? toForm(submission.data) : emptyForm);
+  const assignment = useQuery(
+    assignmentQuery(submission.data?.student_assignment_id ?? ""),
+  );
+  const [values, setValues] = useState<Record<string, string> | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<
+    Record<string, File | undefined>
+  >({});
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const lastHydratedSubmission = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!submission.data) return;
+    if (lastHydratedSubmission.current !== submission.data.id) {
+      setValues(toEditableValues(submission.data));
+      lastHydratedSubmission.current = submission.data.id;
+    }
+  }, [submission.data]);
+
+  const uploadIds = submission.data?.artifact_upload_ids ?? [];
+  const uploadQueries = useQueries({
+    queries: uploadIds.map((uploadId) => ({
+      queryKey: internshipUploadKey(uploadId),
+      queryFn: () => getInternshipUpload(uploadId),
+      refetchInterval: (query: { state: { data?: InternshipUpload } }) => {
+        const current = query.state.data;
+        return current &&
+          pendingUploadStates.has(current.state) &&
+          Date.parse(current.expires_at) > Date.now()
+          ? 2_000
+          : false;
+      },
+      refetchIntervalInBackground: false,
+      staleTime: 1_000,
+    })),
+  });
+  const uploads = uploadQueries.flatMap((query) =>
+    query.data ? [query.data] : [],
+  );
+  const uploadsByType = new Map<string, InternshipUpload[]>();
+  for (const upload of uploads) {
+    const current = uploadsByType.get(upload.artifact_type) ?? [];
+    current.push(upload);
+    uploadsByType.set(upload.artifact_type, current);
+  }
+
+  const requirements = assignment.data?.required_artifact_types ?? [];
+  const currentValues =
+    values ?? (submission.data ? toEditableValues(submission.data) : {});
+  const immutable = submission.data?.state !== "DRAFT";
+  const requiredArtifactsReady = requirements.every((requirement) => {
+    if (!requirement.required) return true;
+    if (artifactKind(requirement.type) !== "file") {
+      return Boolean(currentValues[requirement.type]?.trim());
+    }
+    return (uploadsByType.get(requirement.type) ?? []).some(
+      (upload) => upload.state === "CLEAN",
+    );
+  });
+  const allAttachedUploadsClean =
+    uploads.length === uploadIds.length &&
+    uploads.every((attachedUpload) => attachedUpload.state === "CLEAN");
+  const uploadStatusesLoaded = uploadQueries.every(
+    (query) => !query.isPending && !query.isError,
+  );
+
   const save = useMutation({
-    mutationFn: () =>
-      internshipFetch<SubmissionDraft>(
-        `/internships/me/submissions/${submissionId}`,
-        {
-          method: "PUT",
-          body: JSON.stringify({
-            expected_version: submission.data?.version ?? 1,
-            links: {
-              github_url: currentForm.github_url,
-              demo_url: currentForm.demo_url,
-            },
-            text_fields: {
-              readme: currentForm.readme,
-              reflection: currentForm.reflection,
-              architecture_diagram: currentForm.architecture_diagram,
-              test_report: currentForm.test_report,
-            },
-            artifact_upload_ids: submission.data?.artifact_upload_ids ?? [],
-          }),
-        },
-      ),
-    onSuccess: async (next) => {
-      setForm(toForm(next));
-      await queryClient.invalidateQueries({
-        queryKey: ["internship", "submission", submissionId],
+    mutationFn: () => {
+      if (!submission.data || !assignment.data)
+        throw new Error("Submission is unavailable.");
+      const fields = splitEditableValues(requirements, currentValues);
+      return updateInternshipSubmission(submissionId, {
+        expected_version: submission.data.version,
+        ...fields,
+        artifact_upload_ids: submission.data.artifact_upload_ids,
       });
     },
-  });
-  const finalize = useMutation({
-    mutationFn: () =>
-      finalizeInternshipSubmission(
-        submissionId,
-        { version: submission.data?.version ?? 1, confirm: true },
-        crypto.randomUUID(),
-      ),
-    onSuccess: (next) => setForm(toForm(next)),
+    onSuccess: (next) => {
+      queryClient.setQueryData(submissionKey, next);
+      setValues(toEditableValues(next));
+    },
   });
 
-  if (submission.isPending) return <p>Loading submission draft…</p>;
+  const persistUpload = async (
+    upload: InternshipUpload,
+  ): Promise<SubmissionDraft> => {
+    const current = queryClient.getQueryData<SubmissionDraft>(submissionKey);
+    if (!current) throw new Error("Submission is unavailable.");
+    const replacedUploadIds = current.artifact_upload_ids.filter((uploadId) => {
+      const existing = queryClient.getQueryData<InternshipUpload>(
+        internshipUploadKey(uploadId),
+      );
+      return existing?.artifact_type !== upload.artifact_type;
+    });
+    const next = await updateInternshipSubmission(submissionId, {
+      expected_version: current.version,
+      links: current.links,
+      text_fields: current.text_fields,
+      artifact_upload_ids: Array.from(
+        new Set([...replacedUploadIds, upload.upload_id]),
+      ),
+    });
+    queryClient.setQueryData(submissionKey, next);
+    queryClient.setQueryData(internshipUploadKey(upload.upload_id), upload);
+    return next;
+  };
+
+  const upload = useMutation({
+    mutationFn: async ({ type, file }: { type: string; file: File }) => {
+      if (!submission.data) throw new Error("Submission is unavailable.");
+      const completed = await uploadInternshipArtifact(
+        submission.data.student_assignment_id,
+        type,
+        file,
+      );
+      await persistUpload(completed);
+      return completed;
+    },
+    onMutate: () => setUploadError(null),
+    onSuccess: (completed) => {
+      setSelectedFiles((previous) => ({
+        ...previous,
+        [completed.artifact_type]: undefined,
+      }));
+    },
+    onError: (error) =>
+      setUploadError(error instanceof Error ? error.message : "Upload failed."),
+  });
+
+  const finalize = useMutation({
+    mutationFn: async () => {
+      if (!submission.data || !assignment.data) {
+        throw new Error("Submission is unavailable.");
+      }
+      const fields = splitEditableValues(requirements, currentValues);
+      const saved = await updateInternshipSubmission(submissionId, {
+        expected_version: submission.data.version,
+        ...fields,
+        artifact_upload_ids: submission.data.artifact_upload_ids,
+      });
+      queryClient.setQueryData(submissionKey, saved);
+      return finalizeInternshipSubmission(
+        submissionId,
+        { version: saved.version, confirm: true },
+        crypto.randomUUID(),
+      );
+    },
+    onSuccess: (next) => {
+      queryClient.setQueryData(submissionKey, next);
+      setValues(toEditableValues(next));
+    },
+  });
+
+  if (submission.isPending) return <p>Loading submission draft...</p>;
   if (submission.isError || !submission.data) {
     return (
       <p role="alert">
@@ -102,10 +283,13 @@ export function InternshipSubmissionEditor({
       </p>
     );
   }
+  if (assignment.isPending) return <p>Loading assignment requirements...</p>;
+  if (assignment.isError || !assignment.data) {
+    return <p role="alert">The assignment requirements could not be loaded.</p>;
+  }
 
-  const update = (key: keyof SubmissionForm, value: string) =>
-    setForm((previous) => ({ ...(previous ?? currentForm), [key]: value }));
-  const immutable = submission.data.state !== "DRAFT";
+  const update = (key: string, value: string) =>
+    setValues((previous) => ({ ...(previous ?? currentValues), [key]: value }));
 
   return (
     <section className="internship-section">
@@ -119,56 +303,127 @@ export function InternshipSubmissionEditor({
         </StatusBadge>
       </div>
       <Card>
-        <div className="form-grid">
-          {(
-            [
-              ["github_url", "GitHub repository URL"],
-              ["demo_url", "Live demo URL"],
-            ] as const
-          ).map(([key, label]) => (
-            <label className="form-field" key={key}>
-              <span>{label}</span>
-              <input
-                value={currentForm[key]}
-                onChange={(event) => update(key, event.target.value)}
-                disabled={immutable}
-                type="url"
-              />
-            </label>
-          ))}
-          {(
-            [
-              ["readme", "README / setup notes"],
-              ["reflection", "Reflection and trade-offs"],
-              ["architecture_diagram", "Architecture diagram link or notes"],
-              ["test_report", "Test report and known limitations"],
-            ] as const
-          ).map(([key, label]) => (
-            <label className="form-field form-field-wide" key={key}>
-              <span>{label}</span>
-              <textarea
-                value={currentForm[key]}
-                onChange={(event) => update(key, event.target.value)}
-                disabled={immutable}
-                rows={4}
-              />
-            </label>
-          ))}
+        <div className="form-grid internship-submission-form">
+          {requirements.map((requirement) => {
+            const kind = artifactKind(requirement.type);
+            const label = requirementLabel(requirement);
+            if (kind === "link") {
+              return (
+                <label className="form-field" key={requirement.type}>
+                  <span>{label}</span>
+                  <input
+                    value={currentValues[requirement.type] ?? ""}
+                    onChange={(event) =>
+                      update(requirement.type, event.target.value)
+                    }
+                    disabled={immutable}
+                    required={requirement.required}
+                    type="url"
+                  />
+                </label>
+              );
+            }
+            if (kind === "text") {
+              return (
+                <label
+                  className="form-field form-field-wide"
+                  key={requirement.type}
+                >
+                  <span>{label}</span>
+                  <textarea
+                    value={currentValues[requirement.type] ?? ""}
+                    onChange={(event) =>
+                      update(requirement.type, event.target.value)
+                    }
+                    disabled={immutable}
+                    required={requirement.required}
+                    rows={4}
+                  />
+                </label>
+              );
+            }
+            const artifactUploads = uploadsByType.get(requirement.type) ?? [];
+            const selectedFile = selectedFiles[requirement.type];
+            return (
+              <fieldset
+                className="form-field form-field-wide internship-upload-field"
+                key={requirement.type}
+              >
+                <legend>{label}</legend>
+                {!immutable ? (
+                  <div className="internship-upload-controls">
+                    <input
+                      aria-label={label}
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,.webp,.zip,.ipynb,.json,.md,.txt"
+                      onChange={(event) =>
+                        setSelectedFiles((previous) => ({
+                          ...previous,
+                          [requirement.type]: event.target.files?.[0],
+                        }))
+                      }
+                    />
+                    <Button
+                      variant="secondary"
+                      disabled={
+                        !selectedFile ||
+                        upload.isPending ||
+                        save.isPending ||
+                        !uploadStatusesLoaded
+                      }
+                      onClick={() => {
+                        if (selectedFile)
+                          upload.mutate({
+                            type: requirement.type,
+                            file: selectedFile,
+                          });
+                      }}
+                    >
+                      {upload.isPending ? "Uploading..." : "Upload and scan"}
+                    </Button>
+                  </div>
+                ) : null}
+                {artifactUploads.length ? (
+                  <ul className="internship-upload-statuses">
+                    {artifactUploads.map((item) => (
+                      <li key={item.upload_id}>
+                        <StatusBadge tone={uploadTone(item.state)}>
+                          {item.state}
+                        </StatusBadge>
+                        <span>{uploadStatusMessage(item)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="internship-muted">
+                    No file has been uploaded for this artifact.
+                  </p>
+                )}
+              </fieldset>
+            );
+          })}
         </div>
         {!immutable ? (
           <div className="internship-actions">
             <Button
               onClick={() => save.mutate()}
-              disabled={save.isPending}
+              disabled={save.isPending || upload.isPending}
               variant="secondary"
             >
-              {save.isPending ? "Saving…" : "Save draft"}
+              {save.isPending ? "Saving..." : "Save draft"}
             </Button>
             <Button
               onClick={() => finalize.mutate()}
-              disabled={finalize.isPending}
+              disabled={
+                finalize.isPending ||
+                save.isPending ||
+                upload.isPending ||
+                !uploadStatusesLoaded ||
+                !requiredArtifactsReady ||
+                !allAttachedUploadsClean
+              }
             >
-              {finalize.isPending ? "Finalizing…" : "Finalize submission"}
+              {finalize.isPending ? "Finalizing..." : "Finalize submission"}
             </Button>
           </div>
         ) : (
@@ -176,6 +431,23 @@ export function InternshipSubmissionEditor({
             Finalized versions are immutable and remain available for review.
           </p>
         )}
+        {!immutable && uploadStatusesLoaded && !requiredArtifactsReady ? (
+          <p className="internship-muted">
+            Complete every required link and text field, and wait for every
+            required file to be CLEAN before finalizing.
+          </p>
+        ) : null}
+        {uploadError ? (
+          <p className="form-error" role="alert">
+            {uploadError}
+          </p>
+        ) : null}
+        {uploadQueries.some((query) => query.isError) ? (
+          <p className="form-error" role="alert">
+            One or more upload statuses could not be refreshed. Retry before
+            finalizing.
+          </p>
+        ) : null}
         {save.isError || finalize.isError ? (
           <p className="form-error" role="alert">
             The server rejected this change. Refresh the page to reconcile the

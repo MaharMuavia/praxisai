@@ -74,12 +74,12 @@ The audit does not authorize fictional success states or frontend-only authoriza
 
 - Severity: P1
 - User impact: A successful logout redirects, but active queries and protected cache state are not explicitly cancelled and removed before navigation.
-- Root cause: `handleLogout` calls the backend and optional Firebase sign-out but does not use the QueryClient.
+- Root cause: `handleLogout` calls the backend and optional Supabase sign-out but does not use the QueryClient.
 - Current file: `apps/web/components/app-shell.tsx`, `apps/web/app/providers.tsx`.
 - Correct owning layer: Auth feature/session boundary.
 - Backend dependency: Existing `POST /api/v1/auth/logout`.
 - Implementation plan: Cancel and remove authenticated query keys, clear local sensitive state, close shell overlays, and replace history before redirect. Preserve public/static query caches.
-- Test requirement: Backend/Firebase success and failure, duplicate clicks, cache clearing, redirect, and back-navigation tests.
+- Test requirement: Backend/Supabase success and failure, duplicate clicks, cache clearing, redirect, and back-navigation tests.
 - Final verification status: Complete in implementation. Logout cancels and clears the React Query cache, closes overlays, replaces history, and redirects.
 
 ### 7. Public conversion has no persistence endpoints

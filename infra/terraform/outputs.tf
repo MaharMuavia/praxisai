@@ -20,12 +20,7 @@ output "artifact_bucket" {
 
 output "artifact_registry_repository" {
   description = "Artifact Registry Docker repository ID"
-  value       = google_artifact_registry_repository.containers.id
-}
-
-output "cloud_tasks_queue" {
-  description = "Cloud Tasks queue name"
-  value       = google_cloud_tasks_queue.jobs.name
+  value       = data.google_artifact_registry_repository.containers.id
 }
 
 output "database_secret_id" {
@@ -63,17 +58,17 @@ output "session_secret_id" {
   value       = google_secret_manager_secret.session_secret.secret_id
 }
 
-output "csrf_secret_id" {
-  description = "Secret Manager secret ID for CSRF_SECRET"
-  value       = google_secret_manager_secret.csrf_secret.secret_id
-}
-
 output "credential_key_name" {
-  description = "Cloud KMS key name for credential signing"
-  value       = var.credential_kms_enabled ? google_kms_crypto_key.credentials[0].id : null
+  description = "Cloud KMS key-version name used for credential signing"
+  value       = var.credential_kms_enabled ? google_kms_crypto_key_version.credentials[0].name : null
 }
 
-output "bigquery_dataset_id" {
-  description = "BigQuery analytics dataset ID"
-  value       = var.bigquery_enabled ? google_bigquery_dataset.analytics[0].dataset_id : null
+output "worker_job_name" {
+  description = "Scheduled Cloud Run background worker job"
+  value       = google_cloud_run_v2_job.worker.name
+}
+
+output "worker_service_account" {
+  description = "Cloud Run worker service account"
+  value       = google_service_account.worker.email
 }

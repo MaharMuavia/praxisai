@@ -3,7 +3,6 @@
 import { praxisFetch, type components } from "@praxisai/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { signOut } from "firebase/auth";
 import { type FormEvent, useRef, useState, type ReactNode } from "react";
 import { ClientProjectIntake } from "./client-project-intake";
 import { EmployerTalentWorkspace } from "./employer-talent-workspace";
@@ -23,7 +22,7 @@ import { rootFor, visibleNavigation } from "./workspace-navigation";
 import { apiBase } from "../lib/api";
 import { demoEnvironment } from "../lib/demo-environment";
 import type { WorkspaceSearchItem } from "./workspace-command-menu";
-import { getFirebaseAuth } from "../lib/firebase";
+import { getSupabaseAuth } from "../lib/supabase";
 import { useWorkspaceData } from "./workspace/use-workspace-data";
 import { resolveWorkspacePrimaryAction } from "../lib/workspace-actions";
 
@@ -289,8 +288,8 @@ export function AppShell({
         method: "POST",
         headers: { "X-Correlation-Id": correlationId },
       });
-      if (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-        await signOut(getFirebaseAuth());
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        await getSupabaseAuth().signOut();
       }
       await queryClient.cancelQueries();
       queryClient.clear();

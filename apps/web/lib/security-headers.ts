@@ -3,21 +3,35 @@ export type HeaderDefinition = { key: string; value: string };
 export function publicSecurityHeaders(
   appEnvironment: string | undefined,
   nodeEnvironment: string | undefined = process.env.NODE_ENV,
+  supabaseUrl: string | undefined = process.env.NEXT_PUBLIC_SUPABASE_URL,
 ) {
   const developmentEval =
     nodeEnvironment === "development" ? " 'unsafe-eval'" : "";
+  let supabaseHttpSource = "";
+  let supabaseWebSocketSource = "";
+  if (supabaseUrl) {
+    try {
+      const url = new URL(supabaseUrl);
+      if (url.protocol === "https:" && url.hostname) {
+        supabaseHttpSource = ` ${url.origin}`;
+        supabaseWebSocketSource = ` wss://${url.host}`;
+      }
+    } catch {
+      // Hosted builds reject invalid URLs before headers are generated.
+    }
+  }
   const contentSecurityPolicy = [
     "default-src 'self'",
     "base-uri 'self'",
     "object-src 'none'",
     "frame-ancestors 'none'",
     "form-action 'self'",
-    `script-src 'self' 'unsafe-inline'${developmentEval} https://apis.google.com https://www.gstatic.com`,
+    `script-src 'self' 'unsafe-inline'${developmentEval}`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
-    "img-src 'self' data: blob: https://lh3.googleusercontent.com",
-    "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com",
-    "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com",
+    "img-src 'self' data: blob:",
+    `connect-src 'self'${supabaseHttpSource}${supabaseWebSocketSource}`,
+    `frame-src 'self'${supabaseHttpSource}`,
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "upgrade-insecure-requests",

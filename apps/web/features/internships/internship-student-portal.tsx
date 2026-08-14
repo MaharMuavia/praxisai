@@ -8,6 +8,8 @@ import { Button, Card, StatusBadge } from "@/components/ui";
 import {
   internshipFetch,
   internshipKeys,
+  programQuery,
+  programsQuery,
   type Dashboard,
 } from "@/lib/queries/internships/shared";
 import { assignmentsQuery } from "@/lib/queries/internships/assignments";
@@ -15,6 +17,7 @@ import { curriculumQuery } from "@/lib/queries/internships/curriculum";
 import { dashboardQuery } from "@/lib/queries/internships/dashboard";
 import { feedbackQuery } from "@/lib/queries/internships/reviews";
 import {
+  type InternshipApplication,
   applicationQuery,
   applicationsQuery,
 } from "@/lib/queries/internships/application";
@@ -141,9 +144,21 @@ export function InternshipStudentPortal({
         <DashboardView dashboard={dashboard.data} />
       ) : null}
       {view === "application" ? (
-        applicationList.data &&
-        applicationList.data.length > 1 &&
-        !activeApplicationId ? (
+        applicationList.isLoading ? (
+          <div className="internship-loading">Loading applications...</div>
+        ) : applicationList.isError ? (
+          <div className="internship-error" role="alert">
+            Applications could not be loaded.
+          </div>
+        ) : applicationList.data?.length === 0 ? (
+          <NewApplicationView
+            onCreated={(applicationId) =>
+              setSelectedApplicationId(applicationId)
+            }
+          />
+        ) : applicationList.data &&
+          applicationList.data.length > 1 &&
+          !activeApplicationId ? (
           <ApplicationSelection
             applications={applicationList.data}
             onSelect={setSelectedApplicationId}
@@ -253,6 +268,150 @@ export function InternshipStudentPortal({
         />
       ) : null}
     </main>
+  );
+}
+
+function NewApplicationView({
+  onCreated,
+}: {
+  onCreated: (applicationId: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const programs = useQuery(programsQuery());
+  const [programId, setProgramId] = useState("");
+  const [cohortId, setCohortId] = useState("");
+  const availablePrograms = (programs.data ?? []).filter((program) =>
+    ["APPLICATIONS_OPEN", "ACTIVE"].includes(program.status),
+  );
+  const selectedProgram = availablePrograms.find(
+    (program) => program.id === programId,
+  );
+  const program = useQuery({
+    ...programQuery(selectedProgram?.slug ?? ""),
+    enabled: Boolean(selectedProgram),
+  });
+  const availableCohorts = (program.data?.cohorts ?? []).filter((cohort) =>
+    ["APPLICATIONS_OPEN", "ACTIVE"].includes(cohort.status),
+  );
+  const create = useMutation({
+    mutationFn: () =>
+      internshipFetch<InternshipApplication>("/internships/me/applications", {
+        method: "POST",
+        body: JSON.stringify({
+          program_id: programId,
+          cohort_id: cohortId,
+          consent_version: "internship-1",
+        }),
+      }),
+    onSuccess: async (application) => {
+      queryClient.setQueryData(
+        [...internshipKeys.application(), application.id],
+        application,
+      );
+      await queryClient.invalidateQueries({
+        queryKey: internshipKeys.application(),
+      });
+      onCreated(application.id);
+    },
+  });
+
+  if (programs.isLoading) {
+    return (
+      <div className="internship-loading">Loading available programs...</div>
+    );
+  }
+  if (programs.isError) {
+    return (
+      <div className="internship-error" role="alert">
+        Available programs could not be loaded.
+      </div>
+    );
+  }
+  if (!availablePrograms.length) {
+    return (
+      <div className="internship-empty">
+        No internship programs are currently accepting applications.
+      </div>
+    );
+  }
+
+  return (
+    <Card className="internship-application-card">
+      <span className="marketing-eyebrow">Admissions</span>
+      <h2>Start an internship application.</h2>
+      <p>
+        Select an open cohort. PraxisAI will create a versioned draft that you
+        can complete before submission.
+      </p>
+      <form
+        className="internship-auth-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          create.mutate();
+        }}
+      >
+        <label>
+          Program
+          <select
+            aria-label="Program"
+            value={programId}
+            onChange={(event) => {
+              setProgramId(event.target.value);
+              setCohortId("");
+            }}
+          >
+            <option value="">Select a program</option>
+            {availablePrograms.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selectedProgram ? (
+          <label>
+            Cohort
+            <select
+              aria-label="Cohort"
+              value={cohortId}
+              disabled={program.isLoading || program.isError}
+              onChange={(event) => setCohortId(event.target.value)}
+            >
+              <option value="">
+                {program.isLoading
+                  ? "Loading cohorts..."
+                  : program.isError
+                    ? "Cohorts unavailable"
+                    : "Select a cohort"}
+              </option>
+              {availableCohorts.map((cohort) => (
+                <option key={cohort.id} value={cohort.id}>
+                  {cohort.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {selectedProgram &&
+        program.isSuccess &&
+        availableCohorts.length === 0 ? (
+          <div className="internship-empty">
+            This program has no cohort currently accepting applications.
+          </div>
+        ) : null}
+        {create.isError ? (
+          <div className="internship-error" role="alert">
+            {create.error.message}
+          </div>
+        ) : null}
+        <Button
+          type="submit"
+          disabled={!programId || !cohortId || create.isPending}
+        >
+          {create.isPending ? "Creating application..." : "Create application"}
+        </Button>
+      </form>
+    </Card>
   );
 }
 

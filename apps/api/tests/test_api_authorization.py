@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import AsyncIterator
 
 import pytest
@@ -9,6 +10,17 @@ from app.config import get_settings
 from app.db import get_session
 from app.domain.models import Base, Organization, OrganizationMembership, Project, User
 from app.main import app
+
+
+def test_session_codec_accepts_a_pinned_rotation_fallback() -> None:
+    principal = SessionPrincipal(uuid.uuid4(), uuid.uuid4(), "student")
+    old_secret = "o" * 48
+    new_secret = "n" * 48
+    old_token = SessionCodec(old_secret).encode(principal)
+
+    assert SessionCodec(new_secret, old_secret).decode(old_token) == principal
+    with pytest.raises(ValueError, match="Invalid or expired session"):
+        SessionCodec(new_secret).decode(old_token)
 
 
 @pytest.mark.asyncio

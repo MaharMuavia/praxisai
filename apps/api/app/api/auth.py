@@ -1,27 +1,39 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import func, select
 
 from app.auth.capabilities import INTERNSHIP_CAPABILITIES
 from app.auth.dependencies import DbSession, Principal
 from app.auth.service import (
-    FirebaseIdentityProvider,
+    IdentityLinkConflict,
     SessionCodec,
     SessionPrincipal,
+    SupabaseIdentityProvider,
     new_csrf_token,
+    resolve_or_link_identity_user,
 )
 from app.config import Settings, get_settings
 from app.domain.models import Notification, Organization, OrganizationMembership, User
 from app.domain.schemas import (
-    FirebaseSessionRequest,
     LocalSessionRequest,
     MembershipView,
     SessionView,
+    SupabaseSessionRequest,
 )
-from app.rate_limits.service import RateLimitExceeded, consume_rate_limit
+from app.rate_limits.service import (
+    RateLimitExceeded,
+    consume_rate_limit,
+    opaque_rate_limit_key,
+)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+AUTH_RATE_LIMIT_WINDOW_SECONDS = 60
+AUTH_GLOBAL_RATE_LIMIT = 300
+AUTH_LOCAL_USER_RATE_LIMIT = 20
+AUTH_SUPABASE_TOKEN_RATE_LIMIT = 10
+AUTH_SUPABASE_SUBJECT_RATE_LIMIT = 10
 
 CAPABILITIES: dict[str, list[str]] = {
     "client_owner": [
@@ -112,23 +124,37 @@ async def _set_session(
     )
 
 
+async def _enforce_auth_rate_limit(
+    session: DbSession,
+    *,
+    raw_key: str,
+    limit: int,
+) -> None:
+    try:
+        await consume_rate_limit(
+            session,
+            raw_key=raw_key,
+            limit=limit,
+            window_seconds=AUTH_RATE_LIMIT_WINDOW_SECONDS,
+        )
+    except RateLimitExceeded as exc:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, str(exc)) from exc
+
+
 @router.post("/local/session", status_code=status.HTTP_204_NO_CONTENT)
 async def local_session(
     body: LocalSessionRequest,
-    request: Request,
     response: Response,
     session: DbSession,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
     if not (settings.is_local_or_test or settings.demo_mode):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-    client_host = request.client.host if request.client else "unknown"
-    try:
-        await consume_rate_limit(
-            session, raw_key=f"auth:local:{client_host}", limit=20, window_seconds=60
-        )
-    except RateLimitExceeded as exc:
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, str(exc)) from exc
+    await _enforce_auth_rate_limit(
+        session,
+        raw_key="auth:local:global",
+        limit=AUTH_GLOBAL_RATE_LIMIT,
+    )
     membership = await session.scalar(
         select(OrganizationMembership).where(
             OrganizationMembership.user_id == body.user_id,
@@ -139,6 +165,14 @@ async def local_session(
     )
     if membership is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Membership is not active")
+    await _enforce_auth_rate_limit(
+        session,
+        raw_key=opaque_rate_limit_key(
+            namespace="auth:local:user",
+            identifier=str(membership.user_id),
+        ),
+        limit=AUTH_LOCAL_USER_RATE_LIMIT,
+    )
     await _set_session(
         response,
         SessionPrincipal(body.user_id, body.organization_id, body.role),
@@ -147,32 +181,49 @@ async def local_session(
 
 
 @router.post("/session", status_code=status.HTTP_204_NO_CONTENT)
-async def firebase_session(
-    body: FirebaseSessionRequest,
-    request: Request,
+async def supabase_session(
+    body: SupabaseSessionRequest,
     response: Response,
     session: DbSession,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
-    if settings.identity_provider != "firebase":
-        raise HTTPException(status.HTTP_409_CONFLICT, "Firebase identity is not configured")
-    client_host = request.client.host if request.client else "unknown"
+    if settings.identity_provider != "supabase":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Supabase identity is not configured")
+    await _enforce_auth_rate_limit(
+        session,
+        raw_key=opaque_rate_limit_key(
+            namespace="auth:supabase:token",
+            identifier=body.access_token,
+        ),
+        limit=AUTH_SUPABASE_TOKEN_RATE_LIMIT,
+    )
+    await _enforce_auth_rate_limit(
+        session,
+        raw_key="auth:supabase:global",
+        limit=AUTH_GLOBAL_RATE_LIMIT,
+    )
     try:
-        await consume_rate_limit(
-            session, raw_key=f"auth:firebase:{client_host}", limit=10, window_seconds=60
-        )
-    except RateLimitExceeded as exc:
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, str(exc)) from exc
-    try:
-        identity = await FirebaseIdentityProvider(settings).verify(body.id_token)
+        identity = await SupabaseIdentityProvider(settings).verify(body.access_token)
     except ValueError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from exc
-    user = await session.scalar(
-        select(User).where(
-            (User.external_subject == identity.subject) | (User.email == identity.email)
-        )
+    await _enforce_auth_rate_limit(
+        session,
+        raw_key=opaque_rate_limit_key(
+            namespace="auth:supabase:subject",
+            identifier=identity.subject,
+        ),
+        limit=AUTH_SUPABASE_SUBJECT_RATE_LIMIT,
     )
+    try:
+        user = await resolve_or_link_identity_user(session, identity)
+    except IdentityLinkConflict as exc:
+        await session.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Supabase identity conflicts with an existing account",
+        ) from exc
     if user is None:
+        await session.rollback()
         raise HTTPException(status.HTTP_403_FORBIDDEN, "No PraxisAI account is linked")
     membership = await session.scalar(
         select(OrganizationMembership).where(
@@ -180,8 +231,10 @@ async def firebase_session(
             OrganizationMembership.is_active.is_(True),
         )
     )
-    if membership is None:
+    if membership is None or not user.is_active:
+        await session.rollback()
         raise HTTPException(status.HTTP_403_FORBIDDEN, "No active workspace membership")
+    await session.commit()
     await _set_session(
         response,
         SessionPrincipal(user.id, membership.organization_id, membership.role),

@@ -4,7 +4,6 @@ from datetime import date
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from starlette.requests import Request
 
 from app.api.projects import run_planning_agent, run_scope_agent
 from app.auth.service import SessionPrincipal
@@ -117,7 +116,6 @@ async def test_planning_reuses_a_current_proposal_for_the_accepted_scope() -> No
         )
         await session.commit()
         principal = SessionPrincipal(coordinator_id, organization_id, "coordinator")
-        request = Request({"type": "http", "client": ("127.0.0.1", 12345)})
         settings = Settings(
             app_env="test",
             demo_mode=True,
@@ -127,7 +125,6 @@ async def test_planning_reuses_a_current_proposal_for_the_accepted_scope() -> No
 
         first = await run_planning_agent(
             project.id,
-            request,
             principal,
             session,
             settings,
@@ -135,7 +132,6 @@ async def test_planning_reuses_a_current_proposal_for_the_accepted_scope() -> No
         )
         second = await run_planning_agent(
             project.id,
-            request,
             principal,
             session,
             settings,
@@ -189,7 +185,6 @@ async def test_scope_generation_reuses_a_successful_run_for_the_same_intake() ->
         )
         await session.commit()
         principal = SessionPrincipal(creator_id, organization_id, "client_owner")
-        request = Request({"type": "http", "client": ("127.0.0.1", 12345)})
         settings = Settings(
             app_env="test",
             demo_mode=True,
@@ -199,7 +194,6 @@ async def test_scope_generation_reuses_a_successful_run_for_the_same_intake() ->
 
         first = await run_scope_agent(
             project.id,
-            request,
             principal,
             session,
             settings,
@@ -207,7 +201,6 @@ async def test_scope_generation_reuses_a_successful_run_for_the_same_intake() ->
         )
         second = await run_scope_agent(
             project.id,
-            request,
             principal,
             session,
             settings,

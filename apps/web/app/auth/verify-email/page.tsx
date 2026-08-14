@@ -8,7 +8,7 @@ export default function VerifyEmailPage() {
         <span className="marketing-eyebrow">Email verification</span>
         <h1>Verify the identity behind your application.</h1>
         <p>
-          PraxisAI accepts only a Firebase identity with `email_verified=true`.
+          PraxisAI accepts only a Supabase identity with a confirmed email.
           Check your inbox, confirm the address, and return to the signup flow
           to continue.
         </p>

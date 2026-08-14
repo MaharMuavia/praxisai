@@ -6,9 +6,15 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.service import FirebaseIdentityProvider, SessionPrincipal
+from app.auth.service import (
+    IdentityLinkConflict,
+    SessionPrincipal,
+    SupabaseIdentityProvider,
+    resolve_or_link_identity_user,
+)
 from app.config import Settings
 from app.domain.models import (
     AuditEvent,
@@ -82,7 +88,11 @@ from app.internships.storage import (
     SupabaseInternshipStorage,
     SupabaseStorageError,
 )
-from app.internships.uploads.scanning import DemoScanner, DisabledProductionScanner
+from app.internships.uploads.scanning import (
+    DemoScanner,
+    DisabledProductionScanner,
+    content_type_matches_filename,
+)
 
 
 class InternshipError(ValueError):
@@ -115,6 +125,28 @@ class StorageFailure(InternshipError):
 
 def now_utc() -> datetime:
     return datetime.now(UTC)
+
+
+def application_window_is_open(
+    program: InternshipProgram,
+    cohort: InternshipCohort,
+    *,
+    at: datetime | None = None,
+) -> bool:
+    if program.status not in {"APPLICATIONS_OPEN", "ACTIVE"} or cohort.status not in {
+        "APPLICATIONS_OPEN",
+        "ACTIVE",
+    }:
+        return False
+    if cohort.application_deadline is None:
+        return True
+    deadline = cohort.application_deadline
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    current_time = at or now_utc()
+    if current_time.tzinfo is None:
+        current_time = current_time.replace(tzinfo=UTC)
+    return current_time <= deadline
 
 
 def _audit(
@@ -233,7 +265,7 @@ async def signup(
     settings: Settings,
     correlation_id: uuid.UUID,
 ) -> tuple[str, uuid.UUID | None, SessionPrincipal | None]:
-    identity = await FirebaseIdentityProvider(settings).verify(body.id_token)
+    identity = await SupabaseIdentityProvider(settings).verify(body.access_token)
     email = normalize_email(identity.email)
     cohort = await session.get(InternshipCohort, body.cohort_id)
     if cohort is None:
@@ -242,7 +274,7 @@ async def signup(
     if (
         program is None
         or program.id != program_id
-        or program.status not in {"APPLICATIONS_OPEN", "ACTIVE"}
+        or not application_window_is_open(program, cohort)
     ):
         raise InvalidState("Applications are not open for this cohort")
     eligibility = await evaluate_email_eligibility(
@@ -251,10 +283,15 @@ async def signup(
     if not eligibility.eligible:
         raise Forbidden("This email is not eligible for the selected cohort")
 
-    existing = await session.scalar(select(User).where(User.email == email))
+    try:
+        existing = await resolve_or_link_identity_user(session, identity)
+    except IdentityLinkConflict as exc:
+        await session.rollback()
+        raise Conflict("Verified identity conflicts with an existing account") from exc
     if existing is not None:
         # Keep the endpoint safe against account enumeration. Existing users can
-        # use the normal Firebase session flow; no record details are disclosed.
+        # Use the normal Supabase session flow; no record details are disclosed.
+        await session.commit()
         return "CHECK_EMAIL", None, None
 
     student_org = await session.scalar(
@@ -272,7 +309,11 @@ async def signup(
         external_subject=identity.subject,
     )
     session.add(user)
-    await session.flush()
+    try:
+        await session.flush()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise Conflict("Verified identity conflicts with an existing account") from exc
     session.add_all(
         [
             OrganizationMembership(
@@ -289,7 +330,7 @@ async def signup(
         cohort_id=cohort.id,
         status="ELIGIBILITY_REVIEW" if eligibility.requires_review else "DRAFT",
         email_verification_evidence={
-            "provider": "firebase",
+            "provider": "supabase",
             "verified": True,
             "normalized_email": email,
             "eligibility_reason": eligibility.reason,
@@ -378,10 +419,7 @@ async def start_application(
     program = await session.get(InternshipProgram, body.program_id)
     if user is None or cohort is None or program is None or cohort.program_id != program.id:
         raise NotFound("Program or cohort not found")
-    if program.status not in {"APPLICATIONS_OPEN", "ACTIVE"} or cohort.status not in {
-        "APPLICATIONS_OPEN",
-        "ACTIVE",
-    }:
+    if not application_window_is_open(program, cohort):
         raise InvalidState("Applications are not open for this cohort")
     eligibility = await evaluate_email_eligibility(
         session, email=user.email, program=program, cohort=cohort
@@ -1169,6 +1207,11 @@ def _submission_hash(submission: InternshipSubmission) -> str:
     ).hexdigest()
 
 
+def _has_nonblank_artifact_value(values: dict[str, str], artifact_type: str) -> bool:
+    value = values.get(artifact_type)
+    return isinstance(value, str) and bool(value.strip())
+
+
 async def finalize_submission(
     session: AsyncSession,
     *,
@@ -1256,8 +1299,8 @@ async def finalize_submission(
             continue
         supplied = (
             artifact_type in artifact_types
-            or artifact_type in submission.links
-            or artifact_type in submission.text_fields
+            or _has_nonblank_artifact_value(submission.links, artifact_type)
+            or _has_nonblank_artifact_value(submission.text_fields, artifact_type)
         )
         if not supplied:
             missing.append(artifact_type)
@@ -1785,17 +1828,19 @@ async def public_certificate(session: AsyncSession, *, public_slug: str) -> Publ
     )
 
 
-def _upload_limits(artifact_type: str, filename: str) -> tuple[int, set[str]]:
+def _upload_limits(settings: Settings, artifact_type: str, filename: str) -> tuple[int, set[str]]:
     extension = filename.rsplit(".", 1)[-1].casefold() if "." in filename else ""
     if artifact_type == "zip":
-        return 100 * 1024 * 1024, {"zip"}
-    if artifact_type in {"pdf", "technical_report", "readme"}:
-        return 25 * 1024 * 1024, {"pdf", "md", "txt"}
-    if artifact_type in {"screenshot", "screenshots", "architecture_diagram"}:
-        return 10 * 1024 * 1024, {"png", "jpg", "jpeg", "webp"}
-    if artifact_type in {"notebook", "ipynb"}:
-        return 20 * 1024 * 1024, {"ipynb", "json"}
-    return 50 * 1024 * 1024, {extension} if extension else set()
+        artifact_limit, extensions = 100 * 1024 * 1024, {"zip"}
+    elif artifact_type in {"pdf", "technical_report", "readme"}:
+        artifact_limit, extensions = 25 * 1024 * 1024, {"pdf", "md", "txt"}
+    elif artifact_type in {"screenshot", "screenshots", "architecture_diagram"}:
+        artifact_limit, extensions = 10 * 1024 * 1024, {"png", "jpg", "jpeg", "webp"}
+    elif artifact_type in {"notebook", "ipynb"}:
+        artifact_limit, extensions = 20 * 1024 * 1024, {"ipynb", "json"}
+    else:
+        artifact_limit, extensions = 50 * 1024 * 1024, ({extension} if extension else set())
+    return min(artifact_limit, settings.internship_max_upload_bytes), extensions
 
 
 async def initiate_upload(
@@ -1815,10 +1860,13 @@ async def initiate_upload(
         raise ValidationFailure("Unsafe filename")
     if safe_filename.casefold().endswith((".html", ".htm", ".exe", ".dll", ".js", ".svg")):
         raise ValidationFailure("Executable or active content is not allowed")
-    maximum, extensions = _upload_limits(body.artifact_type, safe_filename)
+    maximum, extensions = _upload_limits(settings, body.artifact_type, safe_filename)
     extension = safe_filename.rsplit(".", 1)[-1].casefold() if "." in safe_filename else ""
     if body.size_bytes > maximum or not extension or extension not in extensions:
         raise ValidationFailure("Upload size or file extension is not allowed")
+    normalized_content_type = body.content_type.partition(";")[0].strip().casefold()
+    if not content_type_matches_filename(normalized_content_type, safe_filename):
+        raise ValidationFailure("Upload content type does not match the file extension")
     upload_id = uuid.uuid4().hex
     storage_key = f"internships/{principal.user_id}/{upload_id}/{safe_filename}"
     upload = InternshipUpload(
@@ -1827,7 +1875,7 @@ async def initiate_upload(
         student_assignment_id=assignment.id,
         artifact_type=body.artifact_type,
         filename=safe_filename,
-        content_type=body.content_type,
+        content_type=normalized_content_type,
         size_bytes=body.size_bytes,
         sha256=body.sha256.casefold() if body.sha256 else None,
         storage_key=storage_key,
@@ -1836,6 +1884,27 @@ async def initiate_upload(
     )
     session.add(upload)
     await session.commit()
+    return _upload_view(upload)
+
+
+async def _delete_rejected_upload_object(settings: Settings, storage_key: str) -> bool:
+    """Best-effort cleanup that never obscures the rejection returned to the caller."""
+    try:
+        if settings.storage_provider == "supabase":
+            await SupabaseInternshipStorage(settings).delete(storage_key)
+        else:
+            LocalInternshipStorage(settings.internship_local_storage_path).delete(storage_key)
+    except (OSError, ValueError, SupabaseStorageError):
+        return False
+    return True
+
+
+def _mark_rejected_cleanup_pending(upload: InternshipUpload) -> None:
+    upload.state = "REJECTED_CLEANUP_PENDING"
+    upload.scan_message = "Upload was rejected; private object cleanup is pending"
+
+
+def _upload_view(upload: InternshipUpload) -> UploadView:
     return UploadView(
         upload_id=upload.upload_id,
         artifact_type=upload.artifact_type,
@@ -1843,7 +1912,57 @@ async def initiate_upload(
         state=upload.state,
         expires_at=upload.expires_at,
         upload_url=f"/api/v1/internships/uploads/{upload.upload_id}/content",
+        scan_message=upload.scan_message,
     )
+
+
+def _upload_finalization_expiry(
+    *,
+    received_at: datetime,
+    assignment_due_at: datetime | None,
+) -> datetime:
+    minimum_expiry = received_at + timedelta(hours=24)
+    if assignment_due_at is None:
+        return minimum_expiry
+    due_at = assignment_due_at
+    if due_at.tzinfo is None:
+        due_at = due_at.replace(tzinfo=UTC)
+    else:
+        due_at = due_at.astimezone(UTC)
+    return max(minimum_expiry, due_at + timedelta(hours=24))
+
+
+async def get_upload_status(
+    session: AsyncSession,
+    *,
+    principal: SessionPrincipal,
+    upload_id: str,
+) -> UploadView:
+    upload = await session.scalar(
+        select(InternshipUpload).where(
+            InternshipUpload.upload_id == upload_id,
+            InternshipUpload.owner_user_id == principal.user_id,
+        )
+    )
+    if upload is None:
+        raise NotFound("Upload not found")
+    return _upload_view(upload)
+
+
+async def _expire_upload_with_cleanup(settings: Settings, upload: InternshipUpload) -> None:
+    try:
+        if settings.storage_provider == "supabase":
+            await SupabaseInternshipStorage(settings).delete(upload.storage_key)
+        else:
+            LocalInternshipStorage(settings.internship_local_storage_path).delete(
+                upload.storage_key
+            )
+    except (OSError, ValueError, SupabaseStorageError):
+        upload.state = "EXPIRED_CLEANUP_PENDING"
+        upload.scan_message = "Upload expired; private object cleanup is pending"
+    else:
+        upload.state = "EXPIRED"
+        upload.scan_message = "Upload expired and its private object was removed"
 
 
 async def receive_upload_content(
@@ -1875,17 +1994,22 @@ async def receive_upload_stream(
     settings: Settings,
 ) -> UploadView:
     upload = await session.scalar(
-        select(InternshipUpload).where(
+        select(InternshipUpload)
+        .where(
             InternshipUpload.upload_id == upload_id,
             InternshipUpload.owner_user_id == principal.user_id,
         )
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if upload is None:
         raise NotFound("Upload not found")
-    if upload.state != "INITIATED" or now_utc() >= upload.expires_at:
-        upload.state = "EXPIRED"
+    if upload.state != "INITIATED":
+        raise InvalidState("Upload content was already received")
+    if now_utc() >= upload.expires_at:
+        await _expire_upload_with_cleanup(settings, upload)
         await session.commit()
-        raise InvalidState("Upload is expired or already completed")
+        raise InvalidState("Upload is expired")
     try:
         if settings.storage_provider == "supabase":
             digest, size = await SupabaseInternshipStorage(settings).put_stream(
@@ -1901,36 +2025,31 @@ async def receive_upload_stream(
             ).put_stream(upload.storage_key, chunks, max_bytes=upload.size_bytes)
     except ValueError as exc:
         upload.state = "REJECTED"
-        upload.scan_message = "Uploaded stream exceeds the declared byte limit"
-        if settings.storage_provider == "supabase":
-            try:
-                await SupabaseInternshipStorage(settings).delete(upload.storage_key)
-            except SupabaseStorageError:
-                pass
-        else:
-            LocalInternshipStorage(settings.internship_local_storage_path).delete(
-                upload.storage_key
-            )
+        rejection_message = "Uploaded stream exceeds the declared byte limit"
+        upload.scan_message = rejection_message
+        if not await _delete_rejected_upload_object(settings, upload.storage_key):
+            _mark_rejected_cleanup_pending(upload)
         await session.commit()
-        raise ValidationFailure(upload.scan_message) from exc
+        raise ValidationFailure(rejection_message) from exc
     except SupabaseStorageError as exc:
         raise StorageFailure("Upload storage is temporarily unavailable") from exc
     if size != upload.size_bytes or (upload.sha256 and digest != upload.sha256):
         upload.state = "REJECTED"
-        upload.scan_message = "Uploaded size or SHA-256 does not match initiation metadata"
+        rejection_message = "Uploaded size or SHA-256 does not match initiation metadata"
+        upload.scan_message = rejection_message
+        if not await _delete_rejected_upload_object(settings, upload.storage_key):
+            _mark_rejected_cleanup_pending(upload)
         await session.commit()
-        raise ValidationFailure(upload.scan_message)
+        raise ValidationFailure(rejection_message)
     upload.sha256 = digest
     upload.state = "UPLOADED"
-    await session.commit()
-    return UploadView(
-        upload_id=upload.upload_id,
-        artifact_type=upload.artifact_type,
-        filename=upload.filename,
-        state=upload.state,
-        expires_at=upload.expires_at,
-        upload_url=f"/api/v1/internships/uploads/{upload.upload_id}/content",
+    assignment = await session.get(InternshipStudentAssignment, upload.student_assignment_id)
+    upload.expires_at = _upload_finalization_expiry(
+        received_at=now_utc(),
+        assignment_due_at=assignment.due_at if assignment is not None else None,
     )
+    await session.commit()
+    return _upload_view(upload)
 
 
 async def complete_upload(
@@ -1942,23 +2061,28 @@ async def complete_upload(
     settings: Settings,
 ) -> UploadView:
     upload = await session.scalar(
-        select(InternshipUpload).where(
+        select(InternshipUpload)
+        .where(
             InternshipUpload.upload_id == upload_id,
             InternshipUpload.owner_user_id == principal.user_id,
         )
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if upload is None:
         raise NotFound("Upload not found")
     if upload.state != "UPLOADED":
         raise InvalidState("Upload is not ready for completion")
     if now_utc() >= upload.expires_at:
-        upload.state = "EXPIRED"
+        await _expire_upload_with_cleanup(settings, upload)
         await session.commit()
         raise InvalidState("Upload is expired")
     if settings.app_env in {"staging", "production"}:
         if upload.sha256 != body.sha256.casefold():
             upload.state = "REJECTED"
             upload.scan_message = "SHA-256 mismatch"
+            if not await _delete_rejected_upload_object(settings, upload.storage_key):
+                _mark_rejected_cleanup_pending(upload)
             await session.commit()
             raise ValidationFailure("Upload hash does not match")
         upload.state = "QUARANTINED"
@@ -1967,6 +2091,7 @@ async def complete_upload(
         )
         session.add(
             OutboxEvent(
+                id=uuid.uuid5(uuid.UUID("46501e79-f851-4503-b4bb-35d61430b201"), str(upload.id)),
                 event_type="MalwareScanRequested",
                 aggregate_type="internship_upload",
                 aggregate_id=upload.id,
@@ -1978,14 +2103,7 @@ async def complete_upload(
             )
         )
         await session.commit()
-        return UploadView(
-            upload_id=upload.upload_id,
-            artifact_type=upload.artifact_type,
-            filename=upload.filename,
-            state=upload.state,
-            expires_at=upload.expires_at,
-            upload_url=f"/api/v1/internships/uploads/{upload.upload_id}/content",
-        )
+        return _upload_view(upload)
     try:
         if settings.storage_provider == "supabase":
             content = await SupabaseInternshipStorage(settings).read(upload.storage_key)
@@ -1999,6 +2117,8 @@ async def complete_upload(
     if actual_hash != body.sha256.casefold() or (upload.sha256 and actual_hash != upload.sha256):
         upload.state = "REJECTED"
         upload.scan_message = "SHA-256 mismatch"
+        if not await _delete_rejected_upload_object(settings, upload.storage_key):
+            _mark_rejected_cleanup_pending(upload)
         await session.commit()
         raise ValidationFailure("Upload hash does not match")
     scanner = (
@@ -2016,14 +2136,9 @@ async def complete_upload(
     upload.scanned_at = now_utc()
     upload.scan_evidence = {"message": result.message, "sha256": actual_hash}
     if result.state == "REJECTED":
+        if not await _delete_rejected_upload_object(settings, upload.storage_key):
+            _mark_rejected_cleanup_pending(upload)
         await session.commit()
         raise ValidationFailure(result.message)
     await session.commit()
-    return UploadView(
-        upload_id=upload.upload_id,
-        artifact_type=upload.artifact_type,
-        filename=upload.filename,
-        state=upload.state,
-        expires_at=upload.expires_at,
-        upload_url=f"/api/v1/internships/uploads/{upload.upload_id}/content",
-    )
+    return _upload_view(upload)

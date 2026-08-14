@@ -2,8 +2,8 @@
 
 PraxisAI uses Supabase PostgreSQL as the transactional system of record and a private Supabase
 Storage bucket for internship and commercial artifact bytes. The FastAPI service remains the
-authorization boundary. Firebase remains the identity provider for this deployment; Supabase Auth
-is not enabled by this change.
+authorization boundary. Supabase Auth provides the external identity; the application database
+continues to own PraxisAI users, memberships, roles, and audit records.
 
 See `database-schema.md` for the complete table map and `configuration-and-secrets.md` for the
 credential checklist.
@@ -29,6 +29,7 @@ DATABASE_MIGRATION_URL=postgresql+asyncpg://postgres.PROJECT_REF:PASSWORD@POOLER
 DATABASE_POOL_MODE=transaction
 STORAGE_PROVIDER=supabase
 SUPABASE_URL=https://PROJECT_REF.supabase.co
+SUPABASE_PUBLISHABLE_KEY=server-and-browser-auth-publishable-key
 SUPABASE_SERVICE_ROLE_KEY=server-only-service-role-key
 SUPABASE_STORAGE_BUCKET=internship-submissions
 ```
@@ -36,10 +37,31 @@ SUPABASE_STORAGE_BUCKET=internship-submissions
 The service-role key is required only by the API. Never put it in a `NEXT_PUBLIC_*` variable or
 browser bundle.
 
+For browser authentication, also set `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Enable the selected Supabase Auth provider and email
+confirmation in the Supabase dashboard before provisioning users.
+
+## Configure Supabase Auth
+
+1. In **Authentication → Providers**, enable Email and password. Enable email confirmation before
+   creating real users; the API rejects unconfirmed identities.
+2. In **Authentication → URL Configuration**, set the deployed HTTPS web
+   origin as the Site URL and allow its exact `/auth/callback` redirect. Add
+   `http://localhost:3000/auth/callback` only to the non-production project used
+   for local development.
+3. Copy the project URL and publishable key from **Project Settings → API** into both the server
+   and browser variables shown above. The server may also accept the legacy anon key during the
+   transition, but new configuration should use the publishable key.
+4. Keep `SUPABASE_SERVICE_ROLE_KEY` only in the API environment. It bypasses Row Level Security
+   and is never a browser credential.
+5. Create the PraxisAI user in Supabase Auth, then provision or link its existing organization
+   membership through the API. Supabase Auth identifies the user; PostgreSQL remains authoritative
+   for PraxisAI roles and permissions.
+
 ## Create the private Storage bucket
 
 Run [`supabase-storage.sql`](supabase-storage.sql) once in the Supabase SQL Editor. It creates a
-private bucket with bounded MIME types and a 100 MiB object limit. The API still enforces the
+private bucket with bounded MIME types and a 30 MiB object limit. The API also enforces the
 per-artifact limits and owner binding before writing an object.
 
 The API uploads through the Supabase Storage REST API using the server-only service-role key. It
@@ -50,7 +72,7 @@ the application tables; object bytes remain in Supabase Storage.
 
 If you prefer the Supabase SQL Editor, open [`supabase-schema.sql`](supabase-schema.sql),
 copy the complete script, and run it once against a new empty project. It is generated from
-the Alembic chain at head `c8f1a2d4e609` and includes the `alembic_version` marker. Do not run
+the Alembic chain at head `c3d4e5f6a7b8` and includes the `alembic_version` marker. Do not run
 it on a database that already has these tables; use the migration command below so only new
 migrations are applied.
 

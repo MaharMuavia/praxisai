@@ -13,6 +13,32 @@ export type InternshipProgram = {
   is_demo: boolean;
 };
 
+export type InternshipProgramDetail = InternshipProgram & {
+  cohorts: {
+    id: string;
+    name: string;
+    slug: string;
+    status: string;
+    starts_at: string;
+    ends_at: string;
+    application_deadline: string | null;
+    capacity: number;
+    timezone: string;
+    is_demo: boolean;
+  }[];
+  tracks: {
+    id: string;
+    name: string;
+    slug: string;
+    version_id: string;
+    version: number;
+    title: string;
+    summary: string;
+    skill_outcomes: string[];
+    expected_weekly_hours: number;
+  }[];
+};
+
 export type Dashboard = {
   enrollment_id: string | null;
   program_name: string | null;
@@ -32,6 +58,7 @@ export type Dashboard = {
 export const internshipKeys = {
   all: ["internships"] as const,
   programs: () => [...internshipKeys.all, "programs"] as const,
+  program: (slug: string) => [...internshipKeys.programs(), slug] as const,
   application: () => [...internshipKeys.all, "application"] as const,
   dashboard: () => [...internshipKeys.all, "dashboard"] as const,
   curriculum: () => [...internshipKeys.all, "curriculum"] as const,
@@ -52,4 +79,11 @@ export const programsQuery = () =>
     queryKey: internshipKeys.programs(),
     queryFn: () =>
       internshipFetch<InternshipProgram[]>("/internships/programs"),
+  });
+
+export const programQuery = (slug: string) =>
+  queryOptions({
+    queryKey: internshipKeys.program(slug),
+    queryFn: () =>
+      internshipFetch<InternshipProgramDetail>(`/internships/programs/${slug}`),
   });

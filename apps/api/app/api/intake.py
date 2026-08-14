@@ -1,4 +1,3 @@
-import ipaddress
 import uuid
 from typing import Annotated
 
@@ -6,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import DbSession, IdempotencyKey, correlation_id, require_roles
 from app.auth.service import SessionPrincipal
-from app.config import Settings, get_settings
 from app.domain.enums import Role
 from app.domain.models import PublicIntakeSubmission, User
 from app.domain.schemas import (
@@ -37,7 +35,11 @@ from app.intake.service import (
     submission_payload_hash,
     update_submission,
 )
-from app.rate_limits.service import RateLimitExceeded, consume_rate_limit
+from app.rate_limits.service import (
+    RateLimitExceeded,
+    consume_rate_limit,
+    opaque_rate_limit_key,
+)
 
 router = APIRouter(tags=["public intake"])
 OperationsPrincipal = Annotated[
@@ -45,42 +47,29 @@ OperationsPrincipal = Annotated[
     Depends(require_roles(Role.COORDINATOR, Role.PLATFORM_ADMIN)),
 ]
 
-
-def _client_ip(request: Request, settings: Settings) -> str:
-    peer = request.client.host if request.client else "unknown"
-    try:
-        trusted = {ipaddress.ip_address(value) for value in settings.trusted_proxy_ips}
-        peer_address = ipaddress.ip_address(peer)
-    except ValueError:
-        return peer
-    if peer_address not in trusted:
-        return peer
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    first = forwarded.split(",", maxsplit=1)[0].strip()
-    try:
-        ipaddress.ip_address(first)
-    except ValueError:
-        return peer
-    return first
+PUBLIC_INTAKE_EMAIL_LIMIT = 3
+PUBLIC_INTAKE_EMAIL_WINDOW_SECONDS = 86_400
+PUBLIC_INTAKE_GLOBAL_LIMIT = 1_000
+PUBLIC_INTAKE_GLOBAL_WINDOW_SECONDS = 3_600
 
 
-async def _limit_public_submission(
-    session: DbSession, request: Request, email: str, settings: Settings
-) -> None:
-    client_host = _client_ip(request, settings)
+async def _limit_public_submission(session: DbSession, email: str) -> None:
     try:
         await consume_rate_limit(
             session,
-            raw_key=f"public-intake:ip:{client_host}",
-            limit=10,
-            window_seconds=3600,
+            raw_key=opaque_rate_limit_key(
+                namespace="public-intake:email",
+                identifier=email.strip().casefold(),
+            ),
+            limit=PUBLIC_INTAKE_EMAIL_LIMIT,
+            window_seconds=PUBLIC_INTAKE_EMAIL_WINDOW_SECONDS,
             commit=False,
         )
         await consume_rate_limit(
             session,
-            raw_key=f"public-intake:email:{email.lower()}",
-            limit=3,
-            window_seconds=86400,
+            raw_key="public-intake:global",
+            limit=PUBLIC_INTAKE_GLOBAL_LIMIT,
+            window_seconds=PUBLIC_INTAKE_GLOBAL_WINDOW_SECONDS,
             commit=False,
         )
         await session.commit()
@@ -123,7 +112,6 @@ async def submit_public_intake(
     request: Request,
     session: DbSession,
     idempotency_key: IdempotencyKey,
-    settings: Annotated[Settings, Depends(get_settings)],
 ) -> PublicIntakeReceipt:
     if kind != body.kind:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Intake kind does not match the route")
@@ -140,7 +128,7 @@ async def submit_public_intake(
         if reserved_submission is not None:
             submission = reserved_submission
         else:
-            await _limit_public_submission(session, request, body.email, settings)
+            await _limit_public_submission(session, body.email)
             submission = await create_submission(
                 session,
                 body=body,

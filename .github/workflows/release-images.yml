@@ -1,0 +1,386 @@
+name: Release container images
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Protected GitHub Environment receiving the release
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      release_sha:
+        description: Exact 40-character commit SHA selected for this workflow run
+        required: true
+        type: string
+
+concurrency:
+  group: release-images-${{ inputs.environment }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  release:
+    name: Build, attest, and scan immutable images
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+    env:
+      ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY }}
+      BUILDX_METADATA_PROVENANCE: max
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_RELEASE_SERVICE_ACCOUNT: ${{ vars.GCP_RELEASE_SERVICE_ACCOUNT }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      REGISTRY_HOST: ${{ format('{0}-docker.pkg.dev', vars.GCP_REGION) }}
+      API_IMAGE_REPOSITORY: ${{ format('{0}-docker.pkg.dev/{1}/{2}/api', vars.GCP_REGION, vars.GCP_PROJECT_ID, vars.ARTIFACT_REPOSITORY) }}
+      WEB_IMAGE_REPOSITORY: ${{ format('{0}-docker.pkg.dev/{1}/{2}/web', vars.GCP_REGION, vars.GCP_PROJECT_ID, vars.ARTIFACT_REPOSITORY) }}
+      RELEASE_ENVIRONMENT: ${{ inputs.environment }}
+      REQUESTED_SHA: ${{ inputs.release_sha }}
+    steps:
+      - name: Check out the exact requested commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ref: ${{ inputs.release_sha }}
+
+      - name: Validate release inputs and source
+        id: release-inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_dir="${RUNNER_TEMP}/release-evidence"
+          mkdir -p "${evidence_dir}"
+
+          if [[ ! "${REQUESTED_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "release_sha must be exactly 40 lowercase hexadecimal characters." >&2
+            exit 1
+          fi
+          if [[ "${REQUESTED_SHA}" != "${GITHUB_SHA}" ]]; then
+            echo "release_sha must equal the commit selected when dispatching the workflow." >&2
+            exit 1
+          fi
+          if [[ "$(git rev-parse HEAD)" != "${REQUESTED_SHA}" ]]; then
+            echo "The checked-out commit does not match release_sha." >&2
+            exit 1
+          fi
+          if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+            echo "Release builds require a clean checkout." >&2
+            exit 1
+          fi
+          if [[ "${RELEASE_ENVIRONMENT}" == "production" && "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "Production releases may only be dispatched from the main branch." >&2
+            exit 1
+          fi
+
+          required_variables=(
+            ARTIFACT_REPOSITORY
+            GCP_PROJECT_ID
+            GCP_REGION
+            GCP_RELEASE_SERVICE_ACCOUNT
+            GCP_WORKLOAD_IDENTITY_PROVIDER
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+            NEXT_PUBLIC_SUPABASE_URL
+          )
+          for variable_name in "${required_variables[@]}"; do
+            if [[ -z "${!variable_name:-}" ]]; then
+              echo "Required GitHub Environment variable ${variable_name} is missing." >&2
+              exit 1
+            fi
+          done
+
+          if [[ ! "${GCP_PROJECT_ID}" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]; then
+            echo "GCP_PROJECT_ID is not a valid Google Cloud project ID." >&2
+            exit 1
+          fi
+          if [[ ! "${GCP_REGION}" =~ ^[a-z]+-[a-z0-9]+[0-9]$ ]]; then
+            echo "GCP_REGION is not a valid Google Cloud region." >&2
+            exit 1
+          fi
+          if [[ ! "${ARTIFACT_REPOSITORY}" =~ ^[a-z0-9][a-z0-9_-]{0,61}[a-z0-9]$ ]]; then
+            echo "ARTIFACT_REPOSITORY is not a valid Artifact Registry repository ID." >&2
+            exit 1
+          fi
+          if [[ ! "${GCP_WORKLOAD_IDENTITY_PROVIDER}" =~ ^projects/[0-9]+/locations/global/workloadIdentityPools/[A-Za-z0-9_-]+/providers/[A-Za-z0-9_-]+$ ]]; then
+            echo "GCP_WORKLOAD_IDENTITY_PROVIDER must be a full provider resource name." >&2
+            exit 1
+          fi
+          if [[ ! "${GCP_RELEASE_SERVICE_ACCOUNT}" =~ ^[a-z0-9-]+@${GCP_PROJECT_ID}\.iam\.gserviceaccount\.com$ ]]; then
+            echo "GCP_RELEASE_SERVICE_ACCOUNT must belong to GCP_PROJECT_ID." >&2
+            exit 1
+          fi
+          if [[ ! "${NEXT_PUBLIC_SUPABASE_URL}" =~ ^https://[^[:space:]]+$ ]]; then
+            echo "NEXT_PUBLIC_SUPABASE_URL must be a non-blank HTTPS URL." >&2
+            exit 1
+          fi
+          if [[ "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" =~ [[:space:]] ]]; then
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY must not contain whitespace." >&2
+            exit 1
+          fi
+
+          jq -n \
+            --arg environment "${RELEASE_ENVIRONMENT}" \
+            --arg git_ref "${GITHUB_REF}" \
+            --arg release_sha "${REQUESTED_SHA}" \
+            --arg repository "${GITHUB_REPOSITORY}" \
+            --arg run_id "${GITHUB_RUN_ID}" \
+            --arg run_attempt "${GITHUB_RUN_ATTEMPT}" \
+            --arg actor "${GITHUB_ACTOR}" \
+            '{
+              schema_version: 1,
+              environment: $environment,
+              git_ref: $git_ref,
+              release_sha: $release_sha,
+              repository: $repository,
+              workflow_run_id: $run_id,
+              workflow_run_attempt: $run_attempt,
+              requested_by: $actor
+            }' >"${evidence_dir}/dispatch.json"
+
+      - name: Authenticate to Google Cloud with Workload Identity Federation
+        id: google-auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_RELEASE_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - name: Log in to Artifact Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ${{ env.REGISTRY_HOST }}
+          username: oauth2accesstoken
+          password: ${{ steps.google-auth.outputs.access_token }}
+
+      - name: Configure release image builder
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          version: v0.34.1
+
+      - name: Build and push API image once
+        id: build-api
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: ./apps/api
+          file: ./apps/api/Dockerfile
+          platforms: linux/amd64
+          pull: true
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ env.API_IMAGE_REPOSITORY }}:${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Build and push web image once
+        id: build-web
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          platforms: linux/amd64
+          pull: true
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ env.WEB_IMAGE_REPOSITORY }}:${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_APP_ENV=${{ env.RELEASE_ENVIRONMENT }}
+            NEXT_PUBLIC_DEMO_MODE=false
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Refresh Google Cloud authentication for evidence and scans
+        id: google-auth-evidence
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_RELEASE_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - name: Refresh Artifact Registry login for evidence and scans
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ${{ env.REGISTRY_HOST }}
+          username: oauth2accesstoken
+          password: ${{ steps.google-auth-evidence.outputs.access_token }}
+
+      - name: Record immutable image and attestation evidence
+        id: release-images
+        shell: bash
+        env:
+          API_DIGEST: ${{ steps.build-api.outputs.digest }}
+          WEB_DIGEST: ${{ steps.build-web.outputs.digest }}
+        run: |
+          set -euo pipefail
+          evidence_dir="${RUNNER_TEMP}/release-evidence"
+          digest_pattern='^sha256:[0-9a-f]{64}$'
+          if [[ ! "${API_DIGEST}" =~ ${digest_pattern} || ! "${WEB_DIGEST}" =~ ${digest_pattern} ]]; then
+            echo "A build did not return a valid registry digest." >&2
+            exit 1
+          fi
+
+          api_image="${API_IMAGE_REPOSITORY}@${API_DIGEST}"
+          web_image="${WEB_IMAGE_REPOSITORY}@${WEB_DIGEST}"
+          printf 'api_image=%s\n' "${api_image}" >>"${GITHUB_OUTPUT}"
+          printf 'web_image=%s\n' "${web_image}" >>"${GITHUB_OUTPUT}"
+          printf 'API_RELEASE_IMAGE=%s\n' "${api_image}" >>"${GITHUB_ENV}"
+          printf 'WEB_RELEASE_IMAGE=%s\n' "${web_image}" >>"${GITHUB_ENV}"
+          printf 'api_image = "%s"\nweb_image = "%s"\n' "${api_image}" "${web_image}" \
+            >"${evidence_dir}/terraform-images.tfvars"
+          printf 'api_image=%s\nweb_image=%s\n' "${api_image}" "${web_image}" \
+            >"${evidence_dir}/image-digests.txt"
+
+          docker buildx imagetools inspect --raw "${api_image}" \
+            >"${evidence_dir}/api-manifest.json"
+          docker buildx imagetools inspect --format '{{ json .Provenance }}' "${api_image}" \
+            >"${evidence_dir}/api-provenance.json"
+          docker buildx imagetools inspect --format '{{ json .SBOM }}' "${api_image}" \
+            >"${evidence_dir}/api-sbom.spdx.json"
+          docker buildx imagetools inspect --raw "${web_image}" \
+            >"${evidence_dir}/web-manifest.json"
+          docker buildx imagetools inspect --format '{{ json .Provenance }}' "${web_image}" \
+            >"${evidence_dir}/web-provenance.json"
+          docker buildx imagetools inspect --format '{{ json .SBOM }}' "${web_image}" \
+            >"${evidence_dir}/web-sbom.spdx.json"
+
+          for evidence_file in \
+            "${evidence_dir}/api-manifest.json" \
+            "${evidence_dir}/api-provenance.json" \
+            "${evidence_dir}/api-sbom.spdx.json" \
+            "${evidence_dir}/web-manifest.json" \
+            "${evidence_dir}/web-provenance.json" \
+            "${evidence_dir}/web-sbom.spdx.json"; do
+            jq -e 'type == "object" and length > 0' "${evidence_file}" >/dev/null
+          done
+
+          created_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          jq -n \
+            --arg api_digest "${API_DIGEST}" \
+            --arg api_image "${api_image}" \
+            --arg created_at "${created_at}" \
+            --arg environment "${RELEASE_ENVIRONMENT}" \
+            --arg release_sha "${REQUESTED_SHA}" \
+            --arg web_digest "${WEB_DIGEST}" \
+            --arg web_image "${web_image}" \
+            --arg workflow_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{
+              schema_version: 1,
+              created_at: $created_at,
+              environment: $environment,
+              release_sha: $release_sha,
+              workflow_url: $workflow_url,
+              images: {
+                api: {reference: $api_image, digest: $api_digest},
+                web: {reference: $web_image, digest: $web_digest}
+              }
+            }' >"${evidence_dir}/release-metadata.json"
+
+      - name: Scan exact API registry digest
+        id: scan-api
+        continue-on-error: true
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          image: registry:${{ steps.release-images.outputs.api_image }}
+          fail-build: true
+          severity-cutoff: high
+          by-cve: true
+          config: .grype.yaml
+          grype-version: 0.116.1
+          output-format: json
+          output-file: ${{ runner.temp }}/release-evidence/api-grype.json
+
+      - name: Scan exact web registry digest
+        id: scan-web
+        continue-on-error: true
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          image: registry:${{ steps.release-images.outputs.web_image }}
+          fail-build: true
+          severity-cutoff: high
+          by-cve: true
+          config: .grype.yaml
+          grype-version: 0.116.1
+          output-format: json
+          output-file: ${{ runner.temp }}/release-evidence/web-grype.json
+
+      - name: Checksum release evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_dir="${RUNNER_TEMP}/release-evidence"
+          mkdir -p "${evidence_dir}"
+          find "${evidence_dir}" -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' \
+            | sort -z \
+            | while IFS= read -r -d '' evidence_file; do
+                sha256sum "${evidence_dir}/${evidence_file}"
+              done >"${evidence_dir}/SHA256SUMS"
+
+      - name: Upload immutable release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ inputs.environment }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-evidence
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish release summary
+        if: always()
+        shell: bash
+        env:
+          API_IMAGE: ${{ steps.release-images.outputs.api_image }}
+          API_SCAN_OUTCOME: ${{ steps.scan-api.outcome }}
+          WEB_IMAGE: ${{ steps.release-images.outputs.web_image }}
+          WEB_SCAN_OUTCOME: ${{ steps.scan-web.outcome }}
+        run: |
+          {
+            echo "## Container release evidence"
+            echo
+            echo "- Environment: ${RELEASE_ENVIRONMENT}"
+            echo "- Commit: ${REQUESTED_SHA}"
+            echo "- API image: ${API_IMAGE:-not produced}"
+            echo "- Web image: ${WEB_IMAGE:-not produced}"
+            echo "- API scan: ${API_SCAN_OUTCOME:-not run}"
+            echo "- Web scan: ${WEB_SCAN_OUTCOME:-not run}"
+            echo
+            echo "Use only the digest-pinned values in the uploaded terraform-images.tfvars."
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+      - name: Enforce release evidence gates
+        if: always()
+        shell: bash
+        env:
+          API_SCAN_OUTCOME: ${{ steps.scan-api.outcome }}
+          IMAGE_EVIDENCE_OUTCOME: ${{ steps.release-images.outcome }}
+          WEB_SCAN_OUTCOME: ${{ steps.scan-web.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "${IMAGE_EVIDENCE_OUTCOME}" != "success" || \
+                "${API_SCAN_OUTCOME}" != "success" || \
+                "${WEB_SCAN_OUTCOME}" != "success" ]]; then
+            echo "Release image publication, attestation extraction, or scanning did not pass." >&2
+            exit 1
+          fi

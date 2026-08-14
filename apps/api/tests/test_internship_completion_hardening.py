@@ -1,4 +1,6 @@
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
+from zipfile import ZipFile
 
 import pytest
 
@@ -6,7 +8,11 @@ from app.auth.capabilities import role_has_capability
 from app.internships.assignments.policies import evaluate_assignment_unlock
 from app.internships.reviews.scoring import RubricValidationError, weighted_score
 from app.internships.submissions.service import canonical_evidence_hash
-from app.internships.uploads.scanning import DemoScanner, DisabledProductionScanner
+from app.internships.uploads.scanning import (
+    ClamAVScanner,
+    DemoScanner,
+    DisabledProductionScanner,
+)
 
 
 def test_internship_capability_matrix_keeps_staff_boundaries() -> None:
@@ -83,6 +89,73 @@ def test_demo_scanner_rejects_magic_byte_mismatch_and_malware_fixture() -> None:
         filename="notes.txt",
     )
     assert malware.state == "REJECTED"
+    wrong_mime = scanner.scan(
+        b"%PDF-1.7\ncontent",
+        declared_content_type="image/png",
+        filename="report.pdf",
+    )
+    assert wrong_mime.state == "REJECTED"
+    fake_webp = scanner.scan(
+        b"RIFF\x04\x00\x00\x00WAVE",
+        declared_content_type="image/webp",
+        filename="image.webp",
+    )
+    assert fake_webp.state == "REJECTED"
+    malformed_json = scanner.scan(
+        b"{not-json}",
+        declared_content_type="application/json",
+        filename="notebook.ipynb",
+    )
+    assert malformed_json.state == "REJECTED"
+
+
+def test_clamav_scanner_runs_deterministic_checks_before_provider() -> None:
+    provider_calls: list[bytes] = []
+
+    def provider(content: bytes) -> tuple[bool, str]:
+        provider_calls.append(content)
+        return True, "stream: OK"
+
+    scanner = ClamAVScanner(provider)
+    mismatch = scanner.scan(
+        b"not a pdf",
+        declared_content_type="application/pdf",
+        filename="report.pdf",
+    )
+    assert mismatch.state == "REJECTED"
+    assert mismatch.message == "Declared type does not match file signature"
+
+    archive_bytes = BytesIO()
+    with ZipFile(archive_bytes, "w") as archive:
+        archive.writestr("../escaped.txt", "unsafe")
+    unsafe_archive = scanner.scan(
+        archive_bytes.getvalue(),
+        declared_content_type="application/zip",
+        filename="evidence.zip",
+    )
+    assert unsafe_archive.state == "REJECTED"
+    assert unsafe_archive.message == "Archive contains a path traversal entry"
+
+    backslash_archive_bytes = BytesIO()
+    with ZipFile(backslash_archive_bytes, "w") as archive:
+        archive.writestr("..\\escaped.txt", "unsafe")
+    backslash_archive = scanner.scan(
+        backslash_archive_bytes.getvalue(),
+        declared_content_type="application/zip",
+        filename="evidence.zip",
+    )
+    assert backslash_archive.state == "REJECTED"
+    assert backslash_archive.message == "Archive contains a path traversal entry"
+    assert provider_calls == []
+
+    clean = scanner.scan(
+        b"%PDF-1.7\ncontent",
+        declared_content_type="application/pdf",
+        filename="report.pdf",
+    )
+    assert clean.state == "CLEAN"
+    assert clean.message == "stream: OK"
+    assert provider_calls == [b"%PDF-1.7\ncontent"]
 
 
 def test_canonical_hash_binds_evidence_metadata() -> None:

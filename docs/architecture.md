@@ -1,6 +1,6 @@
 # Architecture
 
-PraxisAI is a transactional modular monolith with separate web and API deployables. PostgreSQL is the source of truth. The API commits business state and an outbox record in one transaction; provider calls, notifications, PDF generation, and analytics export occur afterward in retryable handlers.
+PraxisAI is a transactional modular monolith with separate web, API, and worker deployables. PostgreSQL is the source of truth. The API commits business state and an outbox record in one transaction; a scheduled Cloud Run job claims notification and malware-scan work with bounded retries. Deterministic retention runs in the same worker.
 
 ```mermaid
 flowchart LR
@@ -8,10 +8,11 @@ flowchart LR
   Web --> API[FastAPI API]
   API --> DB[(PostgreSQL)]
   API --> Storage[Private object storage]
-  DB --> Outbox[Outbox worker]
-  Outbox --> Gemini[Gemini / Vertex AI]
-  Outbox --> Tasks[Cloud Tasks]
-  Outbox --> Analytics[BigQuery]
+  API --> Gemini[Gemini / Vertex AI]
+  Scheduler[Cloud Scheduler] --> Worker[Cloud Run worker job]
+  DB --> Worker
+  Worker --> Storage
+  Worker --> Scanner[Private ClamAV service]
   ExternalEvidence[Approved external funding and payout evidence] --> API
   API --> KMS[Credential signing key]
 ```

@@ -4,11 +4,9 @@ from collections.abc import Awaitable, Callable
 
 import structlog
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
 from starlette.responses import Response
 
 from app.api import (
@@ -35,6 +33,7 @@ from app.api import (
 from app.config import get_settings
 from app.db import SessionFactory
 from app.domain.schemas import ErrorDetail, ErrorResponse
+from app.readiness import assert_database_ready
 from app.security.headers import apply_api_security_headers
 
 settings = get_settings()
@@ -109,12 +108,20 @@ async def http_error(request: Request, exc: HTTPException) -> JSONResponse:
 @app.exception_handler(RequestValidationError)
 async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
     correlation = getattr(request.state, "correlation_id", uuid.uuid4())
+    errors = [
+        {
+            "type": error["type"],
+            "loc": list(error["loc"]),
+            "msg": error["msg"],
+        }
+        for error in exc.errors()
+    ]
     payload = ErrorResponse(
         error=ErrorDetail(
             code="validation_error",
             message="Request validation failed",
             correlation_id=correlation,
-            details={"errors": jsonable_encoder(exc.errors())},
+            details={"errors": errors},
         )
     )
     return JSONResponse(status_code=422, content=payload.model_dump(mode="json"))
@@ -147,10 +154,14 @@ async def health() -> dict[str, str]:
 
 
 @app.get("/ready")
-async def readiness() -> dict[str, str]:
-    async with SessionFactory() as session:
-        await session.execute(text("SELECT 1"))
-    return {"status": "ready"}
+@app.get("/api/v1/ready")
+async def readiness() -> Response:
+    try:
+        await assert_database_ready(SessionFactory)
+    except Exception as exc:
+        logger.warning("readiness_check_failed", error_type=type(exc).__name__)
+        return JSONResponse(status_code=503, content={"status": "not_ready"})
+    return JSONResponse(content={"status": "ready"})
 
 
 app.include_router(auth.router, prefix="/api/v1")

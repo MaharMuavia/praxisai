@@ -1,13 +1,30 @@
-export const firebasePublicEnvironmentNames = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-  "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
-  "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-  "NEXT_PUBLIC_FIREBASE_APP_ID",
+export const supabasePublicEnvironmentNames = [
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
 ] as const;
 
 type BuildEnvironment = Record<string, string | undefined>;
+
+export function parseSupabaseBrowserOrigin(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS origin");
+  }
+  if (
+    url.protocol !== "https:" ||
+    !url.hostname ||
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS origin");
+  }
+  return url;
+}
 
 export function validatePublicBuildEnvironment(
   environment: BuildEnvironment,
@@ -23,14 +40,15 @@ export function validatePublicBuildEnvironment(
     return;
   }
 
-  const missing = firebasePublicEnvironmentNames.filter(
+  const missing = supabasePublicEnvironmentNames.filter(
     (name) => !environment[name]?.trim(),
   );
   if (missing.length > 0) {
     throw new Error(
-      `Hosted web builds require Firebase browser configuration: ${missing.join(", ")}`,
+      `Hosted web builds require Supabase browser configuration: ${missing.join(", ")}`,
     );
   }
+  parseSupabaseBrowserOrigin(environment.NEXT_PUBLIC_SUPABASE_URL!);
   if (environment.NEXT_PUBLIC_DEMO_MODE !== "false") {
     throw new Error("Hosted web builds require NEXT_PUBLIC_DEMO_MODE=false");
   }

@@ -2,13 +2,11 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
 
 from app.auth.dependencies import DbSession, IdempotencyKey, require_roles
 from app.auth.service import SessionPrincipal
 from app.config import Settings, get_settings
 from app.domain.enums import Role
-from app.domain.models import OutboxEvent
 from app.domain.schemas import (
     AgentRunView,
     DashboardSummary,
@@ -23,44 +21,16 @@ from app.operations.service import (
     agent_timeline,
     audit_timeline,
     dashboard_summary,
-    integration_health,
+    integration_inventory,
     list_jobs,
     provider_sync_timeline,
     recover_dead_letter,
 )
-from app.outbox.cloud_tasks import CloudTaskPayload
-from app.outbox.task_auth import verify_cloud_task_identity
 
 router = APIRouter(prefix="/ops", tags=["operations"])
 OperationsPrincipal = Annotated[
     SessionPrincipal, Depends(require_roles(Role.COORDINATOR, Role.PLATFORM_ADMIN))
 ]
-
-
-@router.post("/tasks/process-outbox")
-async def process_outbox_task(
-    body: CloudTaskPayload,
-    request: Request,
-    session: DbSession,
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> dict[str, str]:
-    verify_cloud_task_identity(request, settings)
-    event = await session.scalar(select(OutboxEvent).where(OutboxEvent.id == body.outbox_event_id))
-    if event is None or event.event_type != body.event_type:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Outbox event not found")
-    if event.correlation_id is not None and event.correlation_id != body.correlation_id:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Outbox correlation does not match")
-    # The task carries no domain payload. The worker loads it from the committed
-    # outbox row, so retries cannot mutate or leak a copied task body.
-    if event.event_type != "NotificationRequested":
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            "No hosted handler is registered for this outbox event type",
-        )
-    from app.notifications.service import process_notification_event
-
-    processed = await process_notification_event(session, event_id=event.id)
-    return {"status": processed.status, "outbox_event_id": str(processed.id)}
 
 
 @router.get("/dashboard", response_model=DashboardSummary)
@@ -114,7 +84,7 @@ async def integrations(
     session: DbSession,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> list[IntegrationStatus]:
-    return await integration_health(session, settings=settings)
+    return await integration_inventory(session, settings=settings)
 
 
 @router.get("/provider-synchronizations", response_model=list[ProviderSynchronizationView])

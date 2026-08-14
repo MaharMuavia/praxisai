@@ -25,3 +25,13 @@ export const assignmentsQuery = () =>
     queryFn: () =>
       internshipFetch<InternshipAssignment[]>("/internships/me/assignments"),
   });
+
+export const assignmentQuery = (assignmentId: string) =>
+  queryOptions({
+    queryKey: ["internships", "assignment", assignmentId] as const,
+    queryFn: () =>
+      internshipFetch<InternshipAssignment>(
+        `/internships/me/assignments/${assignmentId}`,
+      ),
+    enabled: assignmentId.length > 0,
+  });

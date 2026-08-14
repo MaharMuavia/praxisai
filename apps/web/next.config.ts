@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
         headers: publicSecurityHeaders(
           process.env.NEXT_PUBLIC_APP_ENV ?? process.env.APP_ENV,
           process.env.NODE_ENV,
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
         ),
       },
     ];

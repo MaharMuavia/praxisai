@@ -1,17 +1,15 @@
 [project]
 name = "praxisai-api"
 version = "0.1.0"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
   "alembic==1.16.5",
   "asyncpg==0.30.0",
   "cryptography==50.0.0",
   "email-validator==2.3.0",
   "fastapi==0.141.1",
-  "firebase-admin==7.1.0",
   "google-cloud-kms==3.5.1",
   "google-cloud-storage==3.3.1",
-  "google-cloud-tasks>=2.23.0",
   "google-genai==1.33.0",
   "greenlet==3.2.4",
   "httpx==0.28.1",
@@ -36,19 +34,19 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["firebase_admin.*", "qrcode.*", "reportlab.*"]
+module = ["qrcode.*", "reportlab.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

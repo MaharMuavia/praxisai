@@ -96,7 +96,7 @@ const intakeSchema = z
         context.addIssue({
           code: "custom",
           path: ["years_experience"],
-          message: "Enter years of experience (1â€“70)",
+          message: "Enter years of experience (1–70)",
         });
       }
       if (!/^https?:\/\/[^\s]+$/i.test(value.profile_url)) {

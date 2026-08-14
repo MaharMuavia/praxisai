@@ -89,7 +89,7 @@ Buttons, badges, page headings, banners, cards, and error blocks are repeated ac
 | Pricing | Static/partial | Existing pricing language is truthful; live quote calculation exists only in authenticated project flows. |
 | Student application start, expert lead interest, university inquiry, general contact | Blocked by missing public intake endpoints | Do not simulate submission; provide truthful information and a supported contact/identity route. |
 | Company project submission | Partially supported | Authenticated client intake and project APIs exist; public pre-auth submission does not. |
-| Login and local/demo session | Partially supported | Existing login and API session flow exist; Firebase and production auth paths need explicit error-state coverage. |
+| Login and local/demo session | Partially supported | Existing login and API session flow exist; Supabase and production auth paths need explicit error-state coverage. |
 | Credential verification | Fully supported | Public verification and QR/PDF endpoints exist. |
 | Student learning, opportunities, proposals, offers, earnings, credentials | Partially supported | Multiple typed API endpoints exist; route-level query modules are still needed. |
 | Client proposals, projects, invoices | Partially supported | Existing client components and API routes cover slices of these workflows. |

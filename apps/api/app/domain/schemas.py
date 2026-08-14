@@ -46,8 +46,8 @@ class LocalSessionRequest(BaseModel):
     role: str
 
 
-class FirebaseSessionRequest(BaseModel):
-    id_token: str = Field(min_length=20)
+class SupabaseSessionRequest(BaseModel):
+    access_token: str = Field(min_length=20)
 
 
 class ProjectCreate(BaseModel):
@@ -255,6 +255,13 @@ class AgentRunView(ApiModel):
     usage: dict[str, Any] | None
     correlation_id: uuid.UUID
     is_demo: bool
+    runtime_version: str
+    provider: str
+    resource_version: int | None
+    stale_result: bool
+    human_approval_required: bool
+    proposed_actions: list[dict[str, Any]]
+    executed_action_evidence: list[dict[str, Any]]
     created_at: datetime
 
 

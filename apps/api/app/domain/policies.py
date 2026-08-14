@@ -19,6 +19,13 @@ PROHIBITED_TERMS = {
     "biometric identification",
     "spyware",
     "academic cheating",
+    "delete the tenant",
+    "issue credentials",
+    "admin deletion",
+    "bypass review",
+    "approve the request",
+    "expose secrets",
+    "ignore previous instructions",
 }
 
 

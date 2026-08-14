@@ -1,17 +1,22 @@
-project_id  = "replace-with-google-cloud-project"
-region      = "us-central1"
-environment = "staging"
-web_image   = "us-central1-docker.pkg.dev/PROJECT/praxisai/web:TAG"
-api_image   = "us-central1-docker.pkg.dev/PROJECT/praxisai/api:TAG"
-firebase_project_id = "replace-with-firebase-project-id"
-web_base_url = "https://replace-with-web-url"
-api_base_url = "https://replace-with-api-url/api/v1"
-cors_origins = ["https://replace-with-web-url"]
-email_from_address = "noreply@example.com"
-otel_exporter_otlp_endpoint = "https://replace-with-otlp-endpoint"
-supabase_storage_bucket = "internship-submissions"
-clamav_host = "replace-with-clamav-host"
-clamav_port = 3310
+project_id               = "replace-with-google-cloud-project"
+region                   = "us-central1"
+environment              = "staging"
+web_image                = "us-central1-docker.pkg.dev/PROJECT/praxisai-staging-praxisai/web@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+api_image                = "us-central1-docker.pkg.dev/PROJECT/praxisai-staging-praxisai/api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+supabase_publishable_key = "replace-with-public-supabase-publishable-key"
+web_base_url             = "https://replace-with-web-url"
+cors_origins             = ["https://replace-with-web-url"]
+alert_notification_email = "operations@example.com"
+supabase_storage_bucket  = "internship-submissions"
+database_url_secret_version              = "1"
+supabase_url_secret_version              = "1"
+supabase_service_role_key_secret_version = "1"
+session_secret_version                   = "1"
+session_secret_fallback_version          = "1"
+clamav_host              = "10.10.0.10"
+clamav_port              = 3310
+worker_vpc_network       = "replace-with-private-clamav-network"
+worker_vpc_subnetwork    = "replace-with-private-clamav-subnet"
 
 # Supabase connection strings are provisioned into Secret Manager separately.
 # DATABASE_URL: transaction pooler, normally port 6543.

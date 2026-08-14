@@ -12,15 +12,15 @@ values (
   'internship-submissions',
   'internship-submissions',
   false,
-  104857600,
+  31457280,
   array[
     'application/pdf',
     'application/json',
     'application/zip',
+    'application/x-zip-compressed',
     'image/png',
     'image/jpeg',
     'image/webp',
-    'image/svg+xml',
     'text/plain',
     'text/markdown'
   ]::text[]

@@ -130,7 +130,7 @@ export function IntakeQueuePage() {
               <span>
                 <strong>{submission.display_name}</strong>
                 <small>
-                  {submission.kind.replace("_", " ")} Â·{" "}
+                  {submission.kind.replace("_", " ")} ·{" "}
                   {submission.source ?? "Direct"}
                 </small>
               </span>

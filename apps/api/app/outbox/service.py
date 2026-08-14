@@ -11,6 +11,14 @@ from app.domain.models import JobAttempt, OutboxEvent
 EventHandler = Callable[[dict[str, object]], Awaitable[None]]
 
 
+class OutboxEventAlreadyRunning(RuntimeError):
+    """Raised when another worker owns an outbox event claim."""
+
+
+class OutboxEventNotProcessable(RuntimeError):
+    """Raised when an event must be recovered before it can run again."""
+
+
 def _utc(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
@@ -32,12 +40,19 @@ async def process_one(
     max_attempts: int = 5,
 ) -> OutboxEvent:
     event = await session.scalar(
-        select(OutboxEvent).where(OutboxEvent.id == event_id).with_for_update()
+        select(OutboxEvent)
+        .where(OutboxEvent.id == event_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if event is None:
         raise ValueError("Outbox event not found")
     if event.status == "SUCCEEDED":
         return event
+    if event.status == "RUNNING":
+        raise OutboxEventAlreadyRunning("Outbox event is already claimed")
+    if event.status != "PENDING":
+        raise OutboxEventNotProcessable("Outbox event must be recovered before processing")
     if _utc(event.available_at) > datetime.now(UTC):
         raise ValueError("Outbox event is not available yet")
     handler = handlers.get(event.event_type)
@@ -53,16 +68,30 @@ async def process_one(
     )
     session.add(attempt)
     await session.commit()
+    attempt_id = attempt.id
     try:
         await handler(event.payload)
     except Exception as exc:
+        error_message = _safe_error(exc)
+        error_category = type(exc).__name__[:100]
+        await session.rollback()
+        event = await session.scalar(
+            select(OutboxEvent)
+            .where(OutboxEvent.id == event_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        recorded_attempt = await session.get(JobAttempt, attempt_id, populate_existing=True)
+        if event is None or recorded_attempt is None:
+            await session.rollback()
+            raise RuntimeError("Outbox failure state could not be recovered") from exc
         event.status = "DEAD_LETTER" if event.attempts >= max_attempts else "PENDING"
-        event.last_error = _safe_error(exc)
+        event.last_error = error_message
         event.available_at = datetime.now(UTC) + timedelta(seconds=min(300, 2**event.attempts))
-        attempt.status = "FAILED"
-        attempt.finished_at = datetime.now(UTC)
-        attempt.error_category = type(exc).__name__[:100]
-        attempt.error_message = event.last_error
+        recorded_attempt.status = "FAILED"
+        recorded_attempt.finished_at = datetime.now(UTC)
+        recorded_attempt.error_category = error_category
+        recorded_attempt.error_message = event.last_error
         await session.commit()
         raise
     event.status = "SUCCEEDED"

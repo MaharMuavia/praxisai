@@ -1,12 +1,11 @@
 "use client";
 
 import { praxisFetch } from "@praxisai/api-client";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import { ArrowRight, Lock, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Brand } from "@/components/brand";
-import { getFirebaseAuth } from "@/lib/firebase";
 import { apiBase } from "@/lib/api";
+import { getSupabaseClient } from "@/lib/supabase";
 
 interface DemoUser {
   user_id: string;
@@ -41,8 +40,8 @@ export default function LoginPage() {
   const [selected, setSelected] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [useFirebase, setUseFirebase] = useState(
-    Boolean(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+  const [useSupabase, setUseSupabase] = useState(
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
   );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,7 +62,7 @@ export default function LoginPage() {
       })
       .catch(() => {
         // Demo users API unavailable in production mode
-        setUseFirebase(true);
+        setUseSupabase(true);
       });
   }, []);
 
@@ -84,23 +83,26 @@ export default function LoginPage() {
     }
   }
 
-  async function signInFirebase() {
+  async function signInSupabase() {
     if (!email || !password) return;
     setBusy(true);
     setError(null);
     try {
-      const auth = getFirebaseAuth();
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
-      const idToken = await userCredential.user.getIdToken();
+      const { data, error: signInError } =
+        await getSupabaseClient().auth.signInWithPassword({
+          email,
+          password,
+        });
+      if (signInError) throw signInError;
+      const idToken = data.session?.access_token;
+      if (!idToken) {
+        throw new Error("Supabase did not return a verified session");
+      }
 
-      // Exchange Firebase ID Token with server for secure HttpOnly cookie session
+      // Exchange the Supabase access token for the API's secure HttpOnly session.
       await praxisFetch<void>(apiBase, "/auth/session", {
         method: "POST",
-        body: JSON.stringify({ id_token: idToken }),
+        body: JSON.stringify({ access_token: idToken }),
       });
 
       // Retrieve server session to get verified role
@@ -110,7 +112,7 @@ export default function LoginPage() {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Firebase authentication failed",
+          : "Supabase authentication failed",
       );
       setBusy(false);
     }
@@ -133,7 +135,7 @@ export default function LoginPage() {
         <Brand />
         <div style={{ marginTop: 40 }}>
           <span className="demo-badge">
-            {useFirebase ? "Production Auth" : "Demo Environment"}
+            {useSupabase ? "Production Auth" : "Demo Environment"}
           </span>
           <h1
             style={{
@@ -143,20 +145,20 @@ export default function LoginPage() {
               marginBottom: 10,
             }}
           >
-            {useFirebase ? "Sign in to PraxisAI" : "Enter a pilot workspace"}
+            {useSupabase ? "Sign in to PraxisAI" : "Enter a pilot workspace"}
           </h1>
           <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
-            {useFirebase
-              ? "Authenticate with your Firebase Identity credentials."
+            {useSupabase
+              ? "Authenticate with your Supabase identity credentials."
               : "Choose a fictional user to inspect each role."}
           </p>
         </div>
 
-        {useFirebase ? (
+        {useSupabase ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              signInFirebase();
+              signInSupabase();
             }}
             style={{ display: "grid", gap: 16, margin: "28px 0" }}
           >

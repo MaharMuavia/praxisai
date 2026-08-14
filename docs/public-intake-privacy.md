@@ -21,10 +21,21 @@ job through `scripts/run_worker.py`. The existing outbox retry policy provides
 bounded attempts, backoff, and dead-letter status. The sweep uses a bounded
 row lock batch, so repeated worker runs are safe.
 
-Only proxy addresses explicitly listed in `TRUSTED_PROXY_IPS` may supply the
-first `X-Forwarded-For` address for public-intake rate limiting. All other
-requests use the direct peer address. Bucket keys are hashed before storage.
+Public intake does not trust `Forwarded`, `X-Forwarded-For`, `X-Real-IP`, or the
+API socket peer as a browser identity. The hosted request reaches the API through
+the same-origin Next.js service and Cloud Run, so the API peer identifies an
+intermediary rather than the original visitor. New submissions are limited by a
+privacy-safe hash of the normalized contact email (3 per 24 hours) and a shared
+high-capacity safeguard (1,000 per hour). Idempotent replay is resolved before
+these limits and does not spend another quota slot. Bucket keys are hashed before
+storage.
 
-Production operators must configure `TRUSTED_PROXY_IPS` to the fixed ingress
-proxy addresses and must not expose anonymization, withdrawal, or deletion
-endpoints outside the operations capability boundary.
+This application-layer policy is not a volumetric DDoS control. Production must
+enforce client-address, bot, and request-volume policy at the public load balancer
+or Cloud Armor boundary, where the connection address is available. Google warns
+that values preceding the load balancer-appended addresses in
+`X-Forwarded-For` are not verified; the API therefore does not parse that header.
+See the [Google Cloud load-balancer header contract](https://cloud.google.com/load-balancing/docs/https#x-forwarded-for_header).
+
+Operators must not expose anonymization, withdrawal, or deletion endpoints
+outside the operations capability boundary.

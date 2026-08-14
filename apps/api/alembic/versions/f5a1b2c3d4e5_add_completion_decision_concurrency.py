@@ -1,7 +1,7 @@
 """Add optimistic concurrency and idempotency to completion decisions.
 
 Revision ID: f5a1b2c3d4e5
-Revises: f4c2d1a9b807
+Revises: d1e2f3a4b5c6
 Create Date: 2026-08-06
 """
 

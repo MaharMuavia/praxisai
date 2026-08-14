@@ -1,55 +1,40 @@
-# PraxisAI Staging Setup and Cost-Control Guide
+# PraxisAI staging setup and cost controls
 
-This guide describes how to configure, operate, and tear down the PraxisAI staging environment on Google Cloud while keeping costs to an absolute minimum.
+Staging uses Supabase PostgreSQL/Auth/Storage and the Google Cloud resources in
+`infra/terraform`. The exact deployment sequence is in `docs/deployment.md`.
+Do not treat this document as pricing advice; review the provider calculators
+and configure project budgets before applying a plan.
 
-## Environment Architecture
+## Bounded staging resources
 
-- **Project ID**: `<PROJECT_ID>`
-- **Region**: `<REGION>`
-- **Gemini Location**: `global` (Vertex AI API)
-- **Environment**: `staging`
+- Web and API Cloud Run services scale to zero and cap at five instances.
+- The worker is a single-task Cloud Run job with no platform retry; Cloud
+  Scheduler starts it every two minutes and application retries are bounded.
+- Worker Direct VPC egress sends only private-address traffic through the
+  operator-supplied subnet to an RFC1918 ClamAV address.
+- The error-log bucket is versioned and expires objects after 365 days. The API
+  has no read or delete permission on this bucket.
+- Artifact Registry uses immutable tags. Retain approved release digests and
+  remove rejected/unneeded images through an operator-reviewed registry policy.
+- Secret Manager references use explicit numeric versions. Rotation creates a
+  new version, updates the reviewed tfvars value, and rolls a new revision; it
+  never uses `latest`.
+- The KMS signing key and version, secret containers, state bucket, and release
+  repository are protected from routine Terraform destruction.
 
-## Staging Cost Minimization Design
+## Charge-bearing dependencies
 
-To prevent unexpected billing charges during development and staging:
+Review usage and budget alerts for Supabase, Cloud Run services/job, Cloud
+Scheduler, Secret Manager versions, the private VPC/ClamAV service, Cloud
+Storage, Artifact Registry, KMS, Cloud Logging/Monitoring, and Gemini/Vertex.
+No BigQuery export or email-delivery provider is implemented or provisioned.
 
-1. **Cloud Run**:
-   - `min_instance_count = 0` (scales to zero when idle, incurring $0 compute cost).
-   - `max_instance_count = 5` (caps scaling to prevent unexpected surges).
-2. **Cloud SQL**:
-   - Staging tier set to `db-f1-micro` (shared core, low monthly cost).
-   - Public IPv4 disabled (`ipv4_enabled = false`) using private VPC networking.
-3. **Optional Services**:
-   - `bigquery_enabled = false` (avoids storage and slot charges in staging).
-   - `credential_kms_enabled = false` (avoids monthly KMS active key version charges).
-4. **Cloud Storage**:
-   - Lifecycle rule configured to automatically delete staging artifacts older than 365 days.
+## Teardown boundary
 
-## Inventory of Idle Charges
-
-The table below documents resources and whether they accrue charges while idle:
-
-| Component | Resource Type | Idle Charge Status | Cost Mitigation Strategy |
-| --- | --- | --- | --- |
-| Cloud Run | `google_cloud_run_v2_service` | **$0 / hour** ( scaled to 0 ) | `min_instance_count = 0` |
-| Cloud SQL | `google_sql_database_instance` | **~$7 - $10 / month** | Low-cost tier `db-f1-micro` |
-| Cloud Storage | `google_storage_bucket` | **$0 - $0.02 / GB / month** | Lifecycle auto-deletion rule |
-| Secret Manager | `google_secret_manager_secret` | **$0** (within 6 free versions) | Clean up old secret versions |
-| Cloud Tasks | `google_cloud_tasks_queue` | **$0** (within 1M free operations) | No background queue polling |
-| Artifact Registry | `google_artifact_registry_repository` | **$0** (within 0.5 GB free storage) | Clean untagged images |
-| KMS Key Ring | `google_kms_key_ring` | **$0** (when `credential_kms_enabled = false`) | Conditional variable |
-| BigQuery Dataset | `google_bigquery_dataset` | **$0** (when `bigquery_enabled = false`) | Conditional variable |
-
-## Environment Teardown Instructions
-
-To completely destroy all staging resources and cease all billing:
-
-1. Update `infra/terraform/main.tf` or set `deletion_protection = false` in staging tfvars for Cloud SQL and Cloud Run.
-2. Execute the Terraform destroy command:
-
-```bash
-cd infra/terraform
-terraform destroy -var-file="staging.tfvars"
-```
-
-3. Verify zero active instances in GCP Console for Cloud Run and Cloud SQL.
+There is intentionally no one-command teardown. Protected state, signing keys,
+secrets, evidence logs, and immutable release images require separate retention
+decisions. To retire staging, first stop Scheduler and Cloud Run traffic using a
+reviewed saved plan, preserve required database/log/release evidence, then
+prepare a second plan for individually approved resources. Never remove
+`prevent_destroy` controls or delete Supabase data as part of an unreviewed
+bulk destroy.

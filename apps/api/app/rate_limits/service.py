@@ -12,6 +12,22 @@ class RateLimitExceeded(ValueError):
     pass
 
 
+def opaque_rate_limit_key(*, namespace: str, identifier: str) -> str:
+    """Build a stable rate-limit key without retaining credentials or PII.
+
+    The returned value is hashed again before persistence by ``consume_rate_limit``.
+    Keeping the first hash here prevents callers, traces, or future diagnostics from
+    accidentally exposing the identifier used to partition the limit.
+    """
+    normalized_namespace = namespace.strip(": ")
+    if not normalized_namespace:
+        raise ValueError("Rate-limit namespace is required")
+    if not identifier:
+        raise ValueError("Rate-limit identifier is required")
+    fingerprint = hashlib.sha256(identifier.encode()).hexdigest()
+    return f"{normalized_namespace}:sha256:{fingerprint}"
+
+
 async def consume_rate_limit(
     session: AsyncSession,
     *,
@@ -29,21 +45,25 @@ async def consume_rate_limit(
             .with_for_update()
         )
         if bucket is None:
-            session.add(
-                RateLimitBucket(
-                    bucket_key=bucket_key,
-                    window_started_at=now,
-                    request_count=1,
-                )
+            new_bucket = RateLimitBucket(
+                bucket_key=bucket_key,
+                window_started_at=now,
+                request_count=1,
             )
             try:
                 if commit:
+                    session.add(new_bucket)
                     await session.commit()
                 else:
-                    await session.flush()
+                    # Contain a concurrent first-insert conflict in a savepoint so
+                    # callers do not lose their surrounding business transaction.
+                    async with session.begin_nested():
+                        session.add(new_bucket)
+                        await session.flush()
                 return
             except IntegrityError:
-                await session.rollback()
+                if commit:
+                    await session.rollback()
                 if attempt == 0:
                     continue
                 raise

@@ -20,7 +20,7 @@ from app.domain.schemas import (
     NotificationPreferenceUpdate,
     NotificationPreferenceView,
 )
-from app.outbox.service import process_one
+from app.outbox.service import OutboxEventAlreadyRunning, process_one
 
 CATEGORIES: tuple[NotificationCategory, ...] = (
     "projects",
@@ -285,6 +285,8 @@ async def process_pending_notifications(
         try:
             await process_notification_event(session, event_id=event_id, max_attempts=max_attempts)
             succeeded += 1
+        except OutboxEventAlreadyRunning:
+            continue
         except Exception:
             failed += 1
     return succeeded, failed

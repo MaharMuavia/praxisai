@@ -201,8 +201,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Firebase Session */
-        post: operations["firebase_session_api_v1_auth_session_post"];
+        /** Supabase Session */
+        post: operations["supabase_session_api_v1_auth_session_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1354,23 +1354,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/ops/tasks/process-outbox": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Process Outbox Task */
-        post: operations["process_outbox_task_api_v1_ops_tasks_process_outbox_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/participants/me/earnings": {
         parameters: {
             query?: never;
@@ -1765,6 +1748,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness */
+        get: operations["readiness_api_v1_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/students/me/credentials": {
         parameters: {
             query?: never;
@@ -1972,6 +1972,12 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Executed Action Evidence */
+            executed_action_evidence: {
+                [key: string]: unknown;
+            }[];
+            /** Human Approval Required */
+            human_approval_required: boolean;
             /**
              * Id
              * Format: uuid
@@ -1993,8 +1999,20 @@ export interface components {
             project_id: string | null;
             /** Prompt Version */
             prompt_version: string;
+            /** Proposed Actions */
+            proposed_actions: {
+                [key: string]: unknown;
+            }[];
+            /** Provider */
+            provider: string;
+            /** Resource Version */
+            resource_version: number | null;
             /** Retry Count */
             retry_count: number;
+            /** Runtime Version */
+            runtime_version: string;
+            /** Stale Result */
+            stale_result: boolean;
             /** Status */
             status: string;
             /** Usage */
@@ -2392,21 +2410,6 @@ export interface components {
             project_title: string;
             /** Status */
             status: string;
-        };
-        /** CloudTaskPayload */
-        CloudTaskPayload: {
-            /**
-             * Correlation Id
-             * Format: uuid
-             */
-            correlation_id: string;
-            /** Event Type */
-            event_type: string;
-            /**
-             * Outbox Event Id
-             * Format: uuid
-             */
-            outbox_event_id: string;
         };
         /** CohortSummary */
         CohortSummary: {
@@ -2842,11 +2845,6 @@ export interface components {
             confirm: boolean;
             /** Version */
             version: number;
-        };
-        /** FirebaseSessionRequest */
-        FirebaseSessionRequest: {
-            /** Id Token */
-            id_token: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -4336,6 +4334,8 @@ export interface components {
         };
         /** SignupRequest */
         SignupRequest: {
+            /** Access Token */
+            access_token: string;
             /**
              * Cohort Id
              * Format: uuid
@@ -4343,8 +4343,6 @@ export interface components {
             cohort_id: string;
             /** Consent Version */
             consent_version: string;
-            /** Id Token */
-            id_token: string;
         };
         /** SignupResponse */
         SignupResponse: {
@@ -4625,6 +4623,11 @@ export interface components {
             };
             /** Version */
             version: number;
+        };
+        /** SupabaseSessionRequest */
+        SupabaseSessionRequest: {
+            /** Access Token */
+            access_token: string;
         };
         /** TaskCreate */
         TaskCreate: {
@@ -5334,7 +5337,7 @@ export interface operations {
             };
         };
     };
-    firebase_session_api_v1_auth_session_post: {
+    supabase_session_api_v1_auth_session_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -5343,7 +5346,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["FirebaseSessionRequest"];
+                "application/json": components["schemas"]["SupabaseSessionRequest"];
             };
         };
         responses: {
@@ -7881,41 +7884,6 @@ export interface operations {
             };
         };
     };
-    process_outbox_task_api_v1_ops_tasks_process_outbox_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CloudTaskPayload"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     earnings_api_v1_participants_me_earnings_get: {
         parameters: {
             query?: never;
@@ -8834,6 +8802,26 @@ export interface operations {
             };
         };
     };
+    readiness_api_v1_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     credentials_api_v1_students_me_credentials_get: {
         parameters: {
             query?: never;
@@ -9240,9 +9228,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": unknown;
                 };
             };
         };

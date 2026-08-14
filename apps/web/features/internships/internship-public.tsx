@@ -1,42 +1,18 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-} from "firebase/auth";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Brand } from "@/components/brand";
 import { Button, Card, StatusBadge } from "@/components/ui";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { studentSignupEmailRedirect } from "@/lib/auth-redirect";
+import { getSupabaseClient } from "@/lib/supabase";
 import {
   internshipFetch,
+  programQuery,
   programsQuery,
-  type InternshipProgram,
 } from "@/lib/queries/internships/shared";
-
-type ProgramDetail = InternshipProgram & {
-  cohorts: {
-    id: string;
-    name: string;
-    slug: string;
-    status: string;
-    starts_at: string;
-    ends_at: string;
-    capacity: number;
-    timezone: string;
-  }[];
-  tracks: {
-    id: string;
-    name: string;
-    version_id: string;
-    title: string;
-    summary: string;
-    skill_outcomes: string[];
-  }[];
-};
 
 export function InternshipProgramList() {
   const query = useQuery(programsQuery());
@@ -98,9 +74,7 @@ export function InternshipProgramList() {
 
 export function InternshipProgramPage({ slug }: { slug: string }) {
   const query = useQuery({
-    queryKey: ["internship-program", slug],
-    queryFn: () =>
-      internshipFetch<ProgramDetail>(`/internships/programs/${slug}`),
+    ...programQuery(slug),
   });
   if (query.isLoading)
     return <div className="internship-loading">Loading program brief…</div>;
@@ -189,20 +163,28 @@ export function StudentSignup() {
     setError(null);
     setMessage(null);
     try {
-      const credential = await createUserWithEmailAndPassword(
-        getFirebaseAuth(),
-        email,
-        password,
-      );
-      await sendEmailVerification(credential.user);
+      const { data, error: signUpError } =
+        await getSupabaseClient().auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: studentSignupEmailRedirect(
+              window.location.origin,
+              params.get("program"),
+              params.get("cohort"),
+            ),
+          },
+        });
+      if (signUpError) throw signUpError;
+      if (!data.user) throw new Error("Supabase did not create the account");
       setMessage(
-        "Verification email sent. Confirm it, then return here to complete provisioning.",
+        "Verification email sent. The confirmation link will return here to complete provisioning.",
       );
     } catch (reason) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Unable to create the account",
+          : "Unable to create the Supabase account",
       );
     } finally {
       setBusy(false);
@@ -212,19 +194,22 @@ export function StudentSignup() {
     setBusy(true);
     setError(null);
     try {
-      const auth = getFirebaseAuth();
-      const user = auth.currentUser;
-      if (!user) throw new Error("Create an account first.");
-      await user.reload();
-      if (!user.emailVerified)
-        throw new Error("Verify the Firebase email before continuing.");
-      const token = await user.getIdToken(true);
+      const supabase = getSupabaseClient();
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
+      if (userError || !userData.user)
+        throw new Error("Create an account first.");
+      if (!userData.user.email_confirmed_at)
+        throw new Error("Confirm the Supabase email before continuing.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Supabase session is unavailable.");
       await internshipFetch(
         `/internships/programs/${params.get("program") ?? ""}/signup`,
         {
           method: "POST",
           body: JSON.stringify({
-            id_token: token,
+            access_token: token,
             cohort_id: params.get("cohort"),
             consent_version: "internship-1",
           }),
@@ -235,7 +220,7 @@ export function StudentSignup() {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Unable to provision the student account",
+          : "Unable to provision the Supabase student account",
       );
     } finally {
       setBusy(false);
@@ -248,7 +233,7 @@ export function StudentSignup() {
         <span className="marketing-eyebrow">Student signup</span>
         <h1>Create a verified student identity.</h1>
         <p>
-          Firebase email verification is required before PraxisAI creates a
+          Supabase email verification is required before PraxisAI creates a
           user, student membership, profile, or application.
         </p>
         <form className="internship-auth-form" onSubmit={submit}>

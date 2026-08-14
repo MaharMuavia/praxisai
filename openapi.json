@@ -17,6 +17,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "executed_action_evidence": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Executed Action Evidence",
+            "type": "array"
+          },
+          "human_approval_required": {
+            "title": "Human Approval Required",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -80,9 +92,40 @@
             "title": "Prompt Version",
             "type": "string"
           },
+          "proposed_actions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Proposed Actions",
+            "type": "array"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "resource_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Version"
+          },
           "retry_count": {
             "title": "Retry Count",
             "type": "integer"
+          },
+          "runtime_version": {
+            "title": "Runtime Version",
+            "type": "string"
+          },
+          "stale_result": {
+            "title": "Stale Result",
+            "type": "boolean"
           },
           "status": {
             "title": "Status",
@@ -120,6 +163,13 @@
           "usage",
           "correlation_id",
           "is_demo",
+          "runtime_version",
+          "provider",
+          "resource_version",
+          "stale_result",
+          "human_approval_required",
+          "proposed_actions",
+          "executed_action_evidence",
           "created_at"
         ],
         "title": "AgentRunView",
@@ -1125,31 +1175,6 @@
           "created_at"
         ],
         "title": "ClientInvoiceView",
-        "type": "object"
-      },
-      "CloudTaskPayload": {
-        "properties": {
-          "correlation_id": {
-            "format": "uuid",
-            "title": "Correlation Id",
-            "type": "string"
-          },
-          "event_type": {
-            "title": "Event Type",
-            "type": "string"
-          },
-          "outbox_event_id": {
-            "format": "uuid",
-            "title": "Outbox Event Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "outbox_event_id",
-          "event_type",
-          "correlation_id"
-        ],
-        "title": "CloudTaskPayload",
         "type": "object"
       },
       "CohortSummary": {
@@ -2313,20 +2338,6 @@
           "version"
         ],
         "title": "FinalizeSubmissionRequest",
-        "type": "object"
-      },
-      "FirebaseSessionRequest": {
-        "properties": {
-          "id_token": {
-            "minLength": 20,
-            "title": "Id Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id_token"
-        ],
-        "title": "FirebaseSessionRequest",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -6008,6 +6019,12 @@
       },
       "SignupRequest": {
         "properties": {
+          "access_token": {
+            "maxLength": 16000,
+            "minLength": 20,
+            "title": "Access Token",
+            "type": "string"
+          },
           "cohort_id": {
             "format": "uuid",
             "title": "Cohort Id",
@@ -6018,16 +6035,10 @@
             "minLength": 1,
             "title": "Consent Version",
             "type": "string"
-          },
-          "id_token": {
-            "maxLength": 16000,
-            "minLength": 20,
-            "title": "Id Token",
-            "type": "string"
           }
         },
         "required": [
-          "id_token",
+          "access_token",
           "cohort_id",
           "consent_version"
         ],
@@ -6754,6 +6765,20 @@
           "change_summary"
         ],
         "title": "SubmissionView",
+        "type": "object"
+      },
+      "SupabaseSessionRequest": {
+        "properties": {
+          "access_token": {
+            "minLength": 20,
+            "title": "Access Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token"
+        ],
+        "title": "SupabaseSessionRequest",
         "type": "object"
       },
       "TaskCreate": {
@@ -8269,12 +8294,12 @@
     },
     "/api/v1/auth/session": {
       "post": {
-        "operationId": "firebase_session_api_v1_auth_session_post",
+        "operationId": "supabase_session_api_v1_auth_session_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/FirebaseSessionRequest"
+                "$ref": "#/components/schemas/SupabaseSessionRequest"
               }
             }
           },
@@ -8295,7 +8320,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Firebase Session",
+        "summary": "Supabase Session",
         "tags": [
           "authentication"
         ]
@@ -13142,51 +13167,6 @@
         ]
       }
     },
-    "/api/v1/ops/tasks/process-outbox": {
-      "post": {
-        "operationId": "process_outbox_task_api_v1_ops_tasks_process_outbox_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CloudTaskPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Process Outbox Task Api V1 Ops Tasks Process Outbox Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Process Outbox Task",
-        "tags": [
-          "operations"
-        ]
-      }
-    },
     "/api/v1/participants/me/earnings": {
       "get": {
         "operationId": "earnings_api_v1_participants_me_earnings_get",
@@ -14920,6 +14900,22 @@
         ]
       }
     },
+    "/api/v1/ready": {
+      "get": {
+        "operationId": "readiness_api_v1_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness"
+      }
+    },
     "/api/v1/students/me/credentials": {
       "get": {
         "operationId": "credentials_api_v1_students_me_credentials_get",
@@ -15617,13 +15613,7 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Readiness Ready Get",
-                  "type": "object"
-                }
+                "schema": {}
               }
             },
             "description": "Successful Response"

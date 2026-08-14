@@ -4,6 +4,17 @@ PraxisAI connects practical learning to paid, supervised project work. Students 
 
 This repository contains an in-progress production-oriented MVP: a Next.js web application, a FastAPI transactional API, PostgreSQL persistence, structured learning paths, a student/employer talent marketplace, a Gemini adapter, audited external funding and payout evidence, and Google Cloud infrastructure definitions. No payment processor is integrated. Implemented vertical slices are tested; cloud deployment remains unverified. Demo records and fixture-provider output are always labeled **Demo data**.
 
+## XPRIZE Build with Gemini submission
+
+- **Category:** Education & Human Potential
+- **Submission Narrative:** [`docs/xprize-submission-narrative.md`](docs/xprize-submission-narrative.md)
+- **3-Minute Video Script:** [`docs/xprize-video-script.md`](docs/xprize-video-script.md)
+- **Financial P&L Statement:** [`docs/xprize-pnl-statement.md`](docs/xprize-pnl-statement.md)
+- **Submission Checklist:** [`docs/xprize-submission-checklist.md`](docs/xprize-submission-checklist.md)
+- **Interactive Judge Walkthrough:** Navigate to `/judge` for a 14-step deterministic demonstration.
+- **Evidence Map:** Navigate to `/evidence` for an audited breakdown of mock, fixture, local, and external data.
+- **Readiness Assessment:** [`docs/xprize-readiness.md`](docs/xprize-readiness.md)
+
 ## Core product loop
 
 1. Students complete sequenced practice modules and record what they produced.
@@ -15,7 +26,7 @@ This repository contains an in-progress production-oriented MVP: a Next.js web a
 
 ## Local setup
 
-Requirements: Node.js 22+, Python 3.12+, `uv`, Docker, and Git.
+Requirements: Node.js 22+, Python 3.13+, `uv`, Docker, and Git.
 
 1. Copy `.env.example` to `.env` and replace the local session secrets.
 2. Run `docker compose up -d postgres`.
@@ -25,9 +36,9 @@ Requirements: Node.js 22+, Python 3.12+, `uv`, Docker, and Git.
 6. Run `npm run verify:demo` to verify signed credential and lifecycle evidence.
 7. Run `npm run dev`, then open `http://localhost:3000`.
 
-For a hosted database without Cloud SQL, follow
-[`docs/supabase-setup.md`](docs/supabase-setup.md). Supabase is used only for PostgreSQL; server-side
-PraxisAI authorization remains authoritative.
+For hosted PostgreSQL, Auth, and private artifact storage, follow
+[`docs/supabase-setup.md`](docs/supabase-setup.md). Supabase establishes external identity;
+server-side PraxisAI memberships, roles, and authorization remain authoritative.
 
 On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`. The Makefile mirrors the npm commands for environments with GNU Make.
 

@@ -1,120 +1,209 @@
-# PraxisAI Google Cloud Deployment Guide
+# PraxisAI Google Cloud deployment
 
-This guide deploys the web and API containers to Cloud Run. Terraform provisions
-Artifact Registry, Cloud Run, Secret Manager, Cloud Storage, Cloud Tasks, Firebase
-Identity Platform, and the required IAM bindings. PostgreSQL and private upload
-storage remain Supabase-managed services.
+This runbook deploys the Next.js web service, FastAPI service, and scheduled
+background worker to Cloud Run. Supabase provides PostgreSQL, Auth, and private
+Storage. Do not use `terraform apply` without operator review and approval.
 
 ## Prerequisites
 
-- `gcloud` CLI authenticated with permission to provision the listed services.
-- Docker Desktop or another container engine with PowerShell integration.
-- Terraform CLI v1.8.0+.
-- Node.js 22+ and Python 3.12+.
+- An authenticated `gcloud` CLI with permission to create the documented
+  project resources.
+- Terraform 1.8+, GitHub CLI, Docker Buildx, Node.js 22, Python 3.13, and `uv`.
+- A Supabase project with email confirmation enabled and the private Storage
+  bucket created from `docs/supabase-storage.sql`.
+- An RFC1918 ClamAV endpoint in an existing VPC and regional subnet. Terraform
+  configures worker Direct VPC egress and the `praxisai-worker` network tag;
+  firewall ingress to clamd must allow only that tag/subnet. Clamd TCP is
+  unencrypted, so a public endpoint is rejected by both configuration layers.
+- The canonical HTTPS web origin selected before the first public deployment.
 
-## Deployment steps
+## 1. Bootstrap state and the release registry
 
-### 1. Configure hosted inputs
+The bootstrap module contains no application secrets. Its local state is
+gitignored; protect the operator workstation because that state controls the
+state bucket and registry.
 
-Copy the example variables file and fill in the non-secret values:
+```powershell
+$repositoryMetadata = gh api repos/<OWNER>/<REPOSITORY> | ConvertFrom-Json
+terraform -chdir=infra/bootstrap init -input=false
+terraform -chdir=infra/bootstrap workspace select -or-create staging
+terraform -chdir=infra/bootstrap fmt -check
+terraform -chdir=infra/bootstrap validate
+terraform -chdir=infra/bootstrap plan `
+  -var="project_id=<PROJECT_ID>" `
+  -var="environment=staging" `
+  -var="github_repository=<OWNER>/<REPOSITORY>" `
+  -var="github_repository_id=$($repositoryMetadata.id)" `
+  -var="github_repository_owner_id=$($repositoryMetadata.owner.id)" `
+  -out=bootstrap.tfplan
+terraform -chdir=infra/bootstrap apply bootstrap.tfplan
+```
+
+Use a separate Terraform workspace for `production` so applying one Environment
+does not replace the other's state bucket, registry, identity pool, or publisher.
+Record `terraform_state_bucket`, `artifact_registry_repository_id`,
+`docker_registry_host`, `github_workload_identity_provider`, and
+`release_service_account` from the matching workspace outputs.
+
+The registry rejects tag mutation. Production deployment inputs must be full
+`repository@sha256:...` references.
+
+## 2. Build the release artifacts once
+
+Use the manually dispatched **Release container images** workflow. The local
+`scripts/build_and_push.ps1` entry point is intentionally non-authoritative and
+exits without building or pushing; a local tree or long-lived Google credential
+must not become a release source.
+
+Configure these non-secret variables on both protected GitHub Environments:
+
+| Variable                               | Value                                                |
+| -------------------------------------- | ---------------------------------------------------- |
+| `GCP_PROJECT_ID`                       | Google Cloud project ID containing Artifact Registry |
+| `GCP_REGION`                           | Artifact Registry region, for example `us-central1`  |
+| `ARTIFACT_REPOSITORY`                  | `artifact_registry_repository_id` bootstrap output   |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER`       | `github_workload_identity_provider` bootstrap output |
+| `GCP_RELEASE_SERVICE_ACCOUNT`          | `release_service_account` bootstrap output           |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Browser-safe Supabase project URL                    |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe Supabase publishable key                |
+
+The bootstrap provider checks the immutable numeric repository and owner IDs,
+repository name, and GitHub Environment; production additionally requires
+`refs/heads/main`. It grants the numeric repository principal
+`roles/iam.workloadIdentityUser` on a dedicated service account and grants that
+account only `roles/artifactregistry.writer` on the matching repository. Do not
+create or store a service-account JSON key.
+Restrict the `production` GitHub Environment to `main` and require an independent
+reviewer; the workflow also rejects production dispatches from another ref.
+
+Dispatch from the exact commit to release, select the environment, and enter the
+same full 40-character commit in `release_sha`. The workflow builds each
+production-mode image exactly once, pushes maximum provenance and SBOM
+attestations, resolves the registry digests, and runs pinned Grype scans against
+those exact Artifact Registry digests. It uploads checksummed manifests,
+attestations, scan reports, metadata, and `terraform-images.tfvars` as
+`release-<environment>-<sha>-<run-id>-<attempt>`.
+
+Use only a successful, approved run. Verify the artifact's `SHA256SUMS`, review
+both scan reports and both attestations, then copy the two digest-pinned values
+from `terraform-images.tfvars` into a gitignored copy of the variables file:
 
 ```powershell
 Copy-Item infra/terraform/terraform.tfvars.example infra/terraform/terraform.tfvars
 ```
 
-Use the exact HTTPS URLs configured for the web and API services. With custom
-domains, use those domains. With default Cloud Run URLs, perform the first
-Terraform apply from a reviewed plan, then set the resulting URLs in
-`terraform.tfvars` and apply again.
+Set the canonical HTTPS `web_base_url`, matching `cors_origins`, public
+Supabase publishable key, RFC1918 ClamAV address, worker VPC network/subnet, and
+operator alert email. Never put a database URL, service-role key, session
+secret, or other secret value in tfvars.
 
-Do not put database URLs or the Supabase service-role key in this file. Terraform
-creates the Secret Manager containers; their values are added separately in step 3.
-
-### 2. Build and push immutable container images
-
-From PowerShell at the repository root:
+## 3. Initialize protected remote state
 
 ```powershell
-.\scripts\build_and_push.ps1 `
-  -ProjectId "<PROJECT_ID>" `
-  -Region "us-central1" `
-  -Env "staging" `
-  -FirebaseApiKey "<PUBLIC_FIREBASE_API_KEY>" `
-  -FirebaseAuthDomain "<FIREBASE_PROJECT>.firebaseapp.com" `
-  -FirebaseProjectId "<FIREBASE_PROJECT>" `
-  -FirebaseStorageBucket "<FIREBASE_PROJECT>.appspot.com" `
-  -FirebaseMessagingSenderId "<SENDER_ID>" `
-  -FirebaseAppId "<FIREBASE_APP_ID>"
+terraform -chdir=infra/terraform init -reconfigure `
+  -backend-config="bucket=<TERRAFORM_STATE_BUCKET>" `
+  -backend-config="prefix=praxisai/staging"
+terraform -chdir=infra/terraform fmt -check
+terraform -chdir=infra/terraform validate
 ```
 
-The script builds both images, tags them with the git commit SHA, pushes them to
-the environment's Artifact Registry repository, and prints immutable image digests.
-Firebase values are browser configuration, not server credentials.
+Do not use `-backend=false` for a deployment. It is permitted only for CI
+static validation. The remote GCS bucket supplies locking/version history; no
+secret value belongs in Terraform state.
 
-Set `api_image` and `web_image` in `terraform.tfvars` to the digests printed by
-the script. Set `clamav_host` to a reachable ClamAV service; hosted configuration
-intentionally refuses to start with upload scanning disabled.
+## 4. Create and populate Secret Manager containers
 
-### 3. Bootstrap operator-managed secrets
-
-Create the four operator-managed Secret Manager resources before the Cloud Run
-revision is created:
+First create only the five secret containers from a saved, reviewed plan:
 
 ```powershell
-terraform -chdir=infra/terraform apply `
+terraform -chdir=infra/terraform plan `
   -var-file="terraform.tfvars" `
   -target=google_secret_manager_secret.database_url `
   -target=google_secret_manager_secret.database_migration_url `
   -target=google_secret_manager_secret.supabase_url `
-  -target=google_secret_manager_secret.supabase_service_role_key
+  -target=google_secret_manager_secret.supabase_service_role_key `
+  -target=google_secret_manager_secret.session_secret `
+  -out=secrets-bootstrap.tfplan
+terraform -chdir=infra/terraform apply secrets-bootstrap.tfplan
 ```
 
-Add each secret version with `gcloud secrets versions add --data-file`, using
-local files that are not committed:
+Add values using `gcloud secrets versions add --data-file` and local files
+outside the repository:
 
-- `DATABASE_URL`: Supabase transaction-pooler URL;
-- `DATABASE_MIGRATION_URL`: Supabase session/direct URL;
-- `SUPABASE_URL`: Supabase project URL;
-- `SUPABASE_SERVICE_ROLE_KEY`: server-only Supabase service-role key.
+- runtime Supabase transaction-pooler URL (`DATABASE_URL`);
+- migration-only session/direct URL (`DATABASE_MIGRATION_URL`);
+- HTTPS Supabase project URL;
+- server-only Supabase service-role key;
+- a session secret of at least 32 random characters.
 
-The secret IDs are printed by Terraform outputs. Do not put these values in
-Terraform variables, source, or CI logs.
+Record the enabled numeric version for each runtime secret and set
+`database_url_secret_version`, `supabase_url_secret_version`,
+`supabase_service_role_key_secret_version`, `session_secret_version`, and
+`session_secret_fallback_version` in the gitignored tfvars file. Initially both
+session version inputs reference the same value. Runtime revisions never
+resolve `latest`.
 
-### 4. Plan and apply Terraform
+Rotate the session key in two revisions: first add the new version and deploy it
+as the fallback while the current version stays unchanged; after that revision
+is serving, deploy the new version as current and the old version as fallback.
+This ensures both overlapping revisions accept both keys. After the eight-hour
+session lifetime and all old revisions have drained, point fallback at current
+and disable the old version.
 
-```powershell
-terraform -chdir=infra/terraform init -backend=false -input=false
-terraform -chdir=infra/terraform fmt -check
-terraform -chdir=infra/terraform validate
-terraform -chdir=infra/terraform plan -var-file="terraform.tfvars"
-```
+The web-facing API and worker can read the runtime database secret. Neither can
+read the migration credential; only the operator migration process receives it.
 
-Review the plan, then apply it only with operator approval:
+## 5. Back up and migrate before deploying new code
 
-```powershell
-terraform -chdir=infra/terraform apply -var-file="terraform.tfvars"
-```
-
-### 5. Run database migrations
-
-Run migrations against Supabase using the migration URL from Secret Manager:
+For an existing database, take and verify a restorable logical backup. Schedule
+a maintenance window for locking DDL. Provide the two database URLs to the
+migration process only, then run:
 
 ```powershell
 npm run db:migrate
+npm run db:current
+npm run db:check
 ```
 
-For a remote migration runner, provide `DATABASE_MIGRATION_URL` and
-`DATABASE_URL` as temporary environment variables from the secret values. Never
-copy them into source, Terraform variables, or CI logs.
+`db:current` must equal the repository's single Alembic head. The API startup
+probe calls `/ready`, which checks both connectivity and the exact schema head;
+a stale revision cannot receive traffic.
 
-### 6. Smoke test
-
-After Cloud Run reports ready revisions, verify the public web URL and the API
-health path through the same-origin web proxy:
+## 6. Review and apply the exact infrastructure plan
 
 ```powershell
-Invoke-WebRequest "<WEB_URL>/api/v1/health" | Select-Object StatusCode, Content
+terraform -chdir=infra/terraform plan `
+  -var-file="terraform.tfvars" `
+  -out=release.tfplan
+terraform -chdir=infra/terraform show release.tfplan
 ```
 
-A live deployment is not considered verified until this request, authentication,
-database readiness, upload scanning, and the relevant workflow smoke tests pass.
+After review and explicit operator approval, apply that exact saved plan:
+
+```powershell
+terraform -chdir=infra/terraform apply release.tfplan
+```
+
+Do not run a fresh unsaved `terraform apply`. Terraform deploys bounded Cloud
+Run resources, schema-aware startup/liveness probes, a two-minute scheduled
+worker with private VPC egress, and alert channels for API latency, API 5xx
+responses, worker failures, and missing worker executions.
+
+## 7. Smoke test and rollback
+
+Verify through the public same-origin web route:
+
+```powershell
+Invoke-WebRequest "<WEB_URL>/api/v1/health"
+Invoke-WebRequest "<WEB_URL>/api/v1/ready"
+```
+
+Then exercise real Supabase signup/email confirmation, session exchange,
+private upload, ClamAV clean/reject behavior, worker execution, KMS credential
+issue/verification, and a live Gemini workflow. Record Cloud Run revision, job
+execution, image digests, and timestamps in `docs/staging-smoke-report.md`.
+
+For an application regression, restore the previous digest references and
+apply a reviewed plan. Do not Alembic-downgrade after new writes if the
+downgrade removes data; roll forward or restore the verified backup under the
+database incident procedure.

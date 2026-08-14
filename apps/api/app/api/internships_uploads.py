@@ -10,6 +10,7 @@ from app.internships.schemas import UploadCompleteRequest, UploadInitiateRequest
 from app.internships.service import (
     InternshipError,
     complete_upload,
+    get_upload_status,
     initiate_upload,
     receive_upload_stream,
 )
@@ -42,6 +43,19 @@ async def initiate(
     raise AssertionError("unreachable")
 
 
+@router.get("/{upload_id}", response_model=UploadView)
+async def status_view(
+    upload_id: str,
+    principal: UploadPrincipal,
+    session: DbSession,
+) -> UploadView:
+    try:
+        return await get_upload_status(session, principal=principal, upload_id=upload_id)
+    except InternshipError as exc:
+        _raise(exc)
+    raise AssertionError("unreachable")
+
+
 @router.put("/{upload_id}/content", response_model=UploadView)
 async def upload_content(
     upload_id: str,
@@ -55,7 +69,12 @@ async def upload_content(
         content_length_value = int(content_length) if content_length else None
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid Content-Length") from exc
-    if content_length_value and content_length_value > 250 * 1024 * 1024:
+    if content_length_value is not None and content_length_value < 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid Content-Length")
+    if (
+        content_length_value is not None
+        and content_length_value > settings.internship_max_upload_bytes
+    ):
         raise HTTPException(
             status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Upload exceeds the package limit"
         )

@@ -411,6 +411,13 @@ class AgentRun(EntityMixin, Base):
     error_category: Mapped[str | None] = mapped_column(String(60))
     correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    runtime_version: Mapped[str] = mapped_column(String(40), default="runtime-v1")
+    provider: Mapped[str] = mapped_column(String(40), default="unknown")
+    resource_version: Mapped[int | None] = mapped_column(Integer)
+    stale_result: Mapped[bool] = mapped_column(Boolean, default=False)
+    human_approval_required: Mapped[bool] = mapped_column(Boolean, default=True)
+    proposed_actions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    executed_action_evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
 
 
 class StaffingRun(EntityMixin, Base):

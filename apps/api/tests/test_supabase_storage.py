@@ -51,3 +51,45 @@ def test_supabase_storage_rejects_path_traversal() -> None:
 
     with pytest.raises(SupabaseStorageError, match="Invalid private storage key"):
         storage._object_url("internships/../private/report.pdf")
+
+
+@pytest.mark.asyncio
+async def test_supabase_storage_translates_transport_failures() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    settings = Settings(
+        storage_provider="supabase",
+        supabase_url="https://example.supabase.co",
+        supabase_service_role_key="service-role-secret",
+        supabase_storage_bucket="internship-submissions",
+    )
+    storage = SupabaseInternshipStorage(settings, client=client)
+
+    with pytest.raises(
+        SupabaseStorageError, match="Supabase Storage is temporarily unavailable"
+    ) as failure:
+        await storage.read("internships/student/upload/report.pdf")
+    await client.aclose()
+
+    assert isinstance(failure.value.__cause__, httpx.ConnectError)
+
+
+@pytest.mark.asyncio
+async def test_supabase_storage_delete_is_idempotent_when_object_is_absent() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "DELETE"
+        return httpx.Response(404, json={"message": "not found"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    settings = Settings(
+        storage_provider="supabase",
+        supabase_url="https://example.supabase.co",
+        supabase_service_role_key="service-role-secret",
+    )
+
+    await SupabaseInternshipStorage(settings, client=client).delete(
+        "internships/student/missing.pdf"
+    )
+    await client.aclose()

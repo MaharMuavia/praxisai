@@ -14,5 +14,5 @@ export default defineConfig({
     ],
     exclude: ["e2e/**"],
   },
-  resolve: { alias: { "@": path.resolve(process.cwd()) } },
+  resolve: { alias: { "@": path.resolve(__dirname, ".") } },
 });
