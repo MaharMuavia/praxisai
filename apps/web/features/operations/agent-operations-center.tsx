@@ -13,6 +13,7 @@ import {
 import { DemoBadge, DemoNotice } from "@/components/demo-boundary";
 import { withDemoFallback } from "@/lib/demo-data";
 import { fetchQuery, retryTransientError } from "@/lib/queries/shared";
+import { LiveAgentStream } from "./live-agent-stream";
 
 type AgentRun = components["schemas"]["AgentRunView"];
 type RunResult = { data: AgentRun[]; isDemo: boolean };
@@ -187,6 +188,7 @@ export function AgentOperationsCenter() {
               </small>
             </div>
           </div>
+          <LiveAgentStream />
           <section className="agent-ops-panel panel">
             <div className="panel-header">
               <div>

@@ -54,11 +54,17 @@ export function Button({
 export function Card({
   children,
   className = "",
+  style,
 }: {
   children: ReactNode;
   className?: string;
+  style?: import("react").CSSProperties;
 }) {
-  return <div className={`ui-card ${className}`.trim()}>{children}</div>;
+  return (
+    <div className={`ui-card ${className}`.trim()} style={style}>
+      {children}
+    </div>
+  );
 }
 
 export function StatusBadge({

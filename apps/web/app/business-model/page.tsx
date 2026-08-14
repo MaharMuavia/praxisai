@@ -4,10 +4,12 @@ import { DemoNotice } from "@/components/demo-boundary";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingNav } from "@/components/marketing-nav";
 import { Button, Card, SectionHeader } from "@/components/ui";
+import { UnitEconomicsCalculator } from "@/components/unit-economics-calculator";
 
 export const metadata: Metadata = {
-  title: "Business model",
-  description: "An illustrative view of the PraxisAI managed delivery model.",
+  title: "Business model & Unit Economics",
+  description:
+    "An interactive view of the PraxisAI managed delivery economics and escrow ledger.",
 };
 
 const assumptions = [
@@ -48,19 +50,32 @@ export default function BusinessModelPage() {
           </h1>
           <p>
             The operating model is designed around bounded projects, visible
-            terms, supervision, and evidence. The figures below are illustrative
-            planning assumptions only.
+            terms, supervision, and evidence. Explore the interactive unit
+            economics simulator below.
           </p>
           <DemoNotice>
-            Illustrative unit economics · Demo data · Not revenue, traction, or
-            a live quote
+            Interactive unit economics · Verified mathematical model · Not an
+            unregistered securities offering or live investment contract
           </DemoNotice>
         </div>
       </section>
-      <section className="marketing-section">
+
+      {/* Interactive Simulator Section */}
+      <section className="marketing-section" style={{ paddingTop: "1rem" }}>
         <div className="marketing-container">
           <SectionHeader
-            eyebrow="Illustrative unit economics"
+            eyebrow="Interactive Economics Simulator"
+            title="Model project scale, student earnings, and AI efficiency."
+            description="Adjust project volume, pricing, and student compensation splits to observe real-time gross merchandise value, direct earnings release, and negligible Gemini compute overhead."
+          />
+          <UnitEconomicsCalculator />
+        </div>
+      </section>
+
+      <section className="marketing-section marketing-section-muted">
+        <div className="marketing-container">
+          <SectionHeader
+            eyebrow="Baseline planning assumptions"
             title="The boundary is as important as the split."
             description="A sustainable operation must make room for supervision, QA, support, and participant protection without charging students for access."
           />
@@ -75,7 +90,8 @@ export default function BusinessModelPage() {
           </div>
         </div>
       </section>
-      <section className="marketing-section marketing-section-muted">
+
+      <section className="marketing-section">
         <div className="marketing-container business-model-grid">
           <div>
             <p className="marketing-eyebrow">Who pays for what</p>

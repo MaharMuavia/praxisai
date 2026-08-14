@@ -103,6 +103,47 @@ export function LandingPage() {
               teams to bounded company projects, and records the evidence that
               connects learning to trusted delivery.
             </p>
+
+            {/* XPRIZE Judge Quick Sandbox Callout */}
+            <div
+              style={{
+                background: "rgba(37, 99, 235, 0.06)",
+                border: "1px solid rgba(37, 99, 235, 0.25)",
+                borderRadius: "14px",
+                padding: "1rem 1.25rem",
+                margin: "1.25rem 0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "0.75rem",
+              }}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <Sparkles size={18} color="var(--brand, #2563eb)" />
+                <span
+                  style={{
+                    fontSize: "0.85rem",
+                    fontWeight: 600,
+                    color: "var(--foreground, #0f172a)",
+                  }}
+                >
+                  <strong>XPRIZE Evaluation Sandbox:</strong> Test live
+                  multi-agent operations & economics
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <Button href="/judge" variant="primary">
+                  14-Step Walkthrough
+                </Button>
+                <Button href="/business-model" variant="outline">
+                  Unit Economics
+                </Button>
+              </div>
+            </div>
+
             <div className="marketing-actions">
               <Button href="/contact" variant="primary">
                 Submit a company project{" "}
