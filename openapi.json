@@ -7502,6 +7502,7 @@
             "title": "Sha256"
           },
           "size_bytes": {
+            "description": "Declared upload size. The active deployment and artifact type may enforce a lower limit.",
             "exclusiveMinimum": 0.0,
             "maximum": 262144000.0,
             "title": "Size Bytes",
@@ -7532,6 +7533,18 @@
           "filename": {
             "title": "Filename",
             "type": "string"
+          },
+          "scan_message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scan Message"
           },
           "state": {
             "title": "State",
@@ -10160,6 +10173,64 @@
           }
         },
         "summary": "Initiate",
+        "tags": [
+          "internship uploads"
+        ]
+      }
+    },
+    "/api/v1/internships/uploads/{upload_id}": {
+      "get": {
+        "operationId": "status_view_api_v1_internships_uploads__upload_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Status View",
         "tags": [
           "internship uploads"
         ]

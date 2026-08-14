@@ -655,6 +655,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/internships/uploads/{upload_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status View */
+        get: operations["status_view_api_v1_internships_uploads__upload_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/internships/uploads/{upload_id}/complete": {
         parameters: {
             query?: never;
@@ -4884,7 +4901,10 @@ export interface components {
             filename: string;
             /** Sha256 */
             sha256?: string | null;
-            /** Size Bytes */
+            /**
+             * Size Bytes
+             * @description Declared upload size. The active deployment and artifact type may enforce a lower limit.
+             */
             size_bytes: number;
         };
         /** UploadView */
@@ -4898,6 +4918,8 @@ export interface components {
             expires_at: string;
             /** Filename */
             filename: string;
+            /** Scan Message */
+            scan_message?: string | null;
             /** State */
             state: string;
             /** Upload Id */
@@ -6358,6 +6380,39 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    status_view_api_v1_internships_uploads__upload_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                upload_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
