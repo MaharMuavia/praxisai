@@ -6,9 +6,12 @@ import {
   Building2,
   Check,
   ClipboardCheck,
+  Cpu,
   Fingerprint,
   GitBranch,
   Layers3,
+  Lock,
+  Scale,
   ShieldCheck,
   Sparkles,
   Users,
@@ -105,38 +108,20 @@ export function LandingPage() {
             </p>
 
             {/* XPRIZE Judge Quick Sandbox Callout */}
-            <div
-              style={{
-                background: "rgba(37, 99, 235, 0.06)",
-                border: "1px solid rgba(37, 99, 235, 0.25)",
-                borderRadius: "14px",
-                padding: "1rem 1.25rem",
-                margin: "1.25rem 0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: "0.75rem",
-              }}
-            >
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <Sparkles size={18} color="var(--brand, #2563eb)" />
-                <span
-                  style={{
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    color: "var(--foreground, #0f172a)",
-                  }}
-                >
-                  <strong>XPRIZE Evaluation Sandbox:</strong> Test live
-                  multi-agent operations & economics
+            <div className="judge-hero-banner">
+              <div className="judge-hero-banner-info">
+                <span className="judge-hero-banner-badge">
+                  <Sparkles size={13} aria-hidden="true" /> XPRIZE
+                </span>
+                <span className="judge-hero-banner-title">
+                  Evaluation Sandbox: Test live multi-agent operations &
+                  economics
                 </span>
               </div>
-              <div style={{ display: "flex", gap: "6px" }}>
+              <div className="judge-hero-banner-actions">
                 <Button href="/judge" variant="primary">
-                  14-Step Walkthrough
+                  14-Step Walkthrough{" "}
+                  <ArrowRight size={14} aria-hidden="true" />
                 </Button>
                 <Button href="/business-model" variant="outline">
                   Unit Economics
@@ -179,6 +164,50 @@ export function LandingPage() {
           <Fingerprint size={24} aria-hidden="true" />
         </div>
       </div>
+
+      <section
+        className="marketing-metrics-bar"
+        aria-label="Core platform operational guarantees"
+      >
+        <div className="marketing-container marketing-metrics-grid">
+          <div className="marketing-metric-item">
+            <div className="marketing-metric-icon">
+              <Lock size={19} aria-hidden="true" />
+            </div>
+            <div>
+              <strong>Deterministic Safety</strong>
+              <span>State machine invariants with human-only gates</span>
+            </div>
+          </div>
+          <div className="marketing-metric-item">
+            <div className="marketing-metric-icon">
+              <ShieldCheck size={19} aria-hidden="true" />
+            </div>
+            <div>
+              <strong>W3C Verifiable Proof</strong>
+              <span>Cryptographically signed tamper-evident ledger</span>
+            </div>
+          </div>
+          <div className="marketing-metric-item">
+            <div className="marketing-metric-icon">
+              <Cpu size={19} aria-hidden="true" />
+            </div>
+            <div>
+              <strong>Dual Gemini Telemetry</strong>
+              <span>Vertex AI & AI Studio token/latency tracking</span>
+            </div>
+          </div>
+          <div className="marketing-metric-item">
+            <div className="marketing-metric-icon">
+              <Scale size={19} aria-hidden="true" />
+            </div>
+            <div>
+              <strong>Escrow Ledger</strong>
+              <span>Reconciled accounting with zero hidden deductions</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="marketing-section marketing-section-muted">
         <div className="marketing-container">
