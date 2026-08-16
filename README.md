@@ -1,60 +1,95 @@
 # PraxisAI
 
-PraxisAI connects practical learning to paid, supervised project work. Students build employer-relevant skills, record practice evidence, respond to complete project briefs with professional proposals, and carry selected work through verified delivery.
+**An AI-operated apprenticeship studio** — connecting practical learning directly to paid, supervised project work. Students build employer-relevant skills, respond to real project briefs with professional proposals, and carry selected work through verified delivery to a cryptographically signed credential.
 
-This repository contains an in-progress production-oriented MVP: a Next.js web application, a FastAPI transactional API, PostgreSQL persistence, structured learning paths, a student/employer talent marketplace, a Gemini adapter, audited external funding and payout evidence, and Google Cloud infrastructure definitions. No payment processor is integrated. Implemented vertical slices are tested; cloud deployment remains unverified. Demo records and fixture-provider output are always labeled **Demo data**.
+> **Build with Gemini XPRIZE submission — Category: Education & Human Potential**
 
-## XPRIZE Build with Gemini submission
+## Honest status (read this first)
 
-- **Category:** Education & Human Potential
-- **Submission Narrative:** [`docs/xprize-submission-narrative.md`](docs/xprize-submission-narrative.md)
-- **3-Minute Video Script:** [`docs/xprize-video-script.md`](docs/xprize-video-script.md)
-- **Financial P&L Statement:** [`docs/xprize-pnl-statement.md`](docs/xprize-pnl-statement.md)
-- **Submission Checklist:** [`docs/xprize-submission-checklist.md`](docs/xprize-submission-checklist.md)
-- **Interactive Judge Walkthrough:** Navigate to `/judge` for a 14-step deterministic demonstration.
-- **Evidence Map:** Navigate to `/evidence` for an audited breakdown of mock, fixture, local, and external data.
-- **Readiness Assessment:** [`docs/xprize-readiness.md`](docs/xprize-readiness.md)
+PraxisAI is a **production-oriented MVP, pre-revenue and pilot-stage**. We do not invent users, revenue, or partnerships.
 
-## Core product loop
+| | Status |
+| --- | --- |
+| Core product loop (learn → propose → deliver → QA → credential) | ✅ Implemented, 230 tests pass locally |
+| Gemini agent workflows (scoping, planning, QA, multimodal QA) | ✅ Real `google-genai` calls with enforced schemas |
+| Revenue / paying customers / signed partners | ❌ None — $0 ([P&L](docs/xprize-pnl-statement.md)) |
+| Payment processor | ❌ Not integrated (`PAYMENT_PROVIDER=manual_external`) |
+| Cloud deployment | ❌ Defined in Terraform, **not yet applied** — no live URL |
+| Autonomous AI execution | ❌ Agents propose; humans approve every consequential decision |
 
-1. Students complete sequenced practice modules and record what they produced.
-2. Employers publish paid opportunities with business context, deliverables, skills, budget, effort, timing, supervision, and proposal requirements.
-3. Eligible students submit an immutable approach, milestone plan, work evidence, availability, delivery estimate, and price.
-4. Employers compare proposals and record an accepted or rejected decision with a reason. Declines do not affect student reputation.
-5. A selected proposal still passes scope, contract, supervision, and verified-funding gates before work starts.
-6. Milestone evidence, QA, client acceptance, pay records, and credential evidence complete the professional record.
+Where fixture or demo data appears in the app, it is visibly labeled **Demo data**.
+
+## How Gemini is used (AI-Native Operations)
+
+A single typed adapter ([`apps/api/app/agents/provider.py`](apps/api/app/agents/provider.py)) drives four production-designed workflows, each with **enforced structured output** (`response_schema`) so malformed model output fails closed instead of entering the database:
+
+| Workflow | What Gemini does | Prompt |
+| --- | --- | --- |
+| **Scoping** | Turns a raw client brief into deliverables, acceptance criteria, effort, risks | [`prompts.py`](apps/api/app/agents/prompts.py) |
+| **Planning** | Decomposes an accepted scope into milestones/tasks covering every criterion | `prompts.py` |
+| **QA review** | Assesses immutable artifact evidence against the accepted scope | `prompts.py` |
+| **Multimodal QA** | Analyzes screenshots/PDFs/diagrams via `Part.from_bytes` against a rubric | `prompts.py` |
+
+Each run is recorded append-only in `agent_runs` (model, prompt version, latency, token usage, retry count, correlation ID, input-snapshot hash) — visible in the operations center. Prompts are versioned and centralized, treat every brief as untrusted data, and the adapter applies bounded retries with backoff and a 30s timeout. Production configuration **refuses to boot** with fixture AI or demo mode enabled ([`config.py`](apps/api/app/config.py), `reject_insecure_production`).
+
+**Authority boundary:** agents only propose. Every run stores `human_approval_required=true` with empty `executed_action_evidence`; humans retain authority over money, contracts, admissions, credentials, and release.
+
+## Google Cloud usage
+
+Used in code: **Vertex AI** (Gemini), **Cloud Storage** (artifacts). Defined in Terraform under [`infra/terraform/`](infra/terraform/) but **not yet deployed**: Cloud Run (api/web/worker), Secret Manager, KMS, Cloud Scheduler, Cloud Monitoring alerts, Logging sink, Workload Identity Federation, Artifact Registry.
+
+## Architecture
+
+Modular monolith with strict boundaries:
+
+- **Web** — Next.js app (`apps/web/`)
+- **API** — FastAPI transactional service (`apps/api/`), 100 PostgreSQL tables, single Alembic head
+- **Worker** — outbox consumer for async analytics and notifications
+- **Client** — generated TypeScript API client (`packages/api-client/`)
+
+PostgreSQL is authoritative. Business state transitions live in domain services that enforce workflow guards; agents never mutate high-risk state.
 
 ## Local setup
 
-Requirements: Node.js 22+, Python 3.13+, `uv`, Docker, and Git.
+Requirements: Node.js 22+, Python 3.13+, `uv`, Docker, Git.
 
-1. Copy `.env.example` to `.env` and replace the local session secrets.
-2. Run `docker compose up -d postgres`.
-3. Run `npm run setup`.
-4. Run `npm run seed:demo`.
-5. Run `npm run worker:once` to deliver the seeded in-app notifications.
-6. Run `npm run verify:demo` to verify signed credential and lifecycle evidence.
-7. Run `npm run dev`, then open `http://localhost:3000`.
+```bash
+cp .env.example .env          # replace the local session secrets
+docker compose up -d postgres
+npm run setup                 # install, migrate, generate API client
+npm run seed:demo             # deterministic demo tenant
+npm run worker:once           # deliver seeded notifications
+npm run dev                   # http://localhost:3000
+```
 
-For hosted PostgreSQL, Auth, and private artifact storage, follow
-[`docs/supabase-setup.md`](docs/supabase-setup.md). Supabase establishes external identity;
-server-side PraxisAI memberships, roles, and authorization remain authoritative.
+On Windows use `npm.cmd` if PowerShell blocks `npm.ps1`. The Makefile mirrors the npm commands.
 
-On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`. The Makefile mirrors the npm commands for environments with GNU Make.
+## Judge / evaluator access
+
+The app is not deployed, so evaluation is local. After `npm run seed:demo`:
+
+1. Open **`http://localhost:3000/login`** and select a seeded demo user (no password — local demo role-switch):
+   - **Amina Noor** (`amina@student.demo`) — student: curriculum, proposal builder, active delivery
+   - **Maya Chen** (`maya@northstar.demo`) — employer: briefs, proposal review
+   - **Sara Malik** — coordinator: operations queue, agent evidence
+2. Visit **`/judge`** for an interactive deterministic walkthrough of the agent contract and boundaries.
+3. Visit **`/evidence`** for a provenance map of mock vs. fixture vs. local vs. external data.
+4. Follow [`docs/demo-script.md`](docs/demo-script.md) for the full guided path.
+
+## Submission documents
+
+- [Narrative](docs/xprize-submission-narrative.md) · [Video script](docs/xprize-video-script.md) · [P&L](docs/xprize-pnl-statement.md)
+- [Go-to-market model](docs/pilot-pipeline.md) · [Readiness assessment](docs/xprize-readiness.md) · [Checklist](docs/xprize-submission-checklist.md)
+- [Architecture](docs/architecture.md) · [Security & privacy](docs/security-and-privacy.md) · [Database schema](docs/database-schema.md) · [Configuration & secrets](docs/configuration-and-secrets.md)
 
 ## Safety defaults
 
-- Local role switching and fixture agents run only in local/test or explicit demo mode.
-- No payment processor is integrated. Coordinators may record independently verified external funding evidence; this does not initiate or claim settlement.
+- Fixture agents and local role switching run only in local/test or explicit demo mode; production forbids them.
+- No payment processor is integrated. Coordinators may record independently verified external funding evidence; this does not initiate settlement.
 - Production credential issuance requires KMS; local credentials use a disposable gitignored key and are marked demo.
-- PostgreSQL is authoritative. Analytics and notifications are asynchronous outbox consumers.
-- Dead-letter recovery is idempotent and audited; every handler attempt has append-only history with secret-redacted errors.
-- In-app notifications are delivered from dedicated outbox events, honor category preferences, and record provider synchronization evidence. Payment, credential, and appeal notices cannot be disabled.
-- University metrics require an active agreement and consented enrollment. Cohorts below the configured minimum are suppressed, including exports.
-- Credential revocation is append-only, and public verification checks the original signature plus revocation history.
+- Credential revocation is append-only; public verification checks the original signature plus revocation history.
+- University metrics require an active agreement and consented enrollment; cohorts below the configured minimum are suppressed, including in exports.
 
-See `docs/demo-script.md` for the shortest walkthrough and `docs/security-and-privacy.md` for trust boundaries.
-The complete PostgreSQL table map is in `docs/database-schema.md`; required and optional credentials
-are separated in `docs/configuration-and-secrets.md`.
-Hosted deployment wiring and evidence requirements are documented in
-[`docs/hosted-deployment.md`](docs/hosted-deployment.md).
+## License
+
+MIT — see [`LICENSE`](LICENSE).
