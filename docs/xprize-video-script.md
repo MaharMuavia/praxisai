@@ -20,21 +20,21 @@ Switch to a Mermaid architecture diagram or the `/evidence` page. Show the Next.
 
 ### [0:50 - 1:40] Live demo - The Judge Path
 **Visuals:** 
-Navigate to `/judge` (deterministic scenario).
-Click through the simulated workflow quickly:
-1. **Scope Drafting:** Show a client brief being processed by the "Fixture AI" into a structured scope, with deliverables and exclusions.
-2. **Staffing:** Show the deterministic eligibility filter and AI matching proposing a student squad.
-3. **Delivery & QA:** Show a submitted milestone and the AI-assisted QA highlighting advisory findings, before a human lead approves the release.
+Navigate to `/judge` (deterministic, pre-scripted illustrations — labeled as such).
+Click through quickly:
+1. **Scope Drafting:** Show a client brief becoming a structured scope with deliverables and exclusions. Then click the **Policy Rejected** and **Prompt Injection** presets to show the boundary containing an unsafe request.
+2. **Multimodal QA:** Upload a deliverable screenshot; show Gemini returning structured, per-criterion visual findings (layout, contrast, tap targets).
+3. **Human boundary:** Show the QA finding is *advisory* — a human lead approves release; the agent record shows `human_approval_required`.
 **Speaker Notes:**
-"Let's walk through the core delivery loop. When a client submits a brief, our Gemini-powered Scoping agent instantly drafts deliverables, risk exclusions, and clarification questions. Once approved, the Staffing agent matches eligible students based on verified evidence, free from bias. During delivery, the QA agent reviews immutable artifacts against the contract. It provides advisory findings, but a human expert always makes the final release decision."
+"Let's walk the delivery contract. A client brief becomes a structured scope with deliverables, risks, and clarification questions — and because every brief is treated as untrusted data, watch the policy engine reject a restricted request and contain a prompt-injection attempt. Then the part we're proudest of: Gemini's native multimodal QA reads a deliverable screenshot and returns structured findings on layout, contrast, and responsive defects. Every finding is advisory — a human expert makes the final release decision. Agents propose; people decide."
 
 ### [1:40 - 2:20] Operations center & Evidence trail
 **Visuals:** 
-Navigate to `/ops`. Open the Agent Runs view. 
-Show a detailed agent run record: input snapshot, tool calls, structured output, confidence score, token usage, and policy result. 
+Navigate to `/ops/agent-runs`. Open the agent run inspector. 
+Show a real agent run record: agent name, model identifier, prompt version, input-snapshot hash, typed structured output, latency, token usage, retry count, and the human-boundary state. 
 Switch to the Project Command Center to show the immutable evidence trail and state transitions.
 **Speaker Notes:**
-"This is the AI Operations Center. Every Gemini agent run is completely auditable. We record the prompt version, input hash, typed structured output, latency, and token usage. Agents run against our typed runtime and strict policy boundaries. If an agent fails, our outbox pattern and dead-letter recovery ensure idempotent retries. The entire project lifecycle generates an append-only cryptographic evidence trail."
+"This is the operations center. Every Gemini run is recorded in an append-only table — the model, prompt version, input-snapshot hash, typed structured output, latency, token usage, and retry count — with structured output enforced by schema so malformed responses fail closed. Each record also carries the authority boundary: approval required, no action executed by the agent. If a run fails, our outbox pattern and dead-letter recovery ensure idempotent retries."
 
 ### [2:20 - 2:50] Education impact
 **Visuals:** 
@@ -42,10 +42,10 @@ Log in as student 'Amina Noor'.
 Show the Student Workspace (`/workspace`). Highlight the learning path, sequenced modules, and recorded practice evidence.
 Switch to `/verify` to show a cryptographically signed credential with a privacy-safe payload.
 **Speaker Notes:**
-"For students, PraxisAI is a career accelerator. They complete sequenced modules and build portfolios. When they deliver supervised work, they earn money and undeniable proof of their skills. Our verifiable credentials link directly to the immutable project records and external payout evidence, proving they can deliver real value, not just pass a test."
+"For students, PraxisAI is designed as a career accelerator: complete sequenced modules, build practice evidence, and — when they deliver supervised project work — earn a cryptographically signed credential tied to the immutable project record. That credential is real and verifiable today; its signature and revocation history check on the public verify page. We're pre-revenue and pilot-stage, so no student has been paid through the platform yet — the delivery and credential machinery that makes it possible is what's built."
 
 ### [2:50 - 3:00] Close
 **Visuals:** 
 Back to the homepage hero, or the `/business-model` view showing the sustainable flywheel. Fade to PraxisAI logo.
 **Speaker Notes:**
-"PraxisAI proves that AI can safely orchestrate complex, real-world apprenticeships at scale. Real preparation. Paid project experience. Verified career proof. Thank you."
+"PraxisAI shows how Gemini can safely operate the hard parts of an apprenticeship studio — scoping, planning, and multimodal QA — inside strict human authority boundaries, with every decision audited. Real preparation. Paid project experience. Verified career proof. That's the model we've built and the pilot we're ready to run. Thank you."
