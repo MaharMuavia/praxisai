@@ -173,6 +173,64 @@ class QAInput(BaseModel):
     acceptance_criteria: list[str] = Field(min_length=1)
 
 
+class VisualDefect(BaseModel):
+    category: Literal[
+        "layout", "accessibility", "typography", "functionality", "security", "data_integrity"
+    ]
+    severity: Literal["low", "medium", "high", "critical"]
+    description: str = Field(min_length=5, max_length=1_000)
+    location_or_element: str | None = Field(default=None, max_length=200)
+
+
+class VisualCriterionFinding(BaseModel):
+    criterion_ordinal: int = Field(ge=1)
+    passed: bool
+    confidence_score: float = Field(ge=0.0, le=1.0)
+    visual_evidence_summary: str = Field(min_length=5, max_length=2_000)
+    observed_features: list[str] = Field(default_factory=list)
+    defects: list[VisualDefect] = Field(default_factory=list)
+
+
+class MultimodalQADraft(BaseModel):
+    recommendation: Literal["PASS", "CHANGES_REQUIRED", "NEEDS_HUMAN_REVIEW"]
+    overall_visual_score: int = Field(ge=0, le=100)
+    layout_and_responsive_verdict: str = Field(min_length=5, max_length=2_000)
+    criterion_findings: list[VisualCriterionFinding] = Field(min_length=1)
+    identified_defects: list[VisualDefect] = Field(default_factory=list)
+    student_actionable_feedback: list[str] = Field(min_length=1, max_length=20)
+    summary: str = Field(min_length=10, max_length=4_000)
+
+
+class MultimodalQAInput(BaseModel):
+    artifact_id: uuid.UUID
+    artifact_kind: str
+    artifact_uri: str
+    artifact_content_hash: str
+    mime_type: str
+    acceptance_criteria: list[str] = Field(min_length=1)
+    deliverable_title: str | None = None
+    rubric_focus: list[str] = Field(default_factory=list)
+
+
+class SubmissionAIReviewRequest(BaseModel):
+    rubric_focus: list[str] = Field(default_factory=list)
+
+
+class SubmissionAIReviewResponse(ApiModel):
+    submission_id: uuid.UUID
+    agent_run_id: uuid.UUID
+    model_identifier: str
+    recommendation: str
+    overall_visual_score: int
+    summary: str
+    criterion_findings: list[VisualCriterionFinding]
+    identified_defects: list[VisualDefect]
+    student_actionable_feedback: list[str]
+    latency_ms: int
+    is_demo: bool
+    created_at: datetime
+
+
 class QAReviewView(ApiModel):
     id: uuid.UUID
     deliverable_id: uuid.UUID
@@ -546,6 +604,19 @@ class ProviderSynchronizationView(ApiModel):
     checked_at: datetime
 
 
+class SkillPathwayMetric(BaseModel):
+    pathway_name: str
+    student_count: int
+    verified_minutes: int
+    credentials_count: int
+
+
+class AccreditationStandardSummary(BaseModel):
+    framework: str
+    compliant: bool
+    criteria_met: list[str]
+
+
 class UniversityMetrics(BaseModel):
     suppressed: bool
     minimum_cohort_size: int
@@ -554,18 +625,25 @@ class UniversityMetrics(BaseModel):
     completed_projects: int | None
     credentials_issued: int | None
     verified_work_minutes: int | None
+    total_earnings_minor: int | None = None
+    average_rating_basis_points: int | None = None
+    pathway_breakdown: list[SkillPathwayMetric] | None = None
+    accreditation_summary: list[AccreditationStandardSummary] | None = None
     as_of: datetime
 
 
 class UniversityExportRequest(BaseModel):
     purpose: str = Field(min_length=20, max_length=2_000)
+    format: Literal["csv", "json", "perkins_v"] = "csv"
 
 
 class UniversityExportView(ApiModel):
     id: uuid.UUID
     purpose: str
     status: str
+    format: str = "csv"
     storage_key: str | None
+    download_url: str | None = None
     expires_at: datetime
     created_at: datetime
 

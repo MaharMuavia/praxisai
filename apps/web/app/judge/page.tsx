@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
-import { ArrowRight, Check, ShieldCheck } from "lucide-react";
+import { ArrowRight, Award, Check, ShieldCheck, Sparkles } from "lucide-react";
 import { DemoNotice } from "@/components/demo-boundary";
+import { JudgeSandbox } from "@/features/judge/judge-sandbox";
+import { JudgeScorecard } from "@/features/judge/judge-scorecard";
 import { JudgeWalkthrough } from "@/features/judge/judge-walkthrough";
 import { MarketingFooter } from "@/components/marketing-footer";
 import { MarketingNav } from "@/components/marketing-nav";
 import { Button, Card } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "Judge walkthrough",
-  description: "A deterministic walkthrough of the PraxisAI operating model.",
+  title: "Judge & Evaluator Hub · Gemini XPRIZE",
+  description:
+    "Interactive deterministic walkthrough of PraxisAI's Gemini agent contract, authority boundaries, and cryptographic evidence.",
 };
 
 export default function JudgePage() {
@@ -18,23 +21,31 @@ export default function JudgePage() {
       <section className="judge-hero">
         <div className="marketing-container judge-hero-grid">
           <div>
-            <p className="marketing-eyebrow">For evaluators and partners</p>
-            <h1>See how a real project becomes accountable career proof.</h1>
+            <p className="marketing-eyebrow">
+              XPRIZE Gemini Hackathon Evaluator Hub
+            </p>
+            <h1>Real-world impact. Zero hallucinated authority.</h1>
             <p className="marketing-lead">
-              Follow one bounded project from company brief to supervised
-              delivery, acceptance, compensation evidence, and consented
-              credential proof.
+              Walk the Gemini agent contract with deterministic, pre-scripted
+              examples: structured scoping and multimodal QA proposals, the
+              policy boundary, transparent escrow math, and append-only
+              cryptographic audit records.
             </p>
             <div className="marketing-actions">
-              <a className="ui-button ui-button-primary" href="#walkthrough">
-                Start the walkthrough <ArrowRight size={17} />
+              <a className="ui-button ui-button-primary" href="#sandbox">
+                Open the sandbox <Sparkles size={16} />
               </a>
-              <Button href="/evidence" variant="secondary">
-                Open the evidence map
-              </Button>
+              <a className="ui-button ui-button-secondary" href="#rubric">
+                Criteria alignment <Award size={16} />
+              </a>
+              <a className="ui-button ui-button-secondary" href="#walkthrough">
+                14-Step Lifecycle <ArrowRight size={16} />
+              </a>
             </div>
             <DemoNotice>
-              Deterministic demo scenario · Fixture AI · Simulated workflow
+              Illustrative deterministic scenarios — pre-scripted, not live model
+              calls. Real recorded agent runs appear in the operations center
+              once the API is deployed with a Gemini provider.
             </DemoNotice>
           </div>
           <Card className="judge-hero-proof">
@@ -45,7 +56,12 @@ export default function JudgePage() {
             <h2>AI assists. People decide. The system records.</h2>
             <ul>
               <li>
-                <Check size={16} /> AI returns structured proposals
+                <Check size={16} /> Gemini returns strongly typed Pydantic
+                proposals
+              </li>
+              <li>
+                <Check size={16} /> Multimodal QA evaluates screenshots, UI
+                layouts & code
               </li>
               <li>
                 <Check size={16} /> Humans approve money, access, release, and
@@ -59,11 +75,35 @@ export default function JudgePage() {
           </Card>
         </div>
       </section>
+
+      {/* SECTION 1: INTERACTIVE SANDBOX */}
+      <section
+        id="sandbox"
+        className="marketing-section judge-section judge-sandbox-section"
+      >
+        <div className="marketing-container">
+          <JudgeSandbox />
+        </div>
+      </section>
+
+      {/* SECTION 2: XPRIZE RUBRIC & SCORECARD */}
+      <section
+        id="rubric"
+        className="marketing-section marketing-section-muted judge-section"
+      >
+        <div className="marketing-container">
+          <JudgeScorecard />
+        </div>
+      </section>
+
+      {/* SECTION 3: 14-STEP LIFECYCLE WALKTHROUGH */}
       <section id="walkthrough" className="marketing-section judge-section">
         <div className="marketing-container">
           <JudgeWalkthrough />
         </div>
       </section>
+
+      {/* SECTION 4: EVIDENCE & BUSINESS MODEL */}
       <section className="marketing-section marketing-section-muted">
         <div className="marketing-container judge-after-grid">
           <div>

@@ -55,3 +55,47 @@ export function finalizeInternshipSubmission(
     },
   );
 }
+
+export type VisualDefect = {
+  category: string;
+  severity: "low" | "medium" | "high" | "critical";
+  description: string;
+  location_or_element?: string | null;
+};
+
+export type VisualCriterionFinding = {
+  criterion_ordinal: number;
+  passed: boolean;
+  confidence_score: number;
+  visual_evidence_summary: string;
+  observed_features: string[];
+  defects: VisualDefect[];
+};
+
+export type SubmissionAIReviewResponse = {
+  submission_id: string;
+  agent_run_id: string;
+  model_identifier: string;
+  recommendation: string;
+  overall_visual_score: number;
+  summary: string;
+  criterion_findings: VisualCriterionFinding[];
+  identified_defects: VisualDefect[];
+  student_actionable_feedback: string[];
+  latency_ms: number;
+  is_demo: boolean;
+  created_at: string;
+};
+
+export function requestSubmissionAIReview(
+  submissionId: string,
+  rubricFocus: string[] = [],
+) {
+  return internshipFetch<SubmissionAIReviewResponse>(
+    `/internships/me/submissions/${submissionId}/ai-review`,
+    {
+      method: "POST",
+      body: JSON.stringify({ rubric_focus: rubricFocus }),
+    },
+  );
+}

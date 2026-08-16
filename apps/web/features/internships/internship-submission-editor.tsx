@@ -15,6 +15,8 @@ import {
 import {
   finalizeInternshipSubmission,
   getInternshipSubmission,
+  requestSubmissionAIReview,
+  type SubmissionAIReviewResponse,
   type SubmissionDraft,
   updateInternshipSubmission,
 } from "@/lib/queries/internships/submissions";
@@ -275,6 +277,30 @@ export function InternshipSubmissionEditor({
     },
   });
 
+  const [aiReview, setAiReview] = useState<SubmissionAIReviewResponse | null>(
+    null,
+  );
+  const [aiReviewError, setAiReviewError] = useState<string | null>(null);
+
+  const runAiReview = useMutation({
+    mutationFn: async () => {
+      setAiReviewError(null);
+      return requestSubmissionAIReview(submissionId, [
+        "Visual hierarchy and layout",
+        "Responsive interface and color contrast",
+        "Functional criteria satisfaction",
+      ]);
+    },
+    onSuccess: (result) => {
+      setAiReview(result);
+    },
+    onError: (error) => {
+      setAiReviewError(
+        error instanceof Error ? error.message : "Multimodal AI review failed.",
+      );
+    },
+  });
+
   if (submission.isPending) return <p>Loading submission draft...</p>;
   if (submission.isError || !submission.data) {
     return (
@@ -455,6 +481,163 @@ export function InternshipSubmissionEditor({
           </p>
         ) : null}
       </Card>
+
+      <div className="multimodal-qa-container">
+        <div className="multimodal-qa-banner">
+          <div className="multimodal-qa-banner-content">
+            <h3>Gemini Multimodal Deliverable & Artifact Review</h3>
+            <p>
+              Run automated computer vision and rubric inspection across your
+              attached screenshots, diagrams, and project artifacts with Google
+              Gemini 2.5 Flash.
+            </p>
+          </div>
+          <Button
+            onClick={() => runAiReview.mutate()}
+            disabled={runAiReview.isPending}
+            variant="primary"
+          >
+            {runAiReview.isPending
+              ? "Analyzing with Gemini..."
+              : "Run Gemini Multimodal Review"}
+          </Button>
+        </div>
+
+        {aiReviewError ? (
+          <p className="form-error" role="alert">
+            {aiReviewError}
+          </p>
+        ) : null}
+
+        {aiReview ? (
+          <div className="multimodal-qa-result-card">
+            <div className="multimodal-qa-topbar">
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "12px" }}
+              >
+                <StatusBadge
+                  tone={
+                    aiReview.recommendation === "PASS" ? "success" : "warning"
+                  }
+                >
+                  {aiReview.recommendation}
+                </StatusBadge>
+                <span className="multimodal-qa-score-badge">
+                  Visual Score: {aiReview.overall_visual_score}/100
+                </span>
+              </div>
+              <div className="multimodal-qa-meta">
+                <span>Model: {aiReview.model_identifier}</span>
+                <span>·</span>
+                <span>Latency: {aiReview.latency_ms}ms</span>
+                {aiReview.is_demo ? (
+                  <>
+                    <span>·</span>
+                    <StatusBadge tone="ai">Deterministic Fixture</StatusBadge>
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="multimodal-qa-section">
+              <h4>Evaluation Summary</h4>
+              <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.5" }}>
+                {aiReview.summary}
+              </p>
+            </div>
+
+            <div className="multimodal-qa-section">
+              <h4>Acceptance Criteria & Visual Evidence Findings</h4>
+              <div style={{ display: "grid", gap: "10px" }}>
+                {aiReview.criterion_findings.map((finding) => (
+                  <div
+                    className="multimodal-criterion-card"
+                    key={finding.criterion_ordinal}
+                  >
+                    <div className="multimodal-criterion-header">
+                      <span>Criterion #{finding.criterion_ordinal}</span>
+                      <StatusBadge
+                        tone={finding.passed ? "success" : "warning"}
+                      >
+                        {finding.passed ? "Passed" : "Action Required"} (
+                        {Math.round(finding.confidence_score * 100)}%
+                        confidence)
+                      </StatusBadge>
+                    </div>
+                    <div className="multimodal-criterion-evidence">
+                      {finding.visual_evidence_summary}
+                    </div>
+                    {finding.observed_features.length > 0 ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "6px",
+                          flexWrap: "wrap",
+                          marginTop: "4px",
+                        }}
+                      >
+                        {finding.observed_features.map((feature, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: "11px",
+                              background: "rgba(7, 20, 31, 0.06)",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {aiReview.identified_defects.length > 0 ? (
+              <div className="multimodal-qa-section">
+                <h4>Identified Visual Defects</h4>
+                <div className="multimodal-defects-grid">
+                  {aiReview.identified_defects.map((defect, i) => (
+                    <div
+                      key={i}
+                      className={`multimodal-defect-item severity-${defect.severity}`}
+                    >
+                      <strong>
+                        [{defect.category.toUpperCase()} -{" "}
+                        {defect.severity.toUpperCase()}]
+                      </strong>{" "}
+                      {defect.description}
+                      {defect.location_or_element ? (
+                        <span
+                          style={{ color: "var(--muted)", marginLeft: "6px" }}
+                        >
+                          (Element: {defect.location_or_element})
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {aiReview.student_actionable_feedback.length > 0 ? (
+              <div className="multimodal-qa-section">
+                <h4>Actionable Student Feedback</h4>
+                <div className="multimodal-feedback-box">
+                  <ul>
+                    {aiReview.student_actionable_feedback.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

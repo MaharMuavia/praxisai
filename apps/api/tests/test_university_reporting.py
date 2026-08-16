@@ -126,4 +126,14 @@ async def test_university_metrics_are_suppressed_below_consented_cohort() -> Non
         assert await session.scalar(select(func.count(ExportJob.id))) == 1
         assert await session.scalar(select(func.count(OutboxEvent.id))) == 1
         assert await session.scalar(select(func.count(AuditEvent.id))) == 1
+
+        from app.university.service import get_export_csv_content
+
+        job, csv_data = await get_export_csv_content(
+            session, export_id=export.id, principal=principal, settings=settings
+        )
+        assert job.id == export.id
+        assert "Perkins V (WBL)" in csv_data
+        assert "IPEDS" in csv_data
+        assert "Full-Stack Web & Cloud Systems" in csv_data
     await engine.dispose()

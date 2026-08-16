@@ -11,12 +11,14 @@ from pydantic import BaseModel
 
 from app.config import Settings
 from app.domain.schemas import (
+    MultimodalQADraft,
     PlanDraft,
     PlanMilestoneDraft,
     PlanTaskDraft,
     QACriterionResult,
     QADraft,
     ScopeDraft,
+    VisualCriterionFinding,
 )
 
 OutputT = TypeVar("OutputT", bound=BaseModel)
@@ -48,6 +50,8 @@ class AgentProvider(Protocol):
         input_payload: BaseModel,
         output_schema: type[OutputT],
         correlation_id: uuid.UUID,
+        media_bytes: bytes | None = None,
+        media_mime_type: str | None = None,
     ) -> tuple[OutputT, AgentMetadata]: ...
 
 
@@ -61,6 +65,8 @@ class DisabledAgentProvider:
         input_payload: BaseModel,
         output_schema: type[OutputT],
         correlation_id: uuid.UUID,
+        media_bytes: bytes | None = None,
+        media_mime_type: str | None = None,
     ) -> tuple[OutputT, AgentMetadata]:
         raise AgentUnavailableError(
             "AI actions are disabled. Configure Gemini or explicitly enable demo fixture mode."
@@ -77,9 +83,11 @@ class FixtureAgentProvider:
         input_payload: BaseModel,
         output_schema: type[OutputT],
         correlation_id: uuid.UUID,
+        media_bytes: bytes | None = None,
+        media_mime_type: str | None = None,
     ) -> tuple[OutputT, AgentMetadata]:
         raw = input_payload.model_dump()
-        payload_hash = input_hash(input_payload)
+        payload_hash = input_hash(input_payload, media_bytes=media_bytes)
         if output_schema is PlanDraft:
             criterion_count = int(raw.get("criterion_count", 1))
             plan = PlanDraft(
@@ -141,6 +149,57 @@ class FixtureAgentProvider:
             )
             return output_schema.model_validate(qa.model_dump()), {
                 "model": "fixture/qa-v1",
+                "usage": None,
+                "latency_ms": 0,
+                "is_demo": True,
+                "retry_count": 0,
+                "prompt_version": prompt_version,
+                "input_hash": payload_hash,
+                "correlation_id": str(correlation_id),
+                "stale_result_check": True,
+            }
+        if output_schema is MultimodalQADraft:
+            criteria = list(raw.get("acceptance_criteria", []))
+            title = str(raw.get("deliverable_title") or "Technical Deliverable & Evidence")
+            findings = [
+                VisualCriterionFinding(
+                    criterion_ordinal=ordinal,
+                    passed=True,
+                    confidence_score=0.96,
+                    visual_evidence_summary=(
+                        f"Multimodal artifact analysis verified criterion: {criterion_text}"
+                    ),
+                    observed_features=[
+                        "Visual component layout verified",
+                        "Acceptance criteria evidence confirmed in artifact",
+                    ],
+                    defects=[],
+                )
+                for ordinal, criterion_text in enumerate(criteria, start=1)
+            ]
+            multimodal_review = MultimodalQADraft(
+                recommendation="PASS",
+                overall_visual_score=95,
+                layout_and_responsive_verdict=(
+                    "Artifact visual hierarchy, component boundaries, and data presentation "
+                    "meet professional delivery standards."
+                ),
+                criterion_findings=findings,
+                identified_defects=[],
+                student_actionable_feedback=[
+                    "Deliverable evidence is well-structured and aligns with acceptance criteria.",
+                    (
+                        "Maintain high visual contrast and consistent responsive padding "
+                        "across viewports."
+                    ),
+                ],
+                summary=(
+                    f"Multimodal inspection of {title} confirmed 100% acceptance criteria coverage "
+                    "with clear visual and structural evidence."
+                ),
+            )
+            return output_schema.model_validate(multimodal_review.model_dump()), {
+                "model": "fixture/multimodal-qa-v1",
                 "usage": None,
                 "latency_ms": 0,
                 "is_demo": True,
@@ -214,19 +273,29 @@ class GeminiAgentProvider:
         input_payload: BaseModel,
         output_schema: type[OutputT],
         correlation_id: uuid.UUID,
+        media_bytes: bytes | None = None,
+        media_mime_type: str | None = None,
     ) -> tuple[OutputT, AgentMetadata]:
         started = time.perf_counter()
         response = None
         retry_count = 0
-        payload_hash = input_hash(input_payload)
+        payload_hash = input_hash(input_payload, media_bytes=media_bytes)
+
+        contents_payload: list[types.Part | str] = []
+        if media_bytes and media_mime_type:
+            contents_payload.append(
+                types.Part.from_bytes(data=media_bytes, mime_type=media_mime_type)
+            )
+        contents_payload.append(
+            json.dumps(input_payload.model_dump(mode="json"), separators=(",", ":"))
+        )
+
         for attempt in range(3):
             try:
                 response = await asyncio.wait_for(
                     self._client.aio.models.generate_content(
                         model=self._model,
-                        contents=json.dumps(
-                            input_payload.model_dump(mode="json"), separators=(",", ":")
-                        ),
+                        contents=contents_payload,  # type: ignore[arg-type]
                         config=types.GenerateContentConfig(
                             system_instruction=system_instruction,
                             response_mime_type="application/json",
@@ -265,9 +334,13 @@ class GeminiAgentProvider:
         }
 
 
-def input_hash(payload: BaseModel) -> str:
-    encoded = json.dumps(payload.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(encoded.encode()).hexdigest()
+def input_hash(payload: BaseModel, media_bytes: bytes | None = None) -> str:
+    encoded = json.dumps(
+        payload.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+    ).encode()
+    if media_bytes:
+        encoded += b"|" + media_bytes
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def provider_for(settings: Settings) -> AgentProvider:

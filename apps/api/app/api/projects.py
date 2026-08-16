@@ -55,6 +55,8 @@ from app.domain.schemas import (
     DecisionRequest,
     DeliverableCreate,
     LeadReviewRequest,
+    MultimodalQADraft,
+    MultimodalQAInput,
     OfferCreate,
     OfferView,
     PlanDraft,
@@ -1012,6 +1014,129 @@ async def run_qa_agent(
     await session.commit()
     await session.refresh(review)
     return review
+
+
+@router.post(
+    "/{project_id}/deliverables/{deliverable_id}/multimodal-qa-runs",
+    response_model=AgentRunView,
+    status_code=201,
+)
+async def create_multimodal_qa_run(
+    project_id: uuid.UUID,
+    deliverable_id: uuid.UUID,
+    principal: Annotated[
+        SessionPrincipal, Depends(require_roles(Role.COORDINATOR, Role.TECHNICAL_LEAD))
+    ],
+    session: DbSession,
+    settings: Annotated[Settings, Depends(get_settings)],
+    request_correlation_id: Annotated[uuid.UUID, Depends(correlation_id)],
+) -> AgentRun:
+    project = await _accessible_project(session, principal, project_id)
+    prompt = prompt_for("multimodal_qa")
+    deliverable = await session.get(Deliverable, deliverable_id)
+    if deliverable is None or deliverable.project_id != project.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Deliverable not found")
+    artifact = await session.scalar(
+        select(DeliverableArtifact)
+        .where(DeliverableArtifact.deliverable_id == deliverable.id)
+        .order_by(DeliverableArtifact.created_at.desc())
+    )
+    if artifact is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "An immutable artifact is required")
+    scope = await session.scalar(
+        select(ProjectScopeVersion)
+        .where(
+            ProjectScopeVersion.project_id == project.id,
+            ProjectScopeVersion.status == "CLIENT_ACCEPTED",
+        )
+        .order_by(ProjectScopeVersion.version.desc())
+    )
+    if scope is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Accepted scope is missing")
+    criteria = list(
+        (
+            await session.scalars(
+                select(AcceptanceCriterion)
+                .where(AcceptanceCriterion.scope_version_id == scope.id)
+                .order_by(AcceptanceCriterion.ordinal)
+            )
+        ).all()
+    )
+    if not criteria:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Accepted criteria are required")
+
+    await _enforce_rate_limit(
+        session, principal, category="agent:multimodal_qa", limit=10, window_seconds=60
+    )
+    payload = MultimodalQAInput(
+        artifact_id=artifact.id,
+        artifact_kind=artifact.kind,
+        artifact_uri=artifact.uri,
+        artifact_content_hash=artifact.content_hash,
+        mime_type="image/png" if artifact.kind == "upload" else "application/octet-stream",
+        acceptance_criteria=[criterion.description for criterion in criteria],
+        deliverable_title=deliverable.title,
+    )
+    run = AgentRun(
+        project_id=project.id,
+        agent_name="multimodal_qa",
+        status="RUNNING",
+        model_identifier=None,
+        prompt_version=prompt.version,
+        input_snapshot_hash=input_hash(payload),
+        input_summary={
+            "artifact_id": str(artifact.id),
+            "criterion_count": len(criteria),
+            "deliverable_title": deliverable.title,
+        },
+        output=None,
+        validation_status="PENDING",
+        latency_ms=None,
+        usage=None,
+        correlation_id=request_correlation_id,
+        is_demo=settings.gemini_provider == "fixture",
+        runtime_version="runtime-v1",
+        provider=settings.gemini_provider,
+        resource_version=project.version,
+        human_approval_required=True,
+        proposed_actions=[],
+        executed_action_evidence=[],
+    )
+    session.add(run)
+    await session.flush()
+
+    try:
+        output, metadata = await provider_for(settings).generate_structured(
+            agent_name="multimodal_qa",
+            prompt_version=prompt.version,
+            system_instruction=prompt.system_instruction,
+            input_payload=payload,
+            output_schema=MultimodalQADraft,
+            correlation_id=request_correlation_id,
+        )
+    except AgentUnavailableError as exc:
+        run.status = "FAILED"
+        run.validation_status = "NOT_VALIDATED"
+        run.error_category = "CONFIGURATION"
+        await session.commit()
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+    except Exception as exc:
+        run.status = "FAILED"
+        run.validation_status = "INVALID"
+        run.error_category = "SCHEMA_OR_POLICY"
+        await session.commit()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+    run.status = "SUCCEEDED"
+    run.model_identifier = str(metadata["model"])
+    run.output = output.model_dump(mode="json")
+    run.validation_status = "VALID"
+    run.latency_ms = int(metadata["latency_ms"])
+    run.usage = metadata["usage"]
+    run.retry_count = metadata["retry_count"]
+    await session.commit()
+    await session.refresh(run)
+    return run
 
 
 @router.post("/{project_id}/deliverables/{deliverable_id}/lead-review", status_code=201)

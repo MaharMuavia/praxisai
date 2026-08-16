@@ -188,7 +188,7 @@ export function AgentOperationsCenter() {
               </small>
             </div>
           </div>
-          <LiveAgentStream />
+          <LiveAgentStream runs={runs} />
           <section className="agent-ops-panel panel">
             <div className="panel-header">
               <div>

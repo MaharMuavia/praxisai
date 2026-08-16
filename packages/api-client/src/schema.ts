@@ -570,6 +570,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/internships/me/submissions/{submission_id}/ai-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ai Review Submission */
+        post: operations["ai_review_submission_api_v1_internships_me_submissions__submission_id__ai_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/internships/me/submissions/{submission_id}/finalize": {
         parameters: {
             query?: never;
@@ -1525,6 +1542,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/deliverables/{deliverable_id}/multimodal-qa-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Multimodal Qa Run */
+        post: operations["create_multimodal_qa_run_api_v1_projects__project_id__deliverables__deliverable_id__multimodal_qa_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/deliverables/{deliverable_id}/qa-runs": {
         parameters: {
             query?: never;
@@ -1920,6 +1954,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/university/exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Export */
+        get: operations["download_export_api_v1_university_exports__export_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/university/metrics": {
         parameters: {
             query?: never;
@@ -1975,6 +2026,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccreditationStandardSummary */
+        AccreditationStandardSummary: {
+            /** Compliant */
+            compliant: boolean;
+            /** Criteria Met */
+            criteria_met: string[];
+            /** Framework */
+            framework: string;
+        };
         /** AgentRunView */
         AgentRunView: {
             /** Agent Name */
@@ -4373,6 +4433,17 @@ export interface components {
              */
             status: "CREATED" | "CHECK_EMAIL";
         };
+        /** SkillPathwayMetric */
+        SkillPathwayMetric: {
+            /** Credentials Count */
+            credentials_count: number;
+            /** Pathway Name */
+            pathway_name: string;
+            /** Student Count */
+            student_count: number;
+            /** Verified Minutes */
+            verified_minutes: number;
+        };
         /** StaffingCandidateView */
         StaffingCandidateView: {
             /** Components */
@@ -4571,6 +4642,47 @@ export interface components {
              * Format: uuid
              */
             student_user_id: string;
+        };
+        /** SubmissionAIReviewRequest */
+        SubmissionAIReviewRequest: {
+            /** Rubric Focus */
+            rubric_focus?: string[];
+        };
+        /** SubmissionAIReviewResponse */
+        SubmissionAIReviewResponse: {
+            /**
+             * Agent Run Id
+             * Format: uuid
+             */
+            agent_run_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Criterion Findings */
+            criterion_findings: components["schemas"]["VisualCriterionFinding"][];
+            /** Identified Defects */
+            identified_defects: components["schemas"]["VisualDefect"][];
+            /** Is Demo */
+            is_demo: boolean;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Model Identifier */
+            model_identifier: string;
+            /** Overall Visual Score */
+            overall_visual_score: number;
+            /** Recommendation */
+            recommendation: string;
+            /** Student Actionable Feedback */
+            student_actionable_feedback: string[];
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+            /** Summary */
+            summary: string;
         };
         /** SubmissionDraftRequest */
         SubmissionDraftRequest: {
@@ -4791,6 +4903,12 @@ export interface components {
         };
         /** UniversityExportRequest */
         UniversityExportRequest: {
+            /**
+             * Format
+             * @default csv
+             * @enum {string}
+             */
+            format: "csv" | "json" | "perkins_v";
             /** Purpose */
             purpose: string;
         };
@@ -4801,11 +4919,18 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Download Url */
+            download_url?: string | null;
             /**
              * Expires At
              * Format: date-time
              */
             expires_at: string;
+            /**
+             * Format
+             * @default csv
+             */
+            format: string;
             /**
              * Id
              * Format: uuid
@@ -4861,11 +4986,15 @@ export interface components {
         };
         /** UniversityMetrics */
         UniversityMetrics: {
+            /** Accreditation Summary */
+            accreditation_summary?: components["schemas"]["AccreditationStandardSummary"][] | null;
             /**
              * As Of
              * Format: date-time
              */
             as_of: string;
+            /** Average Rating Basis Points */
+            average_rating_basis_points?: number | null;
             /** Completed Projects */
             completed_projects: number | null;
             /** Consented Cohort Size */
@@ -4876,8 +5005,12 @@ export interface components {
             minimum_cohort_size: number;
             /** Participating Students */
             participating_students: number | null;
+            /** Pathway Breakdown */
+            pathway_breakdown?: components["schemas"]["SkillPathwayMetric"][] | null;
             /** Suppressed */
             suppressed: boolean;
+            /** Total Earnings Minor */
+            total_earnings_minor?: number | null;
             /** Verified Work Minutes */
             verified_work_minutes: number | null;
         };
@@ -4939,6 +5072,38 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VisualCriterionFinding */
+        VisualCriterionFinding: {
+            /** Confidence Score */
+            confidence_score: number;
+            /** Criterion Ordinal */
+            criterion_ordinal: number;
+            /** Defects */
+            defects?: components["schemas"]["VisualDefect"][];
+            /** Observed Features */
+            observed_features?: string[];
+            /** Passed */
+            passed: boolean;
+            /** Visual Evidence Summary */
+            visual_evidence_summary: string;
+        };
+        /** VisualDefect */
+        VisualDefect: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "layout" | "accessibility" | "typography" | "functionality" | "security" | "data_integrity";
+            /** Description */
+            description: string;
+            /** Location Or Element */
+            location_or_element?: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "low" | "medium" | "high" | "critical";
         };
         /** WeekView */
         WeekView: {
@@ -6225,6 +6390,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubmissionView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ai_review_submission_api_v1_internships_me_submissions__submission_id__ai_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmissionAIReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionAIReviewResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8298,6 +8500,40 @@ export interface operations {
             };
         };
     };
+    create_multimodal_qa_run_api_v1_projects__project_id__deliverables__deliverable_id__multimodal_qa_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                deliverable_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     run_qa_agent_api_v1_projects__project_id__deliverables__deliverable_id__qa_runs_post: {
         parameters: {
             query?: never;
@@ -9202,6 +9438,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UniversityExportView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_export_api_v1_university_exports__export_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: {
+                praxis_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

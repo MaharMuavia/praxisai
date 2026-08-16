@@ -1,6 +1,32 @@
 {
   "components": {
     "schemas": {
+      "AccreditationStandardSummary": {
+        "properties": {
+          "compliant": {
+            "title": "Compliant",
+            "type": "boolean"
+          },
+          "criteria_met": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Criteria Met",
+            "type": "array"
+          },
+          "framework": {
+            "title": "Framework",
+            "type": "string"
+          }
+        },
+        "required": [
+          "framework",
+          "compliant",
+          "criteria_met"
+        ],
+        "title": "AccreditationStandardSummary",
+        "type": "object"
+      },
       "AgentRunView": {
         "properties": {
           "agent_name": {
@@ -6079,6 +6105,34 @@
         "title": "SignupResponse",
         "type": "object"
       },
+      "SkillPathwayMetric": {
+        "properties": {
+          "credentials_count": {
+            "title": "Credentials Count",
+            "type": "integer"
+          },
+          "pathway_name": {
+            "title": "Pathway Name",
+            "type": "string"
+          },
+          "student_count": {
+            "title": "Student Count",
+            "type": "integer"
+          },
+          "verified_minutes": {
+            "title": "Verified Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pathway_name",
+          "student_count",
+          "verified_minutes",
+          "credentials_count"
+        ],
+        "title": "SkillPathwayMetric",
+        "type": "object"
+      },
       "StaffingCandidateView": {
         "properties": {
           "components": {
@@ -6570,6 +6624,99 @@
           "created_at"
         ],
         "title": "StudentProposalView",
+        "type": "object"
+      },
+      "SubmissionAIReviewRequest": {
+        "properties": {
+          "rubric_focus": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rubric Focus",
+            "type": "array"
+          }
+        },
+        "title": "SubmissionAIReviewRequest",
+        "type": "object"
+      },
+      "SubmissionAIReviewResponse": {
+        "properties": {
+          "agent_run_id": {
+            "format": "uuid",
+            "title": "Agent Run Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "criterion_findings": {
+            "items": {
+              "$ref": "#/components/schemas/VisualCriterionFinding"
+            },
+            "title": "Criterion Findings",
+            "type": "array"
+          },
+          "identified_defects": {
+            "items": {
+              "$ref": "#/components/schemas/VisualDefect"
+            },
+            "title": "Identified Defects",
+            "type": "array"
+          },
+          "is_demo": {
+            "title": "Is Demo",
+            "type": "boolean"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "model_identifier": {
+            "title": "Model Identifier",
+            "type": "string"
+          },
+          "overall_visual_score": {
+            "title": "Overall Visual Score",
+            "type": "integer"
+          },
+          "recommendation": {
+            "title": "Recommendation",
+            "type": "string"
+          },
+          "student_actionable_feedback": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Student Actionable Feedback",
+            "type": "array"
+          },
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submission_id",
+          "agent_run_id",
+          "model_identifier",
+          "recommendation",
+          "overall_visual_score",
+          "summary",
+          "criterion_findings",
+          "identified_defects",
+          "student_actionable_feedback",
+          "latency_ms",
+          "is_demo",
+          "created_at"
+        ],
+        "title": "SubmissionAIReviewResponse",
         "type": "object"
       },
       "SubmissionDraftRequest": {
@@ -7199,6 +7346,16 @@
       },
       "UniversityExportRequest": {
         "properties": {
+          "format": {
+            "default": "csv",
+            "enum": [
+              "csv",
+              "json",
+              "perkins_v"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
           "purpose": {
             "maxLength": 2000,
             "minLength": 20,
@@ -7219,9 +7376,25 @@
             "title": "Created At",
             "type": "string"
           },
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Url"
+          },
           "expires_at": {
             "format": "date-time",
             "title": "Expires At",
+            "type": "string"
+          },
+          "format": {
+            "default": "csv",
+            "title": "Format",
             "type": "string"
           },
           "id": {
@@ -7368,10 +7541,35 @@
       },
       "UniversityMetrics": {
         "properties": {
+          "accreditation_summary": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AccreditationStandardSummary"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accreditation Summary"
+          },
           "as_of": {
             "format": "date-time",
             "title": "As Of",
             "type": "string"
+          },
+          "average_rating_basis_points": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Rating Basis Points"
           },
           "completed_projects": {
             "anyOf": [
@@ -7421,9 +7619,34 @@
             ],
             "title": "Participating Students"
           },
+          "pathway_breakdown": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SkillPathwayMetric"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pathway Breakdown"
+          },
           "suppressed": {
             "title": "Suppressed",
             "type": "boolean"
+          },
+          "total_earnings_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Earnings Minor"
           },
           "verified_work_minutes": {
             "anyOf": [
@@ -7608,6 +7831,104 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VisualCriterionFinding": {
+        "properties": {
+          "confidence_score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence Score",
+            "type": "number"
+          },
+          "criterion_ordinal": {
+            "minimum": 1.0,
+            "title": "Criterion Ordinal",
+            "type": "integer"
+          },
+          "defects": {
+            "items": {
+              "$ref": "#/components/schemas/VisualDefect"
+            },
+            "title": "Defects",
+            "type": "array"
+          },
+          "observed_features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Observed Features",
+            "type": "array"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "visual_evidence_summary": {
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Visual Evidence Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_ordinal",
+          "passed",
+          "confidence_score",
+          "visual_evidence_summary"
+        ],
+        "title": "VisualCriterionFinding",
+        "type": "object"
+      },
+      "VisualDefect": {
+        "properties": {
+          "category": {
+            "enum": [
+              "layout",
+              "accessibility",
+              "typography",
+              "functionality",
+              "security",
+              "data_integrity"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 1000,
+            "minLength": 5,
+            "title": "Description",
+            "type": "string"
+          },
+          "location_or_element": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Or Element"
+          },
+          "severity": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "severity",
+          "description"
+        ],
+        "title": "VisualDefect",
         "type": "object"
       },
       "WeekView": {
@@ -9909,6 +10230,75 @@
           }
         },
         "summary": "Update Submission",
+        "tags": [
+          "internships student"
+        ]
+      }
+    },
+    "/api/v1/internships/me/submissions/{submission_id}/ai-review": {
+      "post": {
+        "operationId": "ai_review_submission_api_v1_internships_me_submissions__submission_id__ai_review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "submission_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Submission Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmissionAIReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionAIReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ai Review Submission",
         "tags": [
           "internships student"
         ]
@@ -13919,6 +14309,75 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/deliverables/{deliverable_id}/multimodal-qa-runs": {
+      "post": {
+        "operationId": "create_multimodal_qa_run_api_v1_projects__project_id__deliverables__deliverable_id__multimodal_qa_runs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "deliverable_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Deliverable Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Multimodal Qa Run",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/deliverables/{deliverable_id}/qa-runs": {
       "post": {
         "operationId": "run_qa_agent_api_v1_projects__project_id__deliverables__deliverable_id__qa_runs_post",
@@ -15601,6 +16060,63 @@
           }
         },
         "summary": "Create Export",
+        "tags": [
+          "university"
+        ]
+      }
+    },
+    "/api/v1/university/exports/{export_id}/download": {
+      "get": {
+        "operationId": "download_export_api_v1_university_exports__export_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Export Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "praxis_session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Praxis Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Export",
         "tags": [
           "university"
         ]

@@ -9,6 +9,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.prompts import prompt_for
+from app.agents.provider import AgentUnavailableError, input_hash, provider_for
 from app.auth.service import (
     IdentityLinkConflict,
     SessionPrincipal,
@@ -17,6 +19,7 @@ from app.auth.service import (
 )
 from app.config import Settings
 from app.domain.models import (
+    AgentRun,
     AuditEvent,
     CohortEnrollment,
     CohortTrack,
@@ -41,6 +44,12 @@ from app.domain.models import (
     OutboxEvent,
     StudentProfile,
     User,
+)
+from app.domain.schemas import (
+    MultimodalQADraft,
+    MultimodalQAInput,
+    SubmissionAIReviewRequest,
+    SubmissionAIReviewResponse,
 )
 from app.internships.enrollments.context import (
     EnrollmentContext,
@@ -2142,3 +2151,160 @@ async def complete_upload(
         raise ValidationFailure(result.message)
     await session.commit()
     return _upload_view(upload)
+
+
+async def review_submission_with_ai(
+    session: AsyncSession,
+    *,
+    principal: SessionPrincipal,
+    submission_id: uuid.UUID,
+    body: SubmissionAIReviewRequest,
+    settings: Settings,
+    correlation_id: uuid.UUID,
+) -> SubmissionAIReviewResponse:
+    submission = await session.scalar(
+        select(InternshipSubmission).where(
+            InternshipSubmission.id == submission_id,
+            InternshipSubmission.student_user_id == principal.user_id,
+        )
+    )
+    if submission is None:
+        raise NotFound("Submission not found")
+
+    student_assignment = await session.get(
+        InternshipStudentAssignment, submission.student_assignment_id
+    )
+    if student_assignment is None:
+        raise NotFound("Associated assignment not found")
+
+    assignment_title = "Internship Project Deliverable"
+    criteria = [
+        "Deliverable implementation satisfies the functional requirements",
+        "Visual assets and interface show clean responsive hierarchy and contrast",
+        "Submission evidence matches the required deliverable artifacts",
+    ]
+    cohort_assignment = await session.get(
+        InternshipCohortAssignment, student_assignment.cohort_assignment_id
+    )
+    if cohort_assignment:
+        template = await session.get(InternshipAssignmentTemplate, cohort_assignment.template_id)
+        if template:
+            assignment_title = template.title
+            if template.acceptance_criteria:
+                criteria = list(template.acceptance_criteria)
+
+    if body.rubric_focus:
+        criteria.extend([f"Rubric focus: {focus}" for focus in body.rubric_focus])
+
+    media_bytes: bytes | None = None
+    media_mime_type: str | None = None
+    first_upload_id = submission.artifact_upload_ids[0] if submission.artifact_upload_ids else None
+    if first_upload_id:
+        try:
+            upload_uuid = (
+                uuid.UUID(first_upload_id) if isinstance(first_upload_id, str) else first_upload_id
+            )
+            upload = await session.get(InternshipUpload, upload_uuid)
+            if upload and upload.storage_key:
+                media_mime_type = upload.content_type
+                try:
+                    if settings.storage_provider == "supabase":
+                        media_bytes = await SupabaseInternshipStorage(settings).read(
+                            upload.storage_key
+                        )
+                    else:
+                        media_bytes = LocalInternshipStorage(
+                            settings.internship_local_storage_path
+                        ).read(upload.storage_key)
+                except Exception:
+                    media_bytes = None
+        except Exception:
+            pass
+
+    prompt = prompt_for("multimodal_qa")
+    input_payload = MultimodalQAInput(
+        artifact_id=submission.id,
+        artifact_kind="internship_submission",
+        artifact_uri=f"internship://submissions/{submission.id}",
+        artifact_content_hash=_submission_hash(submission),
+        mime_type=media_mime_type or "application/octet-stream",
+        deliverable_title=assignment_title,
+        acceptance_criteria=criteria,
+        rubric_focus=body.rubric_focus,
+    )
+
+    run = AgentRun(
+        project_id=None,
+        agent_name="multimodal_qa",
+        status="RUNNING",
+        model_identifier=None,
+        prompt_version=prompt.version,
+        input_snapshot_hash=input_hash(input_payload, media_bytes=media_bytes),
+        input_summary={
+            "submission_id": str(submission.id),
+            "assignment_title": assignment_title,
+            "has_media": media_bytes is not None,
+        },
+        output=None,
+        validation_status="PENDING",
+        latency_ms=None,
+        usage=None,
+        correlation_id=correlation_id,
+        is_demo=settings.gemini_provider == "fixture",
+        runtime_version="runtime-v1",
+        provider=settings.gemini_provider,
+        resource_version=submission.version,
+        human_approval_required=True,
+        proposed_actions=[],
+        executed_action_evidence=[],
+    )
+    session.add(run)
+    await session.flush()
+
+    try:
+        output, metadata = await provider_for(settings).generate_structured(
+            agent_name="multimodal_qa",
+            prompt_version=prompt.version,
+            system_instruction=prompt.system_instruction,
+            input_payload=input_payload,
+            output_schema=MultimodalQADraft,
+            correlation_id=correlation_id,
+            media_bytes=media_bytes,
+            media_mime_type=media_mime_type,
+        )
+    except AgentUnavailableError as exc:
+        run.status = "FAILED"
+        run.validation_status = "NOT_VALIDATED"
+        run.error_category = "CONFIGURATION"
+        await session.commit()
+        raise StorageFailure(str(exc)) from exc
+    except Exception as exc:
+        run.status = "FAILED"
+        run.validation_status = "INVALID"
+        run.error_category = "SCHEMA_OR_POLICY"
+        await session.commit()
+        raise ValidationFailure(str(exc)) from exc
+
+    run.status = "SUCCEEDED"
+    run.model_identifier = str(metadata["model"])
+    run.output = output.model_dump(mode="json")
+    run.validation_status = "VALID"
+    run.latency_ms = int(metadata["latency_ms"])
+    run.usage = metadata["usage"]
+    run.retry_count = metadata["retry_count"]
+    await session.commit()
+
+    return SubmissionAIReviewResponse(
+        submission_id=submission.id,
+        agent_run_id=run.id,
+        model_identifier=run.model_identifier,
+        recommendation=output.recommendation,
+        overall_visual_score=output.overall_visual_score,
+        summary=output.summary,
+        criterion_findings=output.criterion_findings,
+        identified_defects=output.identified_defects,
+        student_actionable_feedback=output.student_actionable_feedback,
+        latency_ms=run.latency_ms or 0,
+        is_demo=bool(metadata.get("is_demo", False)),
+        created_at=datetime.now(UTC),
+    )

@@ -246,4 +246,73 @@ describe("InternshipSubmissionEditor", () => {
       artifact_upload_ids: ["upload-1"],
     });
   });
+
+  it("triggers and displays Gemini multimodal AI deliverable review", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (
+        url.endsWith("/internships/me/submissions/submission-1") &&
+        !init?.method
+      ) {
+        return jsonResponse(submission);
+      }
+      if (url.endsWith("/internships/me/assignments/assignment-1")) {
+        return jsonResponse(
+          assignment([{ type: "evaluation_plan", required: false }]),
+        );
+      }
+      if (
+        url.endsWith("/internships/me/submissions/submission-1/ai-review") &&
+        init?.method === "POST"
+      ) {
+        return jsonResponse({
+          submission_id: "submission-1",
+          agent_run_id: "run-multimodal-1",
+          model_identifier: "gemini-2.5-flash",
+          recommendation: "PASS",
+          overall_visual_score: 96,
+          summary: "Multimodal review passed with high visual fidelity.",
+          criterion_findings: [
+            {
+              criterion_ordinal: 1,
+              passed: true,
+              confidence_score: 0.98,
+              visual_evidence_summary:
+                "Sidebar navigation matches responsive breakpoint criteria perfectly.",
+              observed_features: ["Responsive Drawer", "Accessible Contrast"],
+              defects: [],
+            },
+          ],
+          identified_defects: [],
+          student_actionable_feedback: [
+            "Ensure ARIA labels remain intact during window resize.",
+          ],
+          latency_ms: 380,
+          is_demo: true,
+          created_at: "2026-08-14T20:00:00Z",
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+
+    renderEditor();
+
+    const reviewButton = await screen.findByRole("button", {
+      name: "Run Gemini Multimodal Review",
+    });
+    expect(reviewButton).toBeInTheDocument();
+    fireEvent.click(reviewButton);
+
+    expect(await screen.findByText("Visual Score: 96/100")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Sidebar navigation matches responsive breakpoint criteria perfectly.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Ensure ARIA labels remain intact during window resize.",
+      ),
+    ).toBeInTheDocument();
+  });
 });

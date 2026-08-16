@@ -7,6 +7,10 @@ from app.auth.dependencies import DbSession, IdempotencyKey, require_roles
 from app.auth.service import SessionPrincipal
 from app.config import Settings, get_settings
 from app.domain.enums import Role
+from app.domain.schemas import (
+    SubmissionAIReviewRequest,
+    SubmissionAIReviewResponse,
+)
 from app.internships.schemas import (
     ApplicationSubmitRequest,
     ApplicationSummary,
@@ -43,6 +47,7 @@ from app.internships.service import (
     list_applications,
     list_assignments,
     resubmit,
+    review_submission_with_ai,
     save_submission,
     start_application,
     start_assignment,
@@ -437,6 +442,29 @@ async def certificate_route(
 ) -> CertificateEligibilityView:
     try:
         return await certificate_eligibility(session, principal, enrollment_id)
+    except InternshipError as exc:
+        _raise(exc)
+    raise AssertionError("unreachable")
+
+
+@router.post("/submissions/{submission_id}/ai-review", response_model=SubmissionAIReviewResponse)
+async def ai_review_submission(
+    submission_id: uuid.UUID,
+    body: SubmissionAIReviewRequest,
+    principal: StudentPrincipal,
+    session: DbSession,
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> SubmissionAIReviewResponse:
+    try:
+        return await review_submission_with_ai(
+            session,
+            principal=principal,
+            submission_id=submission_id,
+            body=body,
+            settings=settings,
+            correlation_id=request.state.correlation_id,
+        )
     except InternshipError as exc:
         _raise(exc)
     raise AssertionError("unreachable")

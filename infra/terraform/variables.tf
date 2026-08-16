@@ -151,7 +151,9 @@ variable "clamav_host" {
   type        = string
   description = "RFC1918 IPv4 address of the private ClamAV service reachable through worker Direct VPC egress."
   validation {
-    condition = try(
+    # Unset at `terraform validate` time (no tfvars) is tolerated — apply still
+    # requires the value. Only a *provided* value must be RFC1918.
+    condition = var.clamav_host == null ? true : try(
       cidrhost("${var.clamav_host}/32", 0) == var.clamav_host &&
       (
         cidrcontains("10.0.0.0/8", var.clamav_host) ||

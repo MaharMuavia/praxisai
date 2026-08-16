@@ -1,6 +1,7 @@
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from app.auth.dependencies import DbSession, IdempotencyKey, require_roles
 from app.auth.service import SessionPrincipal
@@ -11,6 +12,7 @@ from app.university.service import (
     UniversityAccessError,
     UniversityConflict,
     aggregate_metrics,
+    get_export_csv_content,
     list_exports,
     request_export,
 )
@@ -63,3 +65,24 @@ async def create_export(
     except UniversityAccessError as exc:
         raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
     return UniversityExportView.model_validate(row)
+
+
+@router.get("/exports/{export_id}/download")
+async def download_export(
+    export_id: uuid.UUID,
+    principal: UniversityPrincipal,
+    session: DbSession,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    try:
+        export, csv_content = await get_export_csv_content(
+            session, export_id=export_id, principal=principal, settings=settings
+        )
+    except UniversityAccessError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
+    filename = f"praxisai_compliance_export_{export.id}.csv"
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

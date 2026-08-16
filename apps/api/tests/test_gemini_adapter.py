@@ -121,3 +121,65 @@ async def test_gemini_adapter_bounded_retries_failure():
                 output_schema=ScopeDraft,
                 correlation_id=uuid.uuid4(),
             )
+
+
+@pytest.mark.asyncio
+async def test_gemini_adapter_multimodal_part_construction():
+    from google.genai import types
+
+    from app.domain.schemas import MultimodalQADraft, MultimodalQAInput
+
+    settings = Settings(
+        google_cloud_project="praxisai-test-project",
+        google_cloud_location="us-central1",
+        gemini_provider="gemini",
+        app_env="test",
+    )
+
+    mock_response = MagicMock()
+    mock_response.text = (
+        '{"recommendation":"PASS","overall_visual_score":92,'
+        '"layout_and_responsive_verdict":"Clean layout",'
+        '"criterion_findings":[{"criterion_ordinal":1,"passed":true,"confidence_score":0.95,'
+        '"visual_evidence_summary":"Verified evidence","observed_features":["UI layout"],'
+        '"defects":[]}],'
+        '"identified_defects":[],'
+        '"student_actionable_feedback":["Great progress"],'
+        '"summary":"All criteria met"}'
+    )
+    mock_response.usage_metadata = None
+
+    with patch("google.genai.Client") as mock_client_cls:
+        mock_client_instance = MagicMock()
+        mock_client_instance.aio.models.generate_content = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client_instance
+
+        provider = GeminiAgentProvider(settings)
+        payload = MultimodalQAInput(
+            artifact_id=uuid.uuid4(),
+            artifact_kind="upload",
+            artifact_uri="https://storage.praxisai.test/screenshots/ui.png",
+            artifact_content_hash="c" * 64,
+            mime_type="image/png",
+            acceptance_criteria=["Valid responsive design"],
+        )
+
+        output, metadata = await provider.generate_structured(
+            agent_name="multimodal_qa",
+            prompt_version="multimodal-qa-v1",
+            system_instruction="Review screenshot evidence",
+            input_payload=payload,
+            output_schema=MultimodalQADraft,
+            correlation_id=uuid.uuid4(),
+            media_bytes=b"\x89PNG\r\n\x1a\nfake-png-data",
+            media_mime_type="image/png",
+        )
+
+        assert output.recommendation == "PASS"
+        assert output.overall_visual_score == 92
+        # Verify generate_content was called with a list containing Part and JSON string
+        call_kwargs = mock_client_instance.aio.models.generate_content.call_args.kwargs
+        contents = call_kwargs["contents"]
+        assert len(contents) == 2
+        assert isinstance(contents[0], types.Part)
+        assert isinstance(contents[1], str)
