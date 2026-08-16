@@ -23,6 +23,13 @@
 - [ ] Upload to YouTube/Vimeo (unlisted) or attach directly
 - [ ] See `docs/xprize-video-script.md` for the script
 
+> **To show LIVE Gemini calls without deploying:** run locally with a real key —
+> set `GEMINI_PROVIDER=gemini` and `GEMINI_API_KEY=<key>` (or `GOOGLE_CLOUD_PROJECT`
+> for Vertex AI) in `.env`, restart the API, and drive a real scoping or multimodal
+> QA action. The `agent_runs` record will show a real model id and non-zero token
+> usage (not `fixture`). This satisfies the "AI live" requirement for the video
+> even before full Cloud Run deployment.
+
 ### 3. Written Narrative (500–1000 words)
 - [ ] Case study explaining daily operational workflows
 - [ ] Human vs. AI task division
@@ -58,13 +65,17 @@
 npm run format
 npm run lint
 npm run typecheck
-npm test
+npm test              # 230 pass locally (74 web + 156 API)
 npm run build
-npm run test:e2e
-npm run db:check
+npm run db:migrate    # applies new migration d5e6f7a8b9c0 (outbox correlation_id NOT NULL)
+npm run db:check      # must pass after the migration above
+npm run test:e2e -- --update-snapshots   # refresh stale visual baselines (run on the CI OS), then commit the PNGs
 npm run eval:agents
 npm audit --audit-level=high
 ```
+
+**Known CI status (2026-08-16):** local tests pass; CI needs the migration above
+applied and visual baselines refreshed. Terraform validate/fmt verified green.
 
 ---
 
