@@ -37,3 +37,6 @@ gha-creds-*.json
 # never commit env backups (may contain secrets)
 .env.*
 *.bak
+
+# local Claude Code tooling
+.claude/
