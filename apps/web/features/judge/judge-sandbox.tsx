@@ -406,7 +406,9 @@ export function JudgeSandbox() {
           <span className="marketing-eyebrow">
             Interactive Evaluator Sandbox
           </span>
-          <h2>Walk the agent contract & deterministic boundaries in 60 seconds.</h2>
+          <h2>
+            Walk the agent contract & deterministic boundaries in 60 seconds.
+          </h2>
           <p className="marketing-section-description">
             See the shape of a Gemini scoping proposal and multimodal QA
             finding, the policy boundary, transparent escrow math, and
@@ -564,7 +566,8 @@ export function JudgeSandbox() {
                   </>
                 ) : (
                   <>
-                    <Play size={16} /> Show illustrative {selectedModel} proposal
+                    <Play size={16} /> Show illustrative {selectedModel}{" "}
+                    proposal
                   </>
                 )}
               </Button>

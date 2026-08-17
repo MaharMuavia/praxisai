@@ -43,9 +43,9 @@ export default function JudgePage() {
               </a>
             </div>
             <DemoNotice>
-              Illustrative deterministic scenarios — pre-scripted, not live model
-              calls. Real recorded agent runs appear in the operations center
-              once the API is deployed with a Gemini provider.
+              Illustrative deterministic scenarios — pre-scripted, not live
+              model calls. Real recorded agent runs appear in the operations
+              center once the API is deployed with a Gemini provider.
             </DemoNotice>
           </div>
           <Card className="judge-hero-proof">

@@ -83,7 +83,7 @@ test("judge walkthrough exposes a deterministic, keyboard-accessible scenario", 
   await page.goto("/judge");
   await expect(
     page.getByRole("heading", {
-      name: /See how a real project becomes accountable career proof/i,
+      name: /Real-world impact\. Zero hallucinated authority\./i,
     }),
   ).toBeVisible();
   await expect(page.getByText("Demo environment").first()).toBeVisible();

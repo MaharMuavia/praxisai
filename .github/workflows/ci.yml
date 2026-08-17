@@ -227,7 +227,7 @@ jobs:
           severity-cutoff: high
           by-cve: true
           config: .grype.yaml
-          grype-version: 0.116.1
+          grype-version: v0.116.1
           output-format: json
           output-file: ${{ runner.temp }}/ci-evidence/api-grype.json
       - name: Scan web image
@@ -240,7 +240,7 @@ jobs:
           severity-cutoff: high
           by-cve: true
           config: .grype.yaml
-          grype-version: 0.116.1
+          grype-version: v0.116.1
           output-format: json
           output-file: ${{ runner.temp }}/ci-evidence/web-grype.json
       - name: Checksum container evidence

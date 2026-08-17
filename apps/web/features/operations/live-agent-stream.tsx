@@ -74,7 +74,8 @@ export function LiveAgentStream({ runs }: { runs: AgentRun[] }) {
 
   const tokens = readTokens(selected.usage);
   const isFixture =
-    selected.provider === "fixture" || selected.model_identifier === "fixture-ai";
+    selected.provider === "fixture" ||
+    selected.model_identifier === "fixture-ai";
 
   return (
     <div className="live-agent-stream panel" style={panelStyle}>

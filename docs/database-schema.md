@@ -8,7 +8,7 @@ Canonical sources:
 
 - Models: `apps/api/app/domain/models.py`
 - Migrations: `apps/api/alembic/versions/`
-- Current migration head: `c3d4e5f6a7b8`
+- Current migration head: `d5e6f7a8b9c0`
 - Schema drift check: `npm run db:check`
 
 The current metadata inventory contains 100 application tables. All application tables use UUID

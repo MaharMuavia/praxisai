@@ -9,7 +9,7 @@ rerun from a clean checkout before merge.
 - Branch: `release/xprize-2026`
 - HEAD at inspection: `ad7b8fa295a7a8e7aa49e5f64d77d24b366fa4fb`
 - Worktree: dirty from uncommitted remediation changes
-- Repository Alembic head: `c3d4e5f6a7b8` (single head)
+- Repository Alembic head: `d5e6f7a8b9c0` (single head)
 - Configured database revision: `c8f1a2d4e609` (migration required)
 - Verified pre-migration backup: `praxisai-pre-c3d4e5f6a7b8-20260811-235304.dump`
   (502,338 bytes; SHA-256

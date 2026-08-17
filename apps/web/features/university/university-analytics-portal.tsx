@@ -88,9 +88,7 @@ const FALLBACK_DEMO_METRICS: UniversityMetrics = {
 
 export function UniversityAnalyticsPortal() {
   const queryClient = useQueryClient();
-  const { data: remoteMetrics } = useQuery(
-    universityMetricsQuery(),
-  );
+  const { data: remoteMetrics } = useQuery(universityMetricsQuery());
   const { data: exports = [] } = useQuery(universityExportsQuery());
 
   const [exportPurpose, setExportPurpose] = useState(

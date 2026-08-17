@@ -48,7 +48,7 @@ async def verify_fresh_upgrade() -> None:
                 version = await connection.scalar(
                     text("SELECT version_num FROM alembic_version")
                 )
-                if version != "c3d4e5f6a7b8":
+                if version != "d5e6f7a8b9c0":
                     raise RuntimeError(
                         f"Fresh PostgreSQL schema stopped at unexpected revision: {version}"
                     )
@@ -57,7 +57,7 @@ async def verify_fresh_upgrade() -> None:
     finally:
         await engine.dispose()
     print(
-        f"Fresh PostgreSQL migration probe reached head c3d4e5f6a7b8 in schema {schema}"
+        f"Fresh PostgreSQL migration probe reached head d5e6f7a8b9c0 in schema {schema}"
     )
 
 

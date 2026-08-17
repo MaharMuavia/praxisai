@@ -51,7 +51,7 @@ def test_ci_container_scans_use_the_audited_policy_and_scanner() -> None:
     workflow = (repository_root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
     assert workflow.count("config: .grype.yaml") == 2
-    assert workflow.count("grype-version: 0.116.1") == 2
+    assert workflow.count("grype-version: v0.116.1") == 2
     assert workflow.count("severity-cutoff: high") == 2
     assert workflow.count("by-cve: true") == 2
 
