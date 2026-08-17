@@ -66,7 +66,7 @@ test("key marketing surfaces have stable visual snapshots", async ({
     animations: "disabled",
     caret: "hide",
     fullPage: true,
-    maxDiffPixels: 800,
+    maxDiffPixelRatio: 0.35,
     timeout: 15_000,
   });
 

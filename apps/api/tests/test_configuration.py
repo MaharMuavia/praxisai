@@ -80,7 +80,10 @@ def test_generic_postgresql_urls_use_asyncpg_driver() -> None:
     )
 
 
-def test_transaction_pool_requires_separate_url_only_for_migration_process() -> None:
+def test_transaction_pool_requires_separate_url_only_for_migration_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("DATABASE_MIGRATION_URL", raising=False)
     settings = Settings(
         _env_file=None,
         app_env="production",
