@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   output: process.env.VERCEL ? undefined : "standalone",
   outputFileTracingRoot: path.join(process.cwd(), "../.."),
   poweredByHeader: false,
+  // Ensure the api-client workspace package is resolved and compiled by Next in
+  // monorepo builds (e.g. Vercel), not treated as an opaque external module.
+  transpilePackages: ["@praxisai/api-client"],
   devIndicators: process.env.PLAYWRIGHT_TEST === "true" ? false : undefined,
   experimental: {
     optimizePackageImports: ["lucide-react"],
