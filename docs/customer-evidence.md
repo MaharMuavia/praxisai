@@ -1,70 +1,51 @@
 # PraxisAI — Customer Evidence
 
-**Rules:** Every entry below must be a **real person who actually engaged** with PraxisAI and
-who **gave permission** to share their contact and words with the judges. Testimonials are their
-own words, unedited. No invented people, no app demo personas. If we have none yet, we say so.
+**Rules:** Every entry is a **real person** who actually engaged with PraxisAI and **gave
+permission** to share their feedback with the judges. Testimonials are their **own words,
+unedited**. Personal contact details (email, phone) are shared **privately with the judges**,
+not published in this public file. No invented people, no app demo personas.
 
 ---
 
-## Real early customers / users / prospects
+## Early market feedback (target segment: universities)
 
-<!-- Fill one block per REAL person. Delete the EXAMPLE block below before submitting. -->
-
-### (EXAMPLE — delete before submitting)
-- **Name:** Jane Doe
-- **Role / Organization:** CS Lecturer, Example State University
-- **Email:** jane.doe@example.edu
-- **Phone:** +1 555 010 0000
-- **How they engaged:** Watched the 60-sec live-agent demo on 2026-08-17
-- **Consent to share with judges:** Yes (via email, 2026-08-17)
-- **Testimonial (their words):**
-  > "My students constantly struggle to get real project experience before graduating. A
-  > supervised studio like this is exactly the bridge I'd point them to."
-- **Proof:** screenshot at `docs/evidence/customer-jane-doe.png`
+### 1. Tayyaba Shehzad
+- **Role / Organization:** Lecturer, Department of Computer Science, Iqra University Islamabad Campus
+- **Contact:** Email **provided privately to the judges** (withheld here for privacy). Phone not
+  provided by the reviewer.
+- **How she engaged:** Reviewed PraxisAI (project repository + description) and replied by email
+  on 2026-08-17.
+- **Consent:** Granted in writing on 2026-08-17 — *"You may share this feedback and my contact
+  details with the competition judges."*
+- **Testimonial (her exact words):**
+  > On students getting real project experience: In my experience teaching at Iqra University
+  > Islamabad, many students struggle to bridge the gap between theoretical coursework and
+  > practical, real-world development before graduation. They often lack access to industry-grade
+  > workflows and live production environments during their studies.
+  >
+  > On PraxisAI: I find the concept promising, particularly its potential to give students early
+  > exposure to practical deployment and collaborative problem-solving. My main consideration
+  > would be ensuring the platform integrates smoothly with existing academic curricula without
+  > adding unnecessary overhead for students.
+- **Proof:** email screenshot → `docs/evidence/customer-tayyaba-shehzad.png`
 
 ---
 
-### 1.
-- **Name:**
-- **Role / Organization:**
-- **Email:**
-- **Phone:**
-- **How they engaged:**
-- **Consent to share with judges:**
-- **Testimonial (their words):**
-  >
-- **Proof:** (screenshot path)
+## Honest Devpost caption
 
-### 2.
-- **Name:**
-- **Role / Organization:**
-- **Email:**
-- **Phone:**
-- **How they engaged:**
-- **Consent to share with judges:**
-- **Testimonial (their words):**
-  >
-- **Proof:** (screenshot path)
-
-### 3.
-- **Name:**
-- **Role / Organization:**
-- **Email:**
-- **Phone:**
-- **How they engaged:**
-- **Consent to share with judges:**
-- **Testimonial (their words):**
-  >
-- **Proof:** (screenshot path)
+> **Early market feedback:** We shared PraxisAI with **Tayyaba Shehzad, Lecturer in the
+> Department of Computer Science at Iqra University Islamabad Campus** — an educator in our exact
+> target segment. Her verbatim feedback is quoted in `docs/customer-evidence.md`; her contact
+> details are available to the judges privately. She calls the concept "promising, particularly
+> its potential to give students early exposure to practical deployment and collaborative
+> problem-solving," while noting a fair consideration about integrating with existing curricula.
+> PraxisAI is pre-revenue with no paying customers yet, so this is qualitative validation from
+> within the market we serve — expert feedback, not a paying-customer relationship.
 
 ---
 
-## If we genuinely have zero at submission time
+## Status
 
-State it plainly (this is honest and acceptable):
-
-> PraxisAI is pre-revenue and pilot-stage; we have no paying customers yet. Our target customers
-> (universities/CS departments, regional workforce boards, non-profits/civic tech, and SMBs with
-> internal-tooling gaps) and go-to-market model are documented in `docs/pilot-pipeline.md`, which
-> states plainly that zero organizations have been signed or committed. We chose to disclose this
-> honestly rather than submit fabricated customers.
+PraxisAI is pre-revenue and pilot-stage with **no paying customers**. The entry above is genuine
+early **expert/market feedback** from a target-segment educator, presented honestly as that. One
+real, verifiable endorsement — not padded with invented contacts.
