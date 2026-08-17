@@ -31,3 +31,5 @@ tmp/
 *.log
 gha-creds-*.json
 .DS_Store
+
+.ci-artifacts/
