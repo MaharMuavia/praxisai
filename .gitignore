@@ -33,3 +33,7 @@ gha-creds-*.json
 .DS_Store
 
 .ci-artifacts/
+
+# never commit env backups (may contain secrets)
+.env.*
+*.bak

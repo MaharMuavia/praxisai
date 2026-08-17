@@ -1,0 +1,115 @@
+{
+  "captured_at_utc": "2026-08-17T13:48:29.759179+00:00",
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "agent_name": "scoping",
+  "prompt_version": "scoping-v1",
+  "correlation_id": "4b9bb170-51c9-4fd4-aed4-c219ddcc36e8",
+  "input_hash": "15f6040b9a8bbd0e20dabfe8864c33d70cd5f3668b7e89b27666269a7993a7c1",
+  "latency_seconds": 18.46,
+  "metadata": {
+    "model": "gemini-2.5-flash",
+    "usage": "{'cache_tokens_details': None, 'cached_content_token_count': None, 'candidates_token_count': 1521, 'candidates_tokens_details': None, 'prompt_token_count': 128, 'prompt_tokens_details': [{'modality': <MediaModality.TEXT: 'TEXT'>, 'token_count': 128}], 'thoughts_token_count': 2172, 'tool_use_prompt_token_count': None, 'tool_use_prompt_tokens_details': None, 'total_token_count': 3821, 'traffic_type': None}",
+    "latency_ms": "18463",
+    "is_demo": "False",
+    "retry_count": "0",
+    "prompt_version": "scoping-v1",
+    "input_hash": "15f6040b9a8bbd0e20dabfe8864c33d70cd5f3668b7e89b27666269a7993a7c1",
+    "correlation_id": "4b9bb170-51c9-4fd4-aed4-c219ddcc36e8",
+    "stale_result_check": "True"
+  },
+  "input": {
+    "title": "Internal invoice-status dashboard",
+    "description": "We are a 20-person logistics company. We need an internal, read-only web dashboard that reads our existing PostgreSQL 'invoices' table and shows outstanding, paid, and overdue totals by client, with a CSV export. It must load in under 2 seconds for 10k rows. Internal staff only, no public access."
+  },
+  "structured_output": {
+    "normalized_title": "Internal Invoice Status Dashboard",
+    "summary": "Develop a read-only internal web dashboard for a 20-person logistics company to display invoice statuses (outstanding, paid, overdue) by client, with CSV export, sourcing data from an existing PostgreSQL 'invoices' table. The dashboard must load data for 10,000 rows in under 2 seconds and be accessible only to internal staff.",
+    "problem_statement": "The logistics company lacks a centralized, easily accessible tool to quickly view and track the status of invoices (outstanding, paid, overdue) aggregated by client, hindering efficient financial oversight and reporting.",
+    "deliverables": [
+      "Web-based dashboard application (read-only)",
+      "User interface displaying invoice totals by client (outstanding, paid, overdue)",
+      "Functionality to export displayed data to CSV",
+      "Deployment instructions for internal access",
+      "Basic documentation for setup and usage"
+    ],
+    "acceptance_criteria": [
+      "Dashboard is accessible only to internal staff.",
+      "Dashboard successfully connects to the specified PostgreSQL 'invoices' table.",
+      "Dashboard accurately displays outstanding, paid, and overdue invoice totals, aggregated by client.",
+      "Dashboard loads and displays data for 10,000 rows in under 2 seconds.",
+      "CSV export functionality works correctly, exporting the displayed data.",
+      "The dashboard is read-only; no data modification is possible."
+    ],
+    "assumptions": [
+      "An existing PostgreSQL 'invoices' table is available and contains all necessary data fields (e.g., invoice ID, client ID, status, amount, due date, paid date).",
+      "The 'invoices' table schema is stable and will be provided.",
+      "Credentials for read-only access to the PostgreSQL database will be provided.",
+      "A suitable hosting environment (e.g., internal server, cloud VM) for the web application is available or will be provided.",
+      "The definition of 'outstanding,' 'paid,' and 'overdue' statuses based on table fields is clear or will be defined.",
+      "'Client' is identifiable via a specific column in the 'invoices' table or a related table."
+    ],
+    "exclusions": [
+      "User authentication beyond basic internal network access (e.g., no complex role-based access control).",
+      "Any write/update/delete functionality for invoice data.",
+      "Integration with other systems (e.g., accounting software, CRM).",
+      "Advanced reporting features beyond simple totals and CSV export.",
+      "Public access or external facing components.",
+      "Database schema modifications or performance tuning of the existing PostgreSQL database.",
+      "Mobile application development.",
+      "Long-term maintenance or support beyond initial deployment."
+    ],
+    "dependencies": [
+      "Access to the existing PostgreSQL database and 'invoices' table.",
+      "Database schema definition for the 'invoices' table.",
+      "Read-only database credentials.",
+      "Client-specific definitions for invoice statuses (outstanding, paid, overdue).",
+      "A designated internal server/environment for deployment.",
+      "Feedback and approval from the logistics company's stakeholders."
+    ],
+    "clarification_questions": [
+      "What is the exact schema of the 'invoices' table, specifically the columns related to client identification, invoice amount, status, due date, and paid date?",
+      "How are 'outstanding,' 'paid,' and 'overdue' statuses precisely determined from the 'invoices' table data (e.g., specific column values, date comparisons)?",
+      "What is the preferred technology stack for the web dashboard (e.g., Python/Flask, Node.js/Express, Ruby on Rails, PHP/Laravel, etc.)?",
+      "What are the specific requirements for the hosting environment (OS, available resources, existing infrastructure)?",
+      "Are there any specific styling or branding guidelines for the dashboard UI?",
+      "What is the expected peak number of concurrent users for the dashboard?",
+      "How should the dashboard handle potential errors or database connection issues?"
+    ],
+    "required_skills": [
+      "Web Development (Frontend: HTML, CSS, JavaScript; Backend: e.g., Python/Flask, Node.js/Express, or similar)",
+      "Database Integration (PostgreSQL)",
+      "SQL Querying",
+      "Data Visualization (basic table/summary display)",
+      "CSV Export Implementation",
+      "Deployment and Configuration"
+    ],
+    "effort_low_hours": 40,
+    "effort_high_hours": 80,
+    "complexity": "MEDIUM",
+    "risk_items": [
+      "Database Schema Misinterpretation: Incorrect understanding of 'invoices' table columns leading to inaccurate data display.",
+      "Performance Bottlenecks: Difficulty achieving the sub-2-second load time for 10k rows, especially if the existing database is not optimized or queries are complex.",
+      "Access and Security: Challenges in securing read-only database access and ensuring the dashboard is strictly internal.",
+      "Ambiguous Status Definitions: Unclear definitions of 'outstanding,' 'paid,' and 'overdue' leading to incorrect calculations.",
+      "Deployment Environment Issues: Unexpected issues with the provided hosting environment.",
+      "Data Volume Growth: If 10k rows is just the current state and it grows significantly, performance might degrade."
+    ],
+    "policy_flags": [
+      "Data Access: Requires read-only access to potentially sensitive financial data.",
+      "Internal Tooling: Development of an internal tool, requiring adherence to internal security policies."
+    ],
+    "manual_review_reasons": [
+      "Data Sensitivity: Handling financial data requires careful review of security and access controls.",
+      "Performance Requirement: The 'under 2 seconds for 10k rows' is a hard requirement that needs careful planning and potential database-side considerations.",
+      "Ambiguity in Status Definitions: The precise logic for 'outstanding,' 'paid,' and 'overdue' needs explicit confirmation."
+    ],
+    "confidence": "medium",
+    "suggested_milestones": [
+      "Milestone 1: Discovery & Database Integration (Gather detailed 'invoices' table schema and status definitions, establish read-only connection to PostgreSQL database, develop initial data retrieval and aggregation logic).",
+      "Milestone 2: Dashboard UI & Core Functionality (Develop basic web interface to display aggregated invoice data by client, implement logic for 'outstanding,' 'paid,' and 'overdue' totals, implement CSV export functionality).",
+      "Milestone 3: Performance & Deployment (Optimize data queries and dashboard rendering to meet sub-2-second load time for 10k rows, deploy the dashboard to the designated internal environment, conduct internal testing and gather feedback).",
+      "Milestone 4: Final Review & Handover (Address any identified bugs or minor adjustments, provide basic documentation, final review and acceptance)."
+    ]
+  }
+}

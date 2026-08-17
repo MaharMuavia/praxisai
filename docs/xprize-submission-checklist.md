@@ -4,15 +4,19 @@
 **Category:** Education & Human Potential  
 **Target prize tier:** 3rd–5th place ($100,000 each) or Category Prize ($50,000)
 
+> ➡️ **For the final do-this-now steps (push, video, product evidence, Devpost paste blocks),
+> see [`xprize-FINAL-STEPS.md`](xprize-FINAL-STEPS.md).** That is the source of truth for finishing.
+
 ---
 
 ## Required Submission Artifacts
 
 ### 1. Source Code Repository
 - [x] GitHub repository exists
-- [x] MIT LICENSE file added
-- [ ] Share access with `testing@devpost.com` (add as collaborator)
-- [ ] Share access with `judging@hacker.fund` (add as collaborator)
+- [x] MIT LICENSE file added (on local `main` — **not yet on public `main`, push pending**)
+- [x] Share access with `testing@devpost.com` (collaborator invited)
+- [x] Share access with `judging@hacker.fund` (collaborator invited)
+- [ ] **Push local `main` (`febcb8f`) to public `main`** — blocked by branch protection; see FINAL-STEPS Step A
 - [ ] Repository is clean (no uncommitted changes, CI green)
 
 ### 2. 3-Minute Video Pitch
@@ -31,15 +35,15 @@
 > even before full Cloud Run deployment.
 
 ### 3. Written Narrative (500–1000 words)
-- [ ] Case study explaining daily operational workflows
-- [ ] Human vs. AI task division
-- [ ] Economic opportunities created
-- [ ] See `docs/xprize-submission-narrative.md` for the draft
+- [x] Case study explaining daily operational workflows
+- [x] Human vs. AI task division
+- [x] Economic opportunities created
+- [x] Done — `docs/xprize-submission-narrative.md` (~950 words, honest)
 
 ### 4. Financial Documentation
-- [ ] P&L statement (see `docs/xprize-pnl-statement.md`)
-- [ ] Revenue evidence (Stripe dashboard, bank statements, or invoices)
-- [ ] Note: Even $0 revenue must be documented honestly
+- [x] P&L statement — prose (`docs/xprize-pnl-statement.md`) + spreadsheet (`docs/PraxisAI-PnL.xlsx`)
+- [x] Marketing/customer-acquisition spend disclosed ($0) in the P&L
+- [x] Revenue evidence: $0, no processor integrated — disclosed honestly (no Stripe/bank export exists)
 
 ---
 
