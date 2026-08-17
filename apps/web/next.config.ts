@@ -7,7 +7,9 @@ import { publicSecurityHeaders } from "./lib/security-headers";
 validatePublicBuildEnvironment(process.env, process.env.NODE_ENV);
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Standalone output is for the Docker/Cloud Run image. On Vercel (VERCEL=1) use
+  // the default output so Vercel's Next.js builder manages serverless output itself.
+  output: process.env.VERCEL ? undefined : "standalone",
   outputFileTracingRoot: path.join(process.cwd(), "../.."),
   poweredByHeader: false,
   devIndicators: process.env.PLAYWRIGHT_TEST === "true" ? false : undefined,
